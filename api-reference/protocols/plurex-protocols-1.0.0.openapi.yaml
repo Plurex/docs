@@ -309,14 +309,16 @@ components:
         - $ref: '#/components/schemas/EntrySizeRisk'
     EntrySizeFixed:
       type: object
-      title: FixedSize
+      title: Fixed
       description: A fixed entry sizing strategy. New entries will be for a fixed percentage of total entry cost.
       properties:
         percentage:
           type: number
           format: double
         type:
-          const: Fixed
+          type: string
+          enum: [Fixed]
+          default: Fixed
       required:
         - percentage
         - type
@@ -325,14 +327,16 @@ components:
         percentage: 25.0
     EntrySizeRisk:
       type: object
-      title: RiskSize
+      title: Risk
       description: A Risk based sizing strategy. New entries risk a percentage of the entry cost relative to the stop loss.
       properties:
         percentage:
           type: number
           format: double
         type:
-          const: Risk
+          type: string
+          enum: [Risk]
+          default: Risk
       required:
         - percentage
         - type
@@ -347,7 +351,7 @@ components:
         - $ref: '#/components/schemas/StopLossMarketTrailing'
     StopLossAverageEntry:
       type: object
-      title: AverageEntry
+      title: Average Entry
       description: Stop Loss relative to the average entry price
       properties:
         percentage:
@@ -356,14 +360,16 @@ components:
         inBreachSeconds:
           type: integer
         type:
-          const: AverageEntry
+          type: string
+          enum: [AverageEntry]
+          default: AverageEntry
       required:
         - inBreachSeconds
         - percentage
         - type
     StopLossMarketTrailing:
       type: object
-      title: MarketTrailing
+      title: Market Trailing
       description: Stop Loss relative to the market trailing price
       properties:
         percentage:
@@ -372,7 +378,9 @@ components:
         inBreachSeconds:
           type: integer
         type:
-          const: MarketTrailing
+          type: string
+          enum: [MarketTrailing]
+          default: MarketTrailing
       required:
         - inBreachSeconds
         - percentage
