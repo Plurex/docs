@@ -107,11 +107,15 @@ paths:
 components:
   schemas:
     MaxCombinedOpenPositionCost:
+      title: Max Combined Open Position Cost
       description: |
         A type of SubscriptionSignalRestriction. Limits the combined open position cost across all Trading Sessions. Valued in USD.
+      type: object
       properties:
         type:
-          const: MaxCombinedOpenPositionCost
+          type: string
+          enum: [MaxCombinedOpenPositionCost]
+          default: MaxCombinedOpenPositionCost
         usd:
           type: number
       required:
@@ -122,11 +126,14 @@ components:
         usd: 15000
     MaxPerSignalOpenPositionCost:
       type: object
+      title: Max Per Signal Open Position Cost
       description: |
         A type of SubscriptionSignalRestriction. Limits the open position cost per Signal . Valued in USD.
       properties:
         type:
-          const: MaxPerSignalOpenPositionCost
+          type: string
+          enum: [MaxPerSignalOpenPositionCost]
+          default: MaxPerSignalOpenPositionCost
         usd:
           type: number
       required:
@@ -136,6 +143,11 @@ components:
         type: MaxPerSignalOpenPositionCost
         usd: 10000
     SubscriptionSignalRestriction:
+      discriminator:
+        propertyName: type
+        mapping:
+          MaxCombinedOpenPositionCost: '#/components/schemas/MaxCombinedOpenPositionCost'
+          MaxPerSignalOpenPositionCost: '#/components/schemas/MaxPerSignalOpenPositionCost'
       oneOf:
         - $ref: '#/components/schemas/MaxCombinedOpenPositionCost'
         - $ref: '#/components/schemas/MaxPerSignalOpenPositionCost'
@@ -199,8 +211,6 @@ components:
               usd: 10000
       required:
         - id
-        - signalRestrictions
-        - signalIds
     ExternalPlans:
       type: array
       items:
