@@ -1,0 +1,420 @@
+---
+openapi: 3.1.0
+info:
+  title: Plurex Protocol API
+  description: Plurex Protocols API is a highly available api for handling trading intelligence protocol messages.
+  version: 1.0.0
+servers:
+  - url: https://protocols.plurex.io
+    description: Plurex Protocol API
+security:
+  - apiKey: [ ]
+    apiSecret: [ ]
+tags:
+  - name: signal
+    description: Signal protocol. Send messages to your Signals.
+paths:
+  /api/v1/signal/{id}:
+    post:
+      tags:
+        - signal
+      summary: Send messages
+      description: Send a batch of signal messages
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the signal to send a message to.
+          required: true
+          style: simple
+          explode: false
+          schema:
+            type: string
+        - name: test
+          in: query
+          description: Optional parameter to indicate a test message. This message will be ignored by Trading Sessions if true.
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: boolean
+      requestBody:
+        description: A batch of Signal Messages
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignalMessages'
+        required: true
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Authentication Failed.
+        '403':
+          description: Not Authorized.
+        '404':
+          description: Not Found. The signal ID is not found.
+        '422':
+          description: 'Invalid. Valid structure/json, invalid data.'
+          content:
+            applicaton/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrors'
+        '400':
+          description: Bad request. Most likely due to badly formated content.
+components:
+  schemas:
+    Long:
+      description: A message to go long with optional overrides for the Entry settings
+      type: object
+      properties:
+        type:
+          const: Long
+        market:
+          type: string
+          description: The market the message is for. Fore example 'BTC-USD'.
+        override:
+          $ref: '#/components/schemas/EntryOverride'
+          description: Optional overrides for the Entry settings
+      required:
+        - type
+        - market
+      example:
+        - type: Long
+        - market: BTC-USD
+    Short:
+      description: A message to go short with optional overrides for the Entry settings
+      type: object
+      properties:
+        type:
+          const: Short
+        market:
+          type: string
+          description: The market the message is for. Fore example 'BTC-USD'.
+        override:
+          $ref: '#/components/schemas/EntryOverride'
+      required:
+        - type
+        - market
+      example:
+        - type: Short
+        - market: BTC-USD
+    CloseAll:
+      type: object
+      properties:
+        type:
+          const: CloseAll
+        market:
+          type: string
+          description: The market the message is for. Fore example 'BTC-USD'.
+      required:
+        - type
+        - market
+    CloseLongs:
+      type: object
+      properties:
+        type:
+          const: CloseLongs
+        market:
+          type: string
+          description: The market the message is for. Fore example 'BTC-USD'.
+      required:
+        - type
+        - market
+    CloseShorts:
+      type: object
+      properties:
+        type:
+          const: CloseShorts
+        market:
+          type: string
+          description: The market the message is for. Fore example 'BTC-USD'.
+      required:
+        - type
+        - market
+    CloseLastLong:
+      type: object
+      properties:
+        type:
+          const: CloseLastLong
+        market:
+          type: string
+          description: The market the message is for. Fore example 'BTC-USD'.
+      required:
+        - type
+        - market
+    CloseFirstLong:
+      type: object
+      properties:
+        type:
+          const: CloseFirst
+        market:
+          type: string
+          description: The market the message is for. Fore example 'BTC-USD'.
+      required:
+        - type
+        - market
+    CloseLastShort:
+      type: object
+      properties:
+        type:
+          const: CloseLastShort
+        market:
+          type: string
+          description: The market the message is for. Fore example 'BTC-USD'.
+      required:
+        - type
+        - market
+    CloseFirstShort:
+      type: object
+      properties:
+        type:
+          const: CloseFirstShort
+        market:
+          type: string
+          description: The market the message is for. Fore example 'BTC-USD'.
+      required:
+        - type
+        - market
+    SignalMessage:
+      oneOf:
+        - $ref: '#/components/schemas/Long'
+        - $ref: '#/components/schemas/Short'
+        - $ref: '#/components/schemas/CloseAll'
+        - $ref: '#/components/schemas/CloseShorts'
+        - $ref: '#/components/schemas/CloseLongs'
+        - $ref: '#/components/schemas/CloseLastLong'
+        - $ref: '#/components/schemas/CloseLastShort'
+        - $ref: '#/components/schemas/CloseFirstLong'
+        - $ref: '#/components/schemas/CloseFirstShort'
+    SignalMessages:
+      type: array
+      items:
+        $ref: '#/components/schemas/SignalMessage'
+      example:
+        - type: Long
+          market: BTC-USD
+        - type: Short
+          market: ETH-USD
+        - type: CloseAll
+          market: SOL-USD
+        - type: CloseShorts
+          market: BTC-USD
+        - type: CloseLongs
+          market: ETH-USD
+        - type: CloseLastLong
+          market: SOL-USD
+        - type: CloseLastShort
+          market: BTC-USD
+        - type: CloseFirstLong
+          market: ETH-USD
+        - type: CloseFirstShort
+          market: SOL-USD
+    ValidationErrors:
+      required:
+        - errors
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+      description: A collection of Validation errors in a data structure
+    ValidationError:
+      type: object
+      properties:
+        path:
+          description: Path to the field with invalid value
+          type: array
+          items:
+            type: string
+        message:
+          type: string
+          description: Description of the validation error
+      required:
+        - message
+        - path
+      example:
+        path:
+          - budget
+          - amount
+        message: Must be > 0
+    EntryOverride:
+      type: object
+      properties:
+        entrySize:
+          $ref: '#/components/schemas/EntrySize'
+        entryOpenStrategy:
+          $ref: '#/components/schemas/OpenStrategy'
+        maxSlippagePercentage:
+          type: number
+          description: The maximum percentage that price can slip by from message receipt
+          format: double
+        stopLoss:
+          $ref: '#/components/schemas/StopLoss'
+        takeProfit:
+          description: An optional take profit
+          $ref: '#/components/schemas/TakeProfitLevels'
+      required:
+        - entrySize
+        - entryOpenStrategy
+      description: The execution settings for a Signal
+    EntrySize:
+      description: How you want your entries to be sized.
+      discriminator:
+        propertyName: type
+        mapping:
+          Fixed: '#/components/schemas/EntrySizeFixed'
+          Risk: '#/components/schemas/EntrySizeRisk'
+      oneOf:
+        - $ref: '#/components/schemas/EntrySizeFixed'
+        - $ref: '#/components/schemas/EntrySizeRisk'
+    EntrySizeFixed:
+      type: object
+      title: FixedSize
+      description: A fixed entry sizing strategy. New entries will be for a fixed percentage of total entry cost.
+      properties:
+        percentage:
+          type: number
+          format: double
+        type:
+          const: Fixed
+      required:
+        - percentage
+        - type
+      example:
+        type: Fixed
+        percentage: 25.0
+    EntrySizeRisk:
+      type: object
+      title: RiskSize
+      description: A Risk based sizing strategy. New entries risk a percentage of the entry cost relative to the stop loss.
+      properties:
+        percentage:
+          type: number
+          format: double
+        type:
+          const: Risk
+      required:
+        - percentage
+        - type
+    StopLoss:
+      discriminator:
+        propertyName: type
+        mapping:
+          AverageEntry: '#/components/schemas/StopLossAverageEntry'
+          MarketTrailing: '#/components/schemas/StopLossMarketTrailing'
+      oneOf:
+        - $ref: '#/components/schemas/StopLossAverageEntry'
+        - $ref: '#/components/schemas/StopLossMarketTrailing'
+    StopLossAverageEntry:
+      type: object
+      title: AverageEntry
+      description: Stop Loss relative to the average entry price
+      properties:
+        percentage:
+          type: number
+          format: double
+        inBreachSeconds:
+          type: integer
+        type:
+          const: AverageEntry
+      required:
+        - inBreachSeconds
+        - percentage
+        - type
+    StopLossMarketTrailing:
+      type: object
+      title: MarketTrailing
+      description: Stop Loss relative to the market trailing price
+      properties:
+        percentage:
+          type: number
+          format: double
+        inBreachSeconds:
+          type: integer
+        type:
+          const: MarketTrailing
+      required:
+        - inBreachSeconds
+        - percentage
+        - type
+    TakeProfitLevels:
+      type: object
+      properties:
+        trailingPercentage:
+          type: number
+          format: double
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/TakeProfitLevel'
+      required:
+        - levels
+    TakeProfitLevel:
+      type: object
+      properties:
+        sizePercentage:
+          type: number
+          format: double
+        pricePercentage:
+          type: number
+          format: double
+    OpenStrategy:
+      description: The strategy to use when executing an entry.
+      discriminator:
+        propertyName: type
+        mapping:
+          Immediate: '#/components/schemas/OpenStrategyImmediate'
+          MarketTrailing: '#/components/schemas/OpenStrategyMarketTrailing'
+      oneOf:
+        - $ref: '#/components/schemas/OpenStrategyImmediate'
+        - $ref: '#/components/schemas/OpenStrategyMarketTrailing'
+    OpenStrategyImmediate:
+        type: object
+        description: Open the position immediately
+        properties:
+            type:
+              const: Immediate
+        required:
+            - type
+        example:
+            - type: Immediate
+    OpenStrategyMarketTrailing:
+      type: object
+      description: Trail market price until direction is confirmed and then open.
+      properties:
+        type:
+          const: MarketTrailing
+        confirmationPercentage:
+          type: number
+          format: double
+        orAfterMillis:
+          description: Optional parameter to set a time limit for confirmation. Will open after it elapses.
+          type: number
+          format: int64
+      required:
+        - type
+        - confirmationPercentage
+      example:
+        - type: MarketTrailing
+          confirmationPercentage: 0.5
+          openIn:
+            value: 5
+            unit: Minutes
+    TimeDuration:
+      type: object
+      properties:
+        value:
+          type: integer64
+        unit:
+          type: string
+          enum: [Seconds, Minutes]
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      name: X-API-KEY
+      in: header
+    apiSecret:
+      type: apiKey
+      name: X-API-SECRET
+      in: header

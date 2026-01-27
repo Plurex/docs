@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "Plurex Docs",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#ba54f5",
+    "light": "#16C99D",
+    "dark": "#0C9473"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -36,14 +36,6 @@
               "essentials/images",
               "essentials/reusable-snippets"
             ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
-            ]
           }
         ]
       },
@@ -51,19 +43,22 @@
         "tab": "API reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Platform API",
             "pages": [
-              "api-reference/introduction"
-            ]
+
+            ],
+            "openapi": {
+              "source": "api-reference/platform/plurex-platform-1.0.0.openapi.yaml"
+            }
           },
           {
-            "group": "Endpoint examples",
+            "group": "Protocols API",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
-            ]
+
+            ],
+            "openapi": {
+              "source": "api-reference/protocols/plurex-protocols-1.0.0.openapi.yaml"
+            }
           }
         ]
       }
@@ -91,13 +86,13 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "https://support.plurex.io/portal/en/newticket"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Platform",
+      "href": "https://platform.plurex.io"
     }
   },
   "contextual": {

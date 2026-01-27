@@ -1,0 +1,298 @@
+openapi: 3.1.0
+info:
+  title: Plurex Platform API
+  description: The Plurex Platform API lets you integrate with our trading and automation tools.
+  version: 1.0.0
+servers:
+  - url: https://platform.plurex.io
+    description: Platform API
+security:
+  - apiKey: [ ]
+    apiSecret: [ ]
+tags:
+  - name: publishing
+    description: Configure and query your plans and subscribers and give them access to your trading intelligence.
+  - name: signals
+    description: Signal management. Query and configure your Signals.
+paths:
+  /api/v1/publishing/subscribers/all:
+    put:
+      tags:
+        - publishing
+      summary: Set subscribers
+      description: |
+        Set all external subscribers and their subscriptions in a single operation.
+        Missing subscribers will be removed, and new subscribers will be added.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalSubscribers'
+      responses:
+        '200':
+          description: Successfully updated the state of external user subs
+        '206':
+          description: 'Accepted, but state only partially set'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_202'
+        '422':
+          description: 'Invalid. Valid structure/json, invalid data.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrors'
+  /api/v1/publishing/subscribers:
+    get:
+      tags:
+        - publishing
+      summary: Get subscribers
+      description: Get the state of all external subscribers
+      responses:
+        '200':
+          description: The state of all external subscribers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalSubscribers'
+  /api/v1/publishing/plans/all:
+    put:
+      tags:
+        - publishing
+      summary: Set Plans
+      description: |
+        Set the state of all external plans in a single operation. If plans are missing they will be deleted,
+        and additional plans will be created.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalPlans'
+      responses:
+        '200':
+          description: Successfully updated the state of external subscription plans
+        '422':
+          description: 'Invalid. Valid structure/json, invalid data.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrors'
+  /api/v1/publishing/plans:
+    get:
+      tags:
+        - publishing
+      summary: Get plans
+      description: Get all currently configured plans.
+      responses:
+        '200':
+          description: The full state of all publisher plans
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalPlans'
+  /api/v1/signals:
+    get:
+      tags:
+        - signals
+      summary: Get signals
+      description: Get all signal headers. This is a lightweight way to get the list of signals.
+      responses:
+        '200':
+          description: All current signals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalHeaders'
+components:
+  schemas:
+    MaxCombinedOpenPositionCost:
+      description: |
+        A type of SubscriptionSignalRestriction. Limits the combined open position cost across all Trading Sessions. Valued in USD.
+      properties:
+        type:
+          const: MaxCombinedOpenPositionCost
+        usd:
+          type: number
+      required:
+        - type
+        - usd
+      example:
+        type: MaxCombinedOpenPositionCost
+        usd: 15000
+    MaxPerSignalOpenPositionCost:
+      type: object
+      description: |
+        A type of SubscriptionSignalRestriction. Limits the open position cost per Signal . Valued in USD.
+      properties:
+        type:
+          const: MaxPerSignalOpenPositionCost
+        usd:
+          type: number
+      required:
+        - type
+        - usd
+      example:
+        type: MaxPerSignalOpenPositionCost
+        usd: 10000
+    SubscriptionSignalRestriction:
+      oneOf:
+        - $ref: '#/components/schemas/MaxCombinedOpenPositionCost'
+        - $ref: '#/components/schemas/MaxPerSignalOpenPositionCost'
+    ExternalSubscriber:
+      type: object
+      description: |
+        An subscriber lets you define which Plans a user has access to.
+      properties:
+        userHandle:
+          type: string
+          description: |
+            The unique user handle that a user sets when they first create an account. Top of screen at https://plurex.io/#/settings/general
+          example: BobBuilder
+        planIds:
+          description: The subscription plans that the user has access to.
+          type: array
+          items:
+            type: string
+          example:
+            - Starter
+      required:
+        - userHandle
+        - planIds
+    ExternalSubscribers:
+      type: array
+      items:
+        $ref: '#/components/schemas/ExternalSubscriber'
+      example:
+        - userHandle: BobBuilder
+          planIds:
+            - Starter
+        - userHandle: AliceTrader
+          planIds:
+            - Pro
+    ExternalPlan:
+      type: object
+      description: |
+        Lets you group your published signals and apply restrictions for that plan. This is how you can recreate your external subscription plans and the rules that they have. Your externally subscribed users can then provide their Plurex user handles, and you can give them access to an ExternalSubTier with ExternalUserSubs.
+      properties:
+        id:
+          description: A unique identifier provided by the owner
+          type: string
+          example: Starter
+        signalIds:
+          description: The Plurex IDs of the published signals that this sub group give access to.
+          type: array
+          items:
+            type: string
+          example:
+            - bbebadea-3429-4fed-80fe-0feed5d0e44e
+            - ede6ae78-76ce-4414-8eac-a35067e752d6
+        signalRestrictions:
+          description: The set of restrictions that apply to the plan.
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionSignalRestriction'
+          example:
+            - type: MaxCombinedOpenPositionCost
+              usd: 5000
+            - type: MaxPerSignalOpenPositionCost
+              usd: 10000
+      required:
+        - id
+        - signalRestrictions
+        - signalIds
+    ExternalPlans:
+      type: array
+      items:
+        $ref: '#/components/schemas/ExternalPlan'
+      example:
+        - id: Starter
+          signalIds:
+            - bbebadea-3429-4fed-80fe-0feed5d0e44e
+            - ede6ae78-76ce-4414-8eac-a35067e752d6
+          signalRestrictions:
+            - type: MaxPerSignalOpenPositionCost
+              usd: 10000
+        - id: Pro
+          signalIds:
+            - bbebadea-3429-4fed-80fe-0feed5d0e44e
+            - ede6ae78-76ce-4414-8eac-a35067e752d6
+          signalRestrictions:
+            - type: MaxCombinedOpenPositionCost
+              usd: 10000
+    SignalHeader:
+      description: A top level description of a Signal.
+      required:
+        - id
+        - name
+      type: object
+      properties:
+        id:
+          type: string
+          example: bbebadea-3429-4fed-80fe-0feed5d0e44e
+        name:
+          type: string
+          example: My Super Signal
+    SignalHeaders:
+      type: array
+      items:
+        $ref: '#/components/schemas/SignalHeader'
+      example:
+        - id: bbebadea-3429-4fed-80fe-0feed5d0e44e
+          name: My Super Signal
+        - id: ede6ae78-76ce-4414-8eac-a35067e752d6
+          name: My Other Signal
+    ValidationError:
+      type: object
+      properties:
+        path:
+          type: array
+          description: Path to the field with invalid value
+          items:
+            type: string
+        message:
+          type: string
+          description: Description of the validation error
+      required:
+        - message
+        - path
+      example:
+        path:
+          - priceLimit
+        message: Must be > 0
+    ValidationErrors:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+      required:
+        - errors
+      example:
+        errors:
+          - path:
+              - priceLimit
+            message: Must be > 0
+    inline_response_202:
+      type: object
+      properties:
+        userHandlesNotFound:
+          type: array
+          items:
+            type: string
+      required:
+        - userHandlesNotFound
+      example:
+        userHandlesNotFound:
+          - Bob
+          - Alice
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      name: X-API-KEY
+      in: header
+    apiSecret:
+      type: apiKey
+      name: X-API-SECRET
+      in: header
