@@ -64,11 +64,14 @@ paths:
 components:
   schemas:
     Long:
+      title: Long
       description: A message to go long with optional overrides for the Entry settings
       type: object
       properties:
         type:
-          const: Long
+          type: string
+          enum: [Long]
+          default: Long
         market:
           type: string
           description: The market the message is for. Fore example 'BTC-USD'.
@@ -82,11 +85,14 @@ components:
         - type: Long
         - market: BTC-USD
     Short:
+      title: Short
       description: A message to go short with optional overrides for the Entry settings
       type: object
       properties:
         type:
-          const: Short
+          type: string
+          enum: [Short]
+          default: Short
         market:
           type: string
           description: The market the message is for. Fore example 'BTC-USD'.
@@ -99,10 +105,13 @@ components:
         - type: Short
         - market: BTC-USD
     CloseAll:
+      title: Close All
       type: object
       properties:
         type:
-          const: CloseAll
+          type: string
+          enum: [CloseAll]
+          default: CloseAll
         market:
           type: string
           description: The market the message is for. Fore example 'BTC-USD'.
@@ -110,10 +119,13 @@ components:
         - type
         - market
     CloseLongs:
+      title: Close Longs
       type: object
       properties:
         type:
-          const: CloseLongs
+          type: string
+          enum: [CloseLongs]
+          default: CloseLongs
         market:
           type: string
           description: The market the message is for. Fore example 'BTC-USD'.
@@ -121,10 +133,13 @@ components:
         - type
         - market
     CloseShorts:
+      title: Close Shorts
       type: object
       properties:
         type:
-          const: CloseShorts
+          type: string
+          enum: [CloseShorts]
+          default: CloseShorts
         market:
           type: string
           description: The market the message is for. Fore example 'BTC-USD'.
@@ -132,10 +147,13 @@ components:
         - type
         - market
     CloseLastLong:
+      title: Close Last Long
       type: object
       properties:
         type:
-          const: CloseLastLong
+          type: string
+          enum: [CloseLastLong]
+          default: CloseLastLong
         market:
           type: string
           description: The market the message is for. Fore example 'BTC-USD'.
@@ -143,10 +161,13 @@ components:
         - type
         - market
     CloseFirstLong:
+      title: Close First Long
       type: object
       properties:
         type:
-          const: CloseFirst
+          type: string
+          enum: [CloseFirstLong]
+          default: CloseFirstLong
         market:
           type: string
           description: The market the message is for. Fore example 'BTC-USD'.
@@ -154,10 +175,13 @@ components:
         - type
         - market
     CloseLastShort:
+      title: Close Last Short
       type: object
       properties:
         type:
-          const: CloseLastShort
+          type: string
+          enum: [CloseLastShort]
+          default: CloseLastShort
         market:
           type: string
           description: The market the message is for. Fore example 'BTC-USD'.
@@ -165,10 +189,13 @@ components:
         - type
         - market
     CloseFirstShort:
+      title: Close First Short
       type: object
       properties:
         type:
-          const: CloseFirstShort
+          type: string
+          enum: [CloseFirstShort]
+          default: CloseFirstShort
         market:
           type: string
           description: The market the message is for. Fore example 'BTC-USD'.
@@ -186,6 +213,18 @@ components:
         - $ref: '#/components/schemas/CloseLastShort'
         - $ref: '#/components/schemas/CloseFirstLong'
         - $ref: '#/components/schemas/CloseFirstShort'
+      discriminator:
+        propertyName: type
+        mapping:
+          Long: '#/components/schemas/Long'
+          Short: '#/components/schemas/Short'
+          CloseAll: '#/components/schemas/CloseAll'
+          CloseShorts: '#/components/schemas/CloseShorts'
+          CloseLongs: '#/components/schemas/CloseLongs'
+          CloseLastLong: '#/components/schemas/CloseLastLong'
+          CloseLastShort: '#/components/schemas/CloseLastShort'
+          CloseFirstLong: '#/components/schemas/CloseFirstLong'
+          CloseFirstShort: '#/components/schemas/CloseFirstShort'
     SignalMessages:
       type: array
       items:
@@ -370,22 +409,29 @@ components:
         - $ref: '#/components/schemas/OpenStrategyImmediate'
         - $ref: '#/components/schemas/OpenStrategyMarketTrailing'
     OpenStrategyImmediate:
-        type: object
-        description: Open the position immediately
-        properties:
-            type:
-              const: Immediate
-        required:
-            - type
-        example:
-            - type: Immediate
+      title: Immediate
+      type: object
+      description: Open the position immediately
+      properties:
+        type:
+          type: string
+          enum: [Immediate]
+          default: Immediate
+      required:
+        - type
+      example:
+        - type: Immediate
     OpenStrategyMarketTrailing:
+      title: Market Trailing
       type: object
       description: Trail market price until direction is confirmed and then open.
       properties:
         type:
-          const: MarketTrailing
+          type: string
+          enum: [MarketTrailing]
+          default: MarketTrailing
         confirmationPercentage:
+          description: The percentage that the price must move in a favourable direction to confirm the entry direction and trigger the entry.
           type: number
           format: double
         orAfterMillis:
