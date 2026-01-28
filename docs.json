@@ -11,30 +11,13 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Platform",
         "groups": [
           {
             "group": "Getting started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
-            ]
-          },
-          {
-            "group": "Customization",
-            "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
-          },
-          {
-            "group": "Writing content",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "platform/overview",
+              "platform/add-exchange"
             ]
           }
         ]
@@ -45,38 +28,39 @@
           {
             "group": "Platform API",
             "pages": [
-
-            ],
-            "openapi": {
-              "source": "api-reference/platform/plurex-platform-1.0.0.openapi.yaml"
-            }
+              "api-reference/platform/overview",
+              {
+                "group": "publishing",
+                "pages": [
+                  "api-reference/platform/endpoints/publishing/set-subscribers",
+                  "api-reference/platform/endpoints/publishing/get-subscribers",
+                  "api-reference/platform/endpoints/publishing/set-plans",
+                  "api-reference/platform/endpoints/publishing/get-plans"
+                ]
+              },
+              {
+                "group": "signals",
+                "pages": [
+                  "api-reference/platform/endpoints/signals/get-signals"
+                ]
+              }
+            ]
           },
           {
             "group": "Protocols API",
             "pages": [
-
-            ],
-            "openapi": {
-              "source": "api-reference/protocols/plurex-protocols-1.0.0.openapi.yaml"
-            }
+              "api-reference/protocols/overview",
+              {
+                "group": "Signals",
+                "pages": [
+                  "api-reference/protocols/endpoints/signal/send-messages"
+                ]
+              }
+            ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
+    ]
   },
   "logo": {
     "light": "/logo/light.svg",
