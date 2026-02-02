@@ -63,191 +63,383 @@ paths:
           description: Bad request. Most likely due to badly formated content.
 components:
   schemas:
-    Long:
-      title: Long
-      description: A message to go long with optional overrides for the Entry settings
-      type: object
-      properties:
-        type:
-          type: string
-          enum: [Long]
-          default: Long
-        market:
-          type: string
-          description: The market the message is for. Fore example 'BTC-USD'.
-        override:
-          $ref: '#/components/schemas/EntryOverride'
-          description: Optional overrides for the Entry settings
-      required:
-        - type
-        - market
-      example:
-        - type: Long
-        - market: BTC-USD
-    Short:
-      title: Short
-      description: A message to go short with optional overrides for the Entry settings
-      type: object
-      properties:
-        type:
-          type: string
-          enum: [Short]
-          default: Short
-        market:
-          type: string
-          description: The market the message is for. Fore example 'BTC-USD'.
-        override:
-          $ref: '#/components/schemas/EntryOverride'
-      required:
-        - type
-        - market
-      example:
-        - type: Short
-        - market: BTC-USD
-    CloseAll:
-      title: Close All
-      type: object
-      properties:
-        type:
-          type: string
-          enum: [CloseAll]
-          default: CloseAll
-        market:
-          type: string
-          description: The market the message is for. Fore example 'BTC-USD'.
-      required:
-        - type
-        - market
-    CloseLongs:
-      title: Close Longs
-      type: object
-      properties:
-        type:
-          type: string
-          enum: [CloseLongs]
-          default: CloseLongs
-        market:
-          type: string
-          description: The market the message is for. Fore example 'BTC-USD'.
-      required:
-        - type
-        - market
-    CloseShorts:
-      title: Close Shorts
-      type: object
-      properties:
-        type:
-          type: string
-          enum: [CloseShorts]
-          default: CloseShorts
-        market:
-          type: string
-          description: The market the message is for. Fore example 'BTC-USD'.
-      required:
-        - type
-        - market
-    CloseLastLong:
-      title: Close Last Long
-      type: object
-      properties:
-        type:
-          type: string
-          enum: [CloseLastLong]
-          default: CloseLastLong
-        market:
-          type: string
-          description: The market the message is for. Fore example 'BTC-USD'.
-      required:
-        - type
-        - market
-    CloseFirstLong:
-      title: Close First Long
-      type: object
-      properties:
-        type:
-          type: string
-          enum: [CloseFirstLong]
-          default: CloseFirstLong
-        market:
-          type: string
-          description: The market the message is for. Fore example 'BTC-USD'.
-      required:
-        - type
-        - market
-    CloseLastShort:
-      title: Close Last Short
-      type: object
-      properties:
-        type:
-          type: string
-          enum: [CloseLastShort]
-          default: CloseLastShort
-        market:
-          type: string
-          description: The market the message is for. Fore example 'BTC-USD'.
-      required:
-        - type
-        - market
-    CloseFirstShort:
-      title: Close First Short
-      type: object
-      properties:
-        type:
-          type: string
-          enum: [CloseFirstShort]
-          default: CloseFirstShort
-        market:
-          type: string
-          description: The market the message is for. Fore example 'BTC-USD'.
-      required:
-        - type
-        - market
-    SignalMessage:
-      oneOf:
-        - $ref: '#/components/schemas/Long'
-        - $ref: '#/components/schemas/Short'
-        - $ref: '#/components/schemas/CloseAll'
-        - $ref: '#/components/schemas/CloseShorts'
-        - $ref: '#/components/schemas/CloseLongs'
-        - $ref: '#/components/schemas/CloseLastLong'
-        - $ref: '#/components/schemas/CloseLastShort'
-        - $ref: '#/components/schemas/CloseFirstLong'
-        - $ref: '#/components/schemas/CloseFirstShort'
+    SignalSide:
+      type: string
+      enum: [Long, Short]
+      description: The side of the signal.
+    OpenEntryTarget:
+      description: Specifies which open entries are targeted by the message.
       discriminator:
         propertyName: type
         mapping:
-          Long: '#/components/schemas/Long'
-          Short: '#/components/schemas/Short'
-          CloseAll: '#/components/schemas/CloseAll'
-          CloseShorts: '#/components/schemas/CloseShorts'
-          CloseLongs: '#/components/schemas/CloseLongs'
-          CloseLastLong: '#/components/schemas/CloseLastLong'
-          CloseLastShort: '#/components/schemas/CloseLastShort'
-          CloseFirstLong: '#/components/schemas/CloseFirstLong'
-          CloseFirstShort: '#/components/schemas/CloseFirstShort'
+          All: '#/components/schemas/OpenEntryTargetAll'
+          LastOnly: '#/components/schemas/OpenEntryTargetLastOnly'
+          FirstOnly: '#/components/schemas/OpenEntryTargetFirstOnly'
+          ExternalId: '#/components/schemas/OpenEntryTargetExternalId'
+      oneOf:
+        - $ref: '#/components/schemas/OpenEntryTargetAll'
+        - $ref: '#/components/schemas/OpenEntryTargetLastOnly'
+        - $ref: '#/components/schemas/OpenEntryTargetFirstOnly'
+        - $ref: '#/components/schemas/OpenEntryTargetExternalId'
+    OpenEntryTargetAll:
+      type: object
+      title: All
+      description: Targets all open entries.
+      properties:
+        type:
+          type: string
+          enum: [All]
+          default: All
+      required:
+        - type
+    OpenEntryTargetLastOnly:
+      type: object
+      title: Last Only
+      description: Targets only the last open entry.
+      properties:
+        type:
+          type: string
+          enum: [LastOnly]
+          default: LastOnly
+      required:
+        - type
+    OpenEntryTargetFirstOnly:
+      type: object
+      title: First Only
+      description: Targets only the first open entry.
+      properties:
+        type:
+          type: string
+          enum: [FirstOnly]
+          default: FirstOnly
+      required:
+        - type
+    OpenEntryTargetExternalId:
+      type: object
+      title: External ID
+      description: Targets an entry by its external ID.
+      properties:
+        type:
+          type: string
+          enum: [ExternalId]
+          default: ExternalId
+        id:
+          type: string
+          description: The external ID of the target entry.
+      required:
+        - type
+        - id
+    EntryOverride:
+      type: object
+      description: Overrides for the default entry settings.
+      properties:
+        entrySize:
+          $ref: '#/components/schemas/EntryOverrideSize'
+        entryOpenStrategy:
+          $ref: '#/components/schemas/EntryOverrideOpenStrategy'
+        maxSlippagePercentage:
+          type: number
+          format: double
+          description: The maximum percentage that price can slip by from message receipt.
+        stopLoss:
+          $ref: '#/components/schemas/EntryOverrideStopLoss'
+        takeProfit:
+          $ref: '#/components/schemas/EntryOverrideTakeProfit'
+      required:
+        - entrySize
+        - entryOpenStrategy
+    EntryOverrideSize:
+      description: How you want your entries to be sized.
+      discriminator:
+        propertyName: type
+        mapping:
+          Fixed: '#/components/schemas/EntryOverrideSizeFixed'
+          Risk: '#/components/schemas/EntryOverrideSizeRisk'
+      oneOf:
+        - $ref: '#/components/schemas/EntryOverrideSizeFixed'
+        - $ref: '#/components/schemas/EntryOverrideSizeRisk'
+    EntryOverrideSizeFixed:
+      type: object
+      title: Fixed
+      description: A fixed entry sizing strategy. New entries will be for a fixed percentage of total entry cost.
+      properties:
+        type:
+          type: string
+          enum: [Fixed]
+          default: Fixed
+        percentage:
+          type: number
+          format: double
+      required:
+        - type
+        - percentage
+    EntryOverrideSizeRisk:
+      type: object
+      title: Risk
+      description: A Risk based sizing strategy. New entries risk a percentage of the entry cost relative to the stop loss.
+      properties:
+        type:
+          type: string
+          enum: [Risk]
+          default: Risk
+        percentage:
+          type: number
+          format: double
+      required:
+        - type
+        - percentage
+    EntryOverrideStopLoss:
+      description: Overrides for the stop loss settings.
+      discriminator:
+        propertyName: type
+        mapping:
+          AverageEntry: '#/components/schemas/EntryOverrideStopLossAverageEntry'
+          MarketTrailing: '#/components/schemas/EntryOverrideStopLossMarketTrailing'
+      oneOf:
+        - $ref: '#/components/schemas/EntryOverrideStopLossAverageEntry'
+        - $ref: '#/components/schemas/EntryOverrideStopLossMarketTrailing'
+    EntryOverrideStopLossAverageEntry:
+      type: object
+      title: Average Entry
+      description: Stop Loss relative to the average entry price.
+      properties:
+        type:
+          type: string
+          enum: [AverageEntry]
+          default: AverageEntry
+        offsetPercentage:
+          type: number
+          format: double
+        inBreachSeconds:
+          type: integer
+      required:
+        - type
+        - offsetPercentage
+        - inBreachSeconds
+    EntryOverrideStopLossMarketTrailing:
+      type: object
+      title: Market Trailing
+      description: Stop Loss relative to the market trailing price.
+      properties:
+        type:
+          type: string
+          enum: [MarketTrailing]
+          default: MarketTrailing
+        offsetPercentage:
+          type: number
+          format: double
+        inBreachSeconds:
+          type: integer
+      required:
+        - type
+        - offsetPercentage
+        - inBreachSeconds
+    EntryOverrideTakeProfit:
+      type: object
+      description: Overrides for the take profit settings.
+      properties:
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntryOverrideTakeProfitLevel'
+        trailingPercentage:
+          type: number
+          format: double
+      required:
+        - levels
+    EntryOverrideTakeProfitLevel:
+      type: object
+      properties:
+        sizePercentage:
+          type: number
+          format: double
+        pricePercentage:
+          type: number
+          format: double
+      required:
+        - sizePercentage
+        - pricePercentage
+    EntryOverrideOpenStrategy:
+      description: The strategy to use when executing an entry.
+      discriminator:
+        propertyName: type
+        mapping:
+          Immediate: '#/components/schemas/EntryOverrideOpenStrategyImmediate'
+          MarketTrailing: '#/components/schemas/EntryOverrideOpenStrategyMarketTrailing'
+      oneOf:
+        - $ref: '#/components/schemas/EntryOverrideOpenStrategyImmediate'
+        - $ref: '#/components/schemas/EntryOverrideOpenStrategyMarketTrailing'
+    EntryOverrideOpenStrategyImmediate:
+      type: object
+      title: Immediate
+      description: Open the position immediately.
+      properties:
+        type:
+          type: string
+          enum: [Immediate]
+          default: Immediate
+      required:
+        - type
+    EntryOverrideOpenStrategyMarketTrailing:
+      type: object
+      title: Market Trailing
+      description: Trail market price until direction is confirmed and then open.
+      properties:
+        type:
+          type: string
+          enum: [MarketTrailing]
+          default: MarketTrailing
+        confirmationPercentage:
+          type: number
+          format: double
+          description: The percentage that the price must move in a favourable direction to confirm the entry direction and trigger the entry.
+        orAfterMillis:
+          type: integer
+          description: Optional parameter to set a time limit for confirmation. Will open after it elapses.
+      required:
+        - type
+        - confirmationPercentage
+    EntryOpen:
+      title: Entry Open
+      description: A message to open a new entry.
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [EntryOpen]
+          default: EntryOpen
+        market:
+          type: string
+          description: The market the message is for. For example 'BTC-USD'.
+        side:
+          $ref: '#/components/schemas/SignalSide'
+        override:
+          $ref: '#/components/schemas/EntryOverride'
+        externalId:
+          type: string
+          description: An optional external ID to associate with the entry.
+      required:
+        - type
+        - market
+        - side
+    EntryClose:
+      title: Entry Close
+      description: A message to close existing entries.
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [EntryClose]
+          default: EntryClose
+        market:
+          type: string
+          description: The market the message is for. For example 'BTC-USD'.
+        target:
+          $ref: '#/components/schemas/OpenEntryTarget'
+        side:
+          $ref: '#/components/schemas/SignalSide'
+      required:
+        - type
+        - market
+        - target
+    EntrySetExits:
+      title: Entry Set Exits
+      description: Set all of your exit conditions (Stop Loss and Take Profit) at once.
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [EntrySetExits]
+          default: EntrySetExits
+        market:
+          type: string
+          description: The market the message is for. For example 'BTC-USD'.
+        target:
+          $ref: '#/components/schemas/OpenEntryTarget'
+        stopLoss:
+          $ref: '#/components/schemas/EntryOverrideStopLoss'
+        takeProfit:
+          $ref: '#/components/schemas/EntryOverrideTakeProfit'
+      required:
+        - type
+        - market
+        - target
+    EntrySetStopLoss:
+      title: Entry Set Stop Loss
+      description: Modify your stop loss while leaving other exit conditions as is.
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [EntrySetStopLoss]
+          default: EntrySetStopLoss
+        market:
+          type: string
+          description: The market the message is for. For example 'BTC-USD'.
+        target:
+          $ref: '#/components/schemas/OpenEntryTarget'
+        stopLoss:
+          $ref: '#/components/schemas/EntryOverrideStopLoss'
+      required:
+        - type
+        - market
+        - target
+    EntrySetTakeProfit:
+      title: Entry Set Take Profit
+      description: Modify your take profit while leaving other exit conditions as is.
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [EntrySetTakeProfit]
+          default: EntrySetTakeProfit
+        market:
+          type: string
+          description: The market the message is for. For example 'BTC-USD'.
+        target:
+          $ref: '#/components/schemas/OpenEntryTarget'
+        takeProfit:
+          $ref: '#/components/schemas/EntryOverrideTakeProfit'
+      required:
+        - type
+        - market
+        - target
+    SignalMessage:
+      oneOf:
+        - $ref: '#/components/schemas/EntryOpen'
+        - $ref: '#/components/schemas/EntryClose'
+        - $ref: '#/components/schemas/EntrySetExits'
+        - $ref: '#/components/schemas/EntrySetStopLoss'
+        - $ref: '#/components/schemas/EntrySetTakeProfit'
+      discriminator:
+        propertyName: type
+        mapping:
+          EntryOpen: '#/components/schemas/EntryOpen'
+          EntryClose: '#/components/schemas/EntryClose'
+          EntrySetExits: '#/components/schemas/EntrySetExits'
+          EntrySetStopLoss: '#/components/schemas/EntrySetStopLoss'
+          EntrySetTakeProfit: '#/components/schemas/EntrySetTakeProfit'
     SignalMessages:
       type: array
       items:
         $ref: '#/components/schemas/SignalMessage'
       example:
-        - type: Long
+        - type: EntryOpen
           market: BTC-USD
-        - type: Short
-          market: ETH-USD
-        - type: CloseAll
-          market: SOL-USD
-        - type: CloseShorts
+          side: Long
+        - type: EntryClose
           market: BTC-USD
-        - type: CloseLongs
+          target:
+            type: All
+          side: Long
+        - type: EntrySetExits
           market: ETH-USD
-        - type: CloseLastLong
-          market: SOL-USD
-        - type: CloseLastShort
-          market: BTC-USD
-        - type: CloseFirstLong
-          market: ETH-USD
-        - type: CloseFirstShort
-          market: SOL-USD
+          target:
+            type: LastOnly
+          stopLoss:
+            type: AverageEntry
+            offsetPercentage: 2.0
+            inBreachSeconds: 60
     ValidationErrors:
       required:
         - errors
@@ -277,192 +469,6 @@ components:
           - budget
           - amount
         message: Must be > 0
-    EntryOverride:
-      type: object
-      properties:
-        entrySize:
-          $ref: '#/components/schemas/EntrySize'
-        entryOpenStrategy:
-          $ref: '#/components/schemas/OpenStrategy'
-        maxSlippagePercentage:
-          type: number
-          description: The maximum percentage that price can slip by from message receipt
-          format: double
-        stopLoss:
-          $ref: '#/components/schemas/StopLoss'
-        takeProfit:
-          description: An optional take profit
-          $ref: '#/components/schemas/TakeProfitLevels'
-      required:
-        - entrySize
-        - entryOpenStrategy
-      description: The execution settings for a Signal
-    EntrySize:
-      description: How you want your entries to be sized.
-      discriminator:
-        propertyName: type
-        mapping:
-          Fixed: '#/components/schemas/EntrySizeFixed'
-          Risk: '#/components/schemas/EntrySizeRisk'
-      oneOf:
-        - $ref: '#/components/schemas/EntrySizeFixed'
-        - $ref: '#/components/schemas/EntrySizeRisk'
-    EntrySizeFixed:
-      type: object
-      title: Fixed
-      description: A fixed entry sizing strategy. New entries will be for a fixed percentage of total entry cost.
-      properties:
-        percentage:
-          type: number
-          format: double
-        type:
-          type: string
-          enum: [Fixed]
-          default: Fixed
-      required:
-        - percentage
-        - type
-      example:
-        type: Fixed
-        percentage: 25.0
-    EntrySizeRisk:
-      type: object
-      title: Risk
-      description: A Risk based sizing strategy. New entries risk a percentage of the entry cost relative to the stop loss.
-      properties:
-        percentage:
-          type: number
-          format: double
-        type:
-          type: string
-          enum: [Risk]
-          default: Risk
-      required:
-        - percentage
-        - type
-    StopLoss:
-      discriminator:
-        propertyName: type
-        mapping:
-          AverageEntry: '#/components/schemas/StopLossAverageEntry'
-          MarketTrailing: '#/components/schemas/StopLossMarketTrailing'
-      oneOf:
-        - $ref: '#/components/schemas/StopLossAverageEntry'
-        - $ref: '#/components/schemas/StopLossMarketTrailing'
-    StopLossAverageEntry:
-      type: object
-      title: Average Entry
-      description: Stop Loss relative to the average entry price
-      properties:
-        percentage:
-          type: number
-          format: double
-        inBreachSeconds:
-          type: integer
-        type:
-          type: string
-          enum: [AverageEntry]
-          default: AverageEntry
-      required:
-        - inBreachSeconds
-        - percentage
-        - type
-    StopLossMarketTrailing:
-      type: object
-      title: Market Trailing
-      description: Stop Loss relative to the market trailing price
-      properties:
-        percentage:
-          type: number
-          format: double
-        inBreachSeconds:
-          type: integer
-        type:
-          type: string
-          enum: [MarketTrailing]
-          default: MarketTrailing
-      required:
-        - inBreachSeconds
-        - percentage
-        - type
-    TakeProfitLevels:
-      type: object
-      properties:
-        trailingPercentage:
-          type: number
-          format: double
-        levels:
-          type: array
-          items:
-            $ref: '#/components/schemas/TakeProfitLevel'
-      required:
-        - levels
-    TakeProfitLevel:
-      type: object
-      properties:
-        sizePercentage:
-          type: number
-          format: double
-        pricePercentage:
-          type: number
-          format: double
-    OpenStrategy:
-      description: The strategy to use when executing an entry.
-      discriminator:
-        propertyName: type
-        mapping:
-          Immediate: '#/components/schemas/OpenStrategyImmediate'
-          MarketTrailing: '#/components/schemas/OpenStrategyMarketTrailing'
-      oneOf:
-        - $ref: '#/components/schemas/OpenStrategyImmediate'
-        - $ref: '#/components/schemas/OpenStrategyMarketTrailing'
-    OpenStrategyImmediate:
-      title: Immediate
-      type: object
-      description: Open the position immediately
-      properties:
-        type:
-          type: string
-          enum: [Immediate]
-          default: Immediate
-      required:
-        - type
-      example:
-        - type: Immediate
-    OpenStrategyMarketTrailing:
-      title: Market Trailing
-      type: object
-      description: Trail market price until direction is confirmed and then open.
-      properties:
-        type:
-          type: string
-          enum: [MarketTrailing]
-          default: MarketTrailing
-        confirmationPercentage:
-          description: The percentage that the price must move in a favourable direction to confirm the entry direction and trigger the entry.
-          type: number
-          format: double
-        orAfterMillis:
-          description: Optional parameter to set a time limit for confirmation. Will open after it elapses.
-          type: number
-          format: int64
-      required:
-        - type
-        - confirmationPercentage
-      example:
-        - type: MarketTrailing
-          confirmationPercentage: 0.5
-          openIn:
-            value: 5
-            unit: Minutes
-    TimeDuration:
-      type: object
-      properties:
-        value:
-          type: integer64
-        unit:
-          type: string
-          enum: [Seconds, Minutes]
   securitySchemes:
     apiKey:
       type: apiKey

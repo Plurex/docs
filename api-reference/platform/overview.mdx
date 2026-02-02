@@ -1,5 +1,52 @@
 ---
 title: "Overview"
-description: "Introduction to Plurex Platform API"
+description: "The Plurex Platform API provides comprehensive access to your exchange accounts, automation tools, and publishing capabilities."
 ---
+
+The Plurex Platform API is designed to expose the full range of functionality available through the [Plurex web application](https://platform.plurex.io). This programmatic access allows you to query and manage your exchange accounts, automation settings, and signal publishing workflows directly from your own systems.
+
+## Key Capabilities
+
+<CardGroup cols={2}>
+  <Card title="Account Management" icon="building-columns">
+    Programmatically query and manage your linked exchange accounts and their configurations.
+  </Card>
+  <Card title="Automation Control" icon="robot">
+    Manage your trading signals and automation rules to ensure consistent execution across all venues.
+  </Card>
+  <Card title="Publishing & Subscriptions" icon="rss">
+    Configure subscription plans, manage subscribers, and distribute your trading intelligence to your audience.
+  </Card>
+  <Card title="Platform Integration" icon="gears">
+    Deeply integrate Plurex functionality into your own internal dashboards or customer-facing applications.
+  </Card>
+</CardGroup>
+
+## Core Modules
+
+The Platform API is structured around several key functional areas:
+
+### Publishing Management
+If you are a signal provider, the publishing module allows you to:
+- **Define Subscription Plans**: Create tiers (e.g., Starter, Pro) with specific signal access and risk restrictions.
+- **Manage Subscribers**: Dynamically add or remove users from plans using their Plurex handles.
+- **Monitor Access**: Retrieve the current state of all plans and active subscriptions.
+
+### Signals & Automation
+The signals module provides visibility into your configured trading signals:
+- **Signal Discovery**: Fetch headers and metadata for all your active signals.
+- **Configuration Management**: (Upcoming) Programmatically update signal parameters and execution rules.
+
+## Getting Started
+
+To begin using the Platform API, you will need your API credentials which can be managed in your Plurex account settings.
+
+<CardGroup cols={2}>
+  <Card title="Publishing Endpoints" icon="key" href="/api-reference/platform/endpoints/publishing/set-subscribers">
+    Explore endpoints for managing your subscribers and plans.
+  </Card>
+  <Card title="Signal Endpoints" icon="signal" href="/api-reference/platform/endpoints/signals/get-signals">
+    Learn how to query your configured signals.
+  </Card>
+</CardGroup>
 

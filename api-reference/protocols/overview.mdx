@@ -1,5 +1,64 @@
 ---
 title: "Overview"
-description: "Introduction to Plurex Protocols API"
+description: "Introduction to Plurex Protocols API for account-agnostic execution intents."
 ---
+
+Plurex Protocols API is purpose-built for **account-agnostic execution intents**. It provides ergonomic message APIs that allow you to express your trading goals without getting bogged down by the micromanagement of execution.
+
+Because our protocols are account and venue agnostic, they are built to scale—catering to everything from the simplest trading scenarios to full execution orchestration and risk management.
+
+## Key Benefits
+
+<CardGroup cols={2}>
+  <Card title="Account Agnostic" icon="shield-check">
+    Focus on the "what" and "why" of your trade. The protocol handles the "how" across different accounts and venues.
+  </Card>
+  <Card title="Ergonomic Design" icon="sparkles">
+    Simple, intuitive message structures designed for developers and traders alike.
+  </Card>
+  <Card title="Scalable Execution" icon="chart-line">
+    From single entry/exit to complex multi-level take profits and trailing stops.
+  </Card>
+  <Card title="Risk Orchestration" icon="gears">
+    Built-in support for sophisticated risk management and execution strategies.
+  </Card>
+</CardGroup>
+
+## Core Concepts
+
+The Protocols API revolves around sending high-level intents that the Plurex engine translates into specific exchange actions. While we are starting with **Signal-based trading**, we will be expanding our protocol suite to include **Asset Baskets** and other sophisticated trading instruments in the future.
+
+### Signal Protocol (Current)
+Instead of managing individual orders, you send **Signal Messages**. These messages describe your desired state (e.g., "Open a Long on BTC-USD with 2% risk") rather than specific limit orders.
+
+### Strategy Flexibility
+The protocol supports various entry and exit strategies:
+
+<Tabs>
+  <Tab title="Entries">
+    Support for **Immediate** execution or **Market Trailing** confirmation to optimize your entry price.
+  </Tab>
+  <Tab title="Exits">
+    Dynamic **Stop Loss** (Average Entry or Market Trailing) and multi-level **Take Profit** targets.
+  </Tab>
+  <Tab title="Sizing">
+    Flexible sizing models including **Fixed** percentage or **Risk-based** calculation.
+  </Tab>
+</Tabs>
+
+## Next Steps
+
+Explore the available signal messages and start orchestrating your trading strategy.
+
+<CardGroup cols={3}>
+  <Card title="Send Messages" icon="paper-plane" href="/api-reference/protocols/endpoints/signal/send-messages">
+    Learn how to send batches of signal messages to your endpoints.
+  </Card>
+  <Card title="Entry Open" icon="arrow-up-right-from-square" href="/api-reference/protocols/messages/entry-open">
+    Detailed reference for opening new trading entries.
+  </Card>
+  <Card title="Exit Management" icon="shield-halved" href="/api-reference/protocols/messages/entry-set-exits">
+    Learn how to manage your stop loss and take profit conditions.
+  </Card>
+</CardGroup>
 
