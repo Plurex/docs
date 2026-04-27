@@ -79,28 +79,6 @@
                 ]
               }
             ]
-          },
-          {
-            "group": "Intent Protocols API",
-            "pages": [
-              "api-reference/protocols/overview",
-              {
-                "group": "Signals",
-                "pages": [
-                  "api-reference/protocols/endpoints/signal/send-messages",
-                  {
-                    "group": "Messages",
-                    "pages": [
-                      "api-reference/protocols/messages/entry-open",
-                      "api-reference/protocols/messages/entry-close",
-                      "api-reference/protocols/messages/entry-set-exits",
-                      "api-reference/protocols/messages/entry-set-stop-loss",
-                      "api-reference/protocols/messages/entry-set-take-profit"
-                    ]
-                  }
-                ]
-              }
-            ]
           }
         ]
       }
