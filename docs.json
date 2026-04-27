@@ -30,18 +30,52 @@
             "pages": [
               "api-reference/platform/overview",
               {
-                "group": "publishing",
+                "group": "Venues",
                 "pages": [
-                  "api-reference/platform/endpoints/publishing/set-subscribers",
-                  "api-reference/platform/endpoints/publishing/get-subscribers",
-                  "api-reference/platform/endpoints/publishing/set-plans",
-                  "api-reference/platform/endpoints/publishing/get-plans"
+                  "api-reference/platform/venues/list",
+                  "api-reference/platform/venues/list-markets"
                 ]
               },
               {
-                "group": "signals",
+                "group": "Hosts",
                 "pages": [
-                  "api-reference/platform/endpoints/signals/get-signals"
+                  "api-reference/platform/hosts/list",
+                  "api-reference/platform/hosts/list-markets",
+                  "api-reference/platform/hosts/list-all-wallets",
+                  "api-reference/platform/hosts/list-wallets",
+                  "api-reference/platform/hosts/list-all-positions",
+                  "api-reference/platform/hosts/list-positions",
+                  "api-reference/platform/hosts/get-market-state",
+                  "api-reference/platform/hosts/list-all-orders",
+                  "api-reference/platform/hosts/list-orders",
+                  "api-reference/platform/hosts/get-order",
+                  "api-reference/platform/hosts/list-recent-orders",
+                  "api-reference/platform/hosts/submit-limit-order",
+                  "api-reference/platform/hosts/submit-market-order",
+                  "api-reference/platform/hosts/submit-limit-trigger-order",
+                  "api-reference/platform/hosts/cancel-order",
+                  "api-reference/platform/hosts/set-leverage",
+                  "api-reference/platform/hosts/get-leverage",
+                  "api-reference/platform/hosts/set-position-mode",
+                  "api-reference/platform/hosts/get-position-mode"
+                ]
+              },
+              {
+                "group": "Accounts",
+                "pages": [
+                  "api-reference/platform/accounts/list",
+                  "api-reference/platform/accounts/get",
+                  "api-reference/platform/accounts/create",
+                  "api-reference/platform/accounts/rename",
+                  "api-reference/platform/accounts/refresh",
+                  "api-reference/platform/accounts/delete"
+                ]
+              },
+              {
+                "group": "Paper Trading",
+                "pages": [
+                  "api-reference/platform/paper/create",
+                  "api-reference/platform/paper/deposit"
                 ]
               }
             ]

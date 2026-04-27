@@ -1,0 +1,2034 @@
+openapi: 3.1.0
+info:
+  title: Plurex Platform API
+  description: |
+    Plurex Platform API uses a Command & Query Separation (CQS) architecture.
+    All state-changing operations are 'commands' and read-only operations are 'queries'.
+    Both use HTTP POST with JSON payloads.
+    No conformity to REST, all inputs are in the body of the request.
+  version: 1.0.0
+
+servers:
+  - url: https://api.plurex.io
+    description: Production server
+
+security:
+  - ApiKeyAuth: []
+    ApiSecretAuth: []
+
+paths:
+  /api/v1/venues/query/List:
+    post:
+      tags:
+        - Venues
+      summary: List all available liquidity venues
+      operationId: listVenues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VenueListQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessPageResponseEnvelope'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/VenueHeader'
+
+  /api/v1/venues/query/ListMarkets:
+    post:
+      tags:
+        - Venues
+      summary: List available markets for a specific venue
+      operationId: listVenueMarkets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VenueMarketQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessPageResponseEnvelope'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/VenueMarketSummary'
+
+  /api/v1/hosts/query/List:
+    post:
+      tags:
+        - Hosts
+      summary: List all available execution hosts (brokers)
+      operationId: listHosts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HostListQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessPageResponseEnvelope'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/HostHeader'
+
+  /api/v1/hosts/query/ListMarkets:
+    post:
+      tags:
+        - Hosts
+      summary: List available markets for a specific host
+      operationId: listHostMarkets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HostMarketQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessPageResponseEnvelope'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/HostMarketSummary'
+
+  /api/v1/hosts/query/ListAllWallets:
+    post:
+      tags:
+        - Hosts
+      summary: Get wallets for all accounts across all hosts
+      operationId: listAllWallets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListAllWalletsQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessPageResponseEnvelope'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AccountWallets'
+
+  /api/v1/hosts/query/ListWallets:
+    post:
+      tags:
+        - Hosts
+      summary: Get wallets for a specific account
+      operationId: listWallets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListWalletsQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessPageResponseEnvelope'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Wallet'
+
+  /api/v1/hosts/query/ListAllOpenPositions:
+    post:
+      tags:
+        - Hosts
+      summary: Get all open positions for all accounts across all hosts
+      operationId: listAllOpenPositions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListAllOpenPositionsQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessPageResponseEnvelope'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AccountPositions'
+
+  /api/v1/hosts/query/ListOpenPositions:
+    post:
+      tags:
+        - Hosts
+      summary: Get open positions for a specific account
+      operationId: listOpenPositions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListOpenPositionsQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessPageResponseEnvelope'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/MarketPosition'
+
+  /api/v1/hosts/query/GetAccountMarketState:
+    post:
+      tags:
+        - Hosts
+      summary: Get detailed market state for a specific account and instrument
+      operationId: getAccountMarketState
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetAccountMarketStateQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessResponseEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AccountMarketState'
+
+  /api/v1/hosts/query/ListAllOpenOrders:
+    post:
+      tags:
+        - Hosts
+      summary: Get all open orders for all accounts across all hosts
+      operationId: listAllOpenOrders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListAllOpenOrdersQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessPageResponseEnvelope'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AccountOrders'
+
+  /api/v1/hosts/query/ListOpenOrders:
+    post:
+      tags:
+        - Hosts
+      summary: Get open orders for a specific account
+      operationId: listOpenOrders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListOpenOrdersQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessPageResponseEnvelope'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+
+  /api/v1/hosts/query/GetOrder:
+    post:
+      tags:
+        - Hosts
+      summary: Get status of a specific order
+      operationId: getOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetOrderQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessResponseEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Order'
+
+  /api/v1/hosts/query/ListRecentOrders:
+    post:
+      tags:
+        - Hosts
+      summary: Get recent orders for a specific account and instrument
+      operationId: listRecentOrders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListRecentOrdersQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessPageResponseEnvelope'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+
+  /api/v1/hosts/command/SubmitLimitOrder:
+    post:
+      tags:
+        - Hosts
+      summary: Submit a new limit order
+      operationId: submitLimitOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitLimitOrderCommand'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessResponseEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/OrderLimit'
+
+  /api/v1/hosts/command/SubmitMarketOrder:
+    post:
+      tags:
+        - Hosts
+      summary: Submit a new market order
+      operationId: submitMarketOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitMarketOrderCommand'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessResponseEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/OrderMarket'
+
+  /api/v1/hosts/command/SubmitLimitTriggerOrder:
+    post:
+      tags:
+        - Hosts
+      summary: Submit a new limit trigger order
+      operationId: submitLimitTriggerOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitLimitTriggerOrderCommand'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessResponseEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/OrderTriggerLimit'
+
+  /api/v1/hosts/command/CancelOrder:
+    post:
+      tags:
+        - Hosts
+      summary: Cancel an existing order
+      operationId: cancelOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelOrderCommand'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+
+  /api/v1/hosts/command/SetMarketLeverage:
+    post:
+      tags:
+        - Hosts
+      summary: Set leverage for a specific market
+      operationId: setMarketLeverage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetMarketLeverageCommand'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+
+  /api/v1/hosts/query/GetMarketLeverage:
+    post:
+      tags:
+        - Hosts
+      summary: Get current leverage for a specific market
+      operationId: getMarketLeverage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetMarketLeverageQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessResponseEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Leverage'
+
+  /api/v1/hosts/command/SetPositionMode:
+    post:
+      tags:
+        - Hosts
+      summary: Set position mode for a specific market
+      operationId: setPositionMode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPositionModeCommand'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+
+  /api/v1/hosts/query/GetPositionMode:
+    post:
+      tags:
+        - Hosts
+      summary: Get current position mode for a specific market
+      operationId: getPositionMode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetPositionModeQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessResponseEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CurrentPositionMode'
+
+  /api/v1/paper/command/Create:
+    post:
+      tags:
+        - Paper
+      summary: Create a new paper trading account
+      operationId: createPaperAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaperAccountCreateCommand'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessResponseEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AccountHeader'
+
+  /api/v1/paper/command/Deposit:
+    post:
+      tags:
+        - Paper
+      summary: Deposit funds into a paper trading account
+      operationId: depositPaperAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaperAccountDepositCommand'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+
+  /api/v1/accounts/command/Create:
+    post:
+      tags:
+        - Accounts
+      summary: Create a new execution account
+      operationId: createAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutionAccountCreateCommand'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessResponseEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AccountHeader'
+
+  /api/v1/accounts/command/Rename:
+    post:
+      tags:
+        - Accounts
+      summary: Rename an execution account
+      operationId: renameAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutionAccountRenameCommand'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessResponseEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AccountHeader'
+
+  /api/v1/accounts/command/Refresh:
+    post:
+      tags:
+        - Accounts
+      summary: Refresh credentials for an execution account
+      operationId: refreshAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutionAccountRefreshCommand'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessResponseEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AccountHeader'
+
+  /api/v1/accounts/command/Delete:
+    post:
+      tags:
+        - Accounts
+      summary: Delete an execution account
+      operationId: deleteAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutionAccountDeleteCommand'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+
+  /api/v1/accounts/query/List:
+    post:
+      tags:
+        - Accounts
+      summary: List execution accounts for a tenant
+      operationId: listAccounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutionAccountListQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessPageResponseEnvelope'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AccountHeader'
+
+  /api/v1/accounts/query/Get:
+    post:
+      tags:
+        - Accounts
+      summary: Get details of a specific execution account
+      operationId: getAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutionAccountGetQuery'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseSuccessResponseEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AccountHeader'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+    ApiSecretAuth:
+      type: apiKey
+      in: header
+      name: X-API-SECRET
+  schemas:
+    # --- Base ---
+
+    BaseResponse:
+      type: object
+      required:
+        - traceId
+        - serverTime
+      properties:
+        traceId:
+          type: string
+          format: uuid
+          description: Unique identifier for tracing.
+        serverTime:
+          type: string
+          format: date-time
+          description: RFC3339 timestamp of processing.
+        warnings:
+          type: array
+          items:
+            type: string
+
+    BaseSuccessResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: object
+              description: The actual payload of the successful response.
+
+    BaseSuccessPageResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required:
+            - items
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+            nextCursor:
+              type: string
+              nullable: true
+              description: Use this value in the next request to fetch the following page.
+
+    BaseErrorResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required:
+            - code
+            - error
+          properties:
+            code:
+              type: string
+              description: Machine-readable code (e.g., INSUFFICIENT_FUNDS).
+            message:
+              type: string
+              description: Optional human-readable description.
+            error:
+              type: object
+              description: A flexible object for domain-specific error details.
+            retryable:
+              type: boolean
+              default: false
+
+    BasePageQuery:
+      type: object
+      properties:
+        cursor:
+          type: string
+          nullable: true
+
+    BaseCommand:
+      type: object
+      required:
+        - clientRequestId
+      properties:
+        clientRequestId:
+          type: string
+          description: Client-generated nonce for idempotency. Recommended to be unique per tenant scope.
+
+    # --- Common ---
+    # Use the 'Common' prefix for any component schemas that span multiple domains (e.g., Venues and Hosts).
+
+    MoneyValue:
+      type: string
+      description: String-encoded BigDecimal for high precision monetary values.
+
+    Wallet:
+      type: object
+      properties:
+        id:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        asset:
+          type: string
+        totalBalance:
+          $ref: '#/components/schemas/MoneyValue'
+        availableBalance:
+          $ref: '#/components/schemas/MoneyValue'
+
+    Instrument:
+      type: object
+      properties:
+        base:
+          type: string
+        quote:
+          type: string
+        marketType:
+          type: string
+
+    MarketAsset:
+      type: string
+      enum:
+        - Base
+        - Quote
+      description: Market asset (Base or Quote).
+
+    OrderLimitTif:
+      type: string
+      enum:
+        - GTC
+        - FOK
+      description: Time-in-force policy for limit orders.
+
+    OrderSide:
+      type: string
+      enum:
+        - Buy
+        - Sell
+      description: Market side (Buy or Sell).
+
+    OrderState:
+      type: string
+      enum:
+        - Complete
+        - Pending
+
+    TradeRole:
+      type: string
+      enum:
+        - Maker
+        - Taker
+
+    Fee:
+      type: object
+      required:
+        - asset
+        - amount
+      properties:
+        asset:
+          type: string
+        amount:
+          $ref: '#/components/schemas/MoneyValue'
+
+    OrderMatch:
+      type: object
+      required:
+        - timestamp
+        - price
+        - size
+        - fee
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        price:
+          $ref: '#/components/schemas/MoneyValue'
+        size:
+          $ref: '#/components/schemas/MoneyValue'
+        fee:
+          $ref: '#/components/schemas/Fee'
+        id:
+          type: string
+          nullable: true
+        role:
+          $ref: '#/components/schemas/TradeRole'
+          nullable: true
+
+    OrderTraded:
+      type: object
+      required:
+        - type
+        - baseTraded
+        - quoteTraded
+        - totalFees
+      properties:
+        type:
+          type: string
+          description: The discriminator for order traded types.
+        baseTraded:
+          $ref: '#/components/schemas/MoneyValue'
+        quoteTraded:
+          $ref: '#/components/schemas/MoneyValue'
+        totalFees:
+          type: array
+          items:
+            $ref: '#/components/schemas/Fee'
+      discriminator:
+        propertyName: type
+        mapping:
+          Batched: '#/components/schemas/OrderTradedBatched'
+          Detailed: '#/components/schemas/OrderTradedDetailed'
+      oneOf:
+        - $ref: '#/components/schemas/OrderTradedBatched'
+        - $ref: '#/components/schemas/OrderTradedDetailed'
+
+    OrderTradedBatched:
+      type: object
+      required:
+        - type
+        - baseTraded
+        - quoteTraded
+        - totalFees
+      properties:
+        type:
+          type: string
+          enum: [Batched]
+        baseTraded:
+          $ref: '#/components/schemas/MoneyValue'
+        quoteTraded:
+          $ref: '#/components/schemas/MoneyValue'
+        totalFees:
+          type: array
+          items:
+            $ref: '#/components/schemas/Fee'
+        lastUpdated:
+          type: string
+          format: date-time
+          nullable: true
+
+    OrderTradedDetailed:
+      type: object
+      required:
+        - type
+        - baseTraded
+        - quoteTraded
+        - totalFees
+        - trades
+      properties:
+        type:
+          type: string
+          enum: [Detailed]
+        baseTraded:
+          $ref: '#/components/schemas/MoneyValue'
+        quoteTraded:
+          $ref: '#/components/schemas/MoneyValue'
+        totalFees:
+          type: array
+          items:
+            $ref: '#/components/schemas/Fee'
+        trades:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderMatch'
+
+    Order:
+      type: object
+      required:
+        - type
+        - id
+        - createdTimestamp
+        - side
+        - instrument
+        - state
+        - traded
+      properties:
+        type:
+          type: string
+          description: The discriminator for order types.
+        id:
+          type: string
+        createdTimestamp:
+          type: string
+          format: date-time
+        side:
+          $ref: '#/components/schemas/OrderSide'
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+        state:
+          $ref: '#/components/schemas/OrderState'
+        traded:
+          $ref: '#/components/schemas/OrderTraded'
+      discriminator:
+        propertyName: type
+        mapping:
+          Limit: '#/components/schemas/OrderLimit'
+          TriggerLimit: '#/components/schemas/OrderTriggerLimit'
+          Market: '#/components/schemas/OrderMarket'
+          TriggerMarket: '#/components/schemas/OrderTriggerMarket'
+      oneOf:
+        - $ref: '#/components/schemas/OrderLimit'
+        - $ref: '#/components/schemas/OrderTriggerLimit'
+        - $ref: '#/components/schemas/OrderMarket'
+        - $ref: '#/components/schemas/OrderTriggerMarket'
+
+    OrderLimit:
+      type: object
+      required:
+        - type
+        - id
+        - createdTimestamp
+        - side
+        - instrument
+        - state
+        - traded
+        - size
+        - price
+      properties:
+        type:
+          type: string
+          enum: [Limit]
+        id: { type: string }
+        createdTimestamp: { type: string, format: date-time }
+        side: { $ref: '#/components/schemas/OrderSide' }
+        instrument: { $ref: '#/components/schemas/Instrument' }
+        state: { $ref: '#/components/schemas/OrderState' }
+        traded: { $ref: '#/components/schemas/OrderTraded' }
+        size: { $ref: '#/components/schemas/MoneyValue' }
+        price: { $ref: '#/components/schemas/MoneyValue' }
+
+    OrderTriggerLimit:
+      type: object
+      required:
+        - type
+        - id
+        - createdTimestamp
+        - side
+        - instrument
+        - state
+        - traded
+        - size
+        - price
+        - triggerPrice
+      properties:
+        type:
+          type: string
+          enum: [TriggerLimit]
+        id: { type: string }
+        createdTimestamp: { type: string, format: date-time }
+        side: { $ref: '#/components/schemas/OrderSide' }
+        instrument: { $ref: '#/components/schemas/Instrument' }
+        state: { $ref: '#/components/schemas/OrderState' }
+        traded: { $ref: '#/components/schemas/OrderTraded' }
+        size: { $ref: '#/components/schemas/MoneyValue' }
+        price: { $ref: '#/components/schemas/MoneyValue' }
+        triggerPrice: { $ref: '#/components/schemas/MoneyValue' }
+
+    OrderMarket:
+      type: object
+      required:
+        - type
+        - id
+        - createdTimestamp
+        - side
+        - instrument
+        - state
+        - traded
+      properties:
+        type:
+          type: string
+          enum: [Market]
+        id: { type: string }
+        createdTimestamp: { type: string, format: date-time }
+        side: { $ref: '#/components/schemas/OrderSide' }
+        instrument: { $ref: '#/components/schemas/Instrument' }
+        state: { $ref: '#/components/schemas/OrderState' }
+        traded: { $ref: '#/components/schemas/OrderTraded' }
+
+    OrderTriggerMarket:
+      type: object
+      required:
+        - type
+        - id
+        - createdTimestamp
+        - side
+        - instrument
+        - state
+        - traded
+        - amount
+        - amountAsset
+        - triggerPrice
+      properties:
+        type:
+          type: string
+          enum: [TriggerMarket]
+        id: { type: string }
+        createdTimestamp: { type: string, format: date-time }
+        side: { $ref: '#/components/schemas/OrderSide' }
+        instrument: { $ref: '#/components/schemas/Instrument' }
+        state: { $ref: '#/components/schemas/OrderState' }
+        traded: { $ref: '#/components/schemas/OrderTraded' }
+        amount: { $ref: '#/components/schemas/MoneyValue' }
+        amountAsset: { $ref: '#/components/schemas/MarketAsset' }
+        triggerPrice: { $ref: '#/components/schemas/MoneyValue' }
+
+    MarketAssetPolicy:
+      type: string
+      enum:
+        - QuoteOnBuyBaseOnSell
+        - BaseOnly
+        - Flexible
+      description: Asset policy for market orders.
+
+    Position:
+      type: object
+      properties:
+        size:
+          $ref: '#/components/schemas/MoneyValue'
+        entryPrice:
+          $ref: '#/components/schemas/MoneyValue'
+          nullable: true
+
+    PositionMode:
+      type: string
+      enum:
+        - TwoWay
+        - OneWay
+
+    MarketPosition:
+      type: object
+      properties:
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+        long:
+          $ref: '#/components/schemas/Position'
+        short:
+          $ref: '#/components/schemas/Position'
+        mode:
+          $ref: '#/components/schemas/PositionMode'
+          nullable: true
+
+    AssetBalance:
+      type: object
+      required:
+        - available
+      properties:
+        available:
+          $ref: '#/components/schemas/MoneyValue'
+
+    CollateralBasic:
+      type: object
+      required:
+        - collateralValueAsset
+        - total
+        - available
+      properties:
+        collateralValueAsset:
+          type: string
+        total:
+          $ref: '#/components/schemas/MoneyValue'
+        available:
+          $ref: '#/components/schemas/MoneyValue'
+
+    MarketLeverageSetting:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: The discriminator for leverage setting types.
+      discriminator:
+        propertyName: type
+        mapping:
+          Leveraged: '#/components/schemas/MarketLeverageSettingLeveraged'
+          NoMarketSettings: '#/components/schemas/MarketLeverageSettingNoMarketSettings'
+          Disabled: '#/components/schemas/MarketLeverageSettingDisabled'
+          Unknown: '#/components/schemas/MarketLeverageSettingUnknown'
+      oneOf:
+        - $ref: '#/components/schemas/MarketLeverageSettingLeveraged'
+        - $ref: '#/components/schemas/MarketLeverageSettingNoMarketSettings'
+        - $ref: '#/components/schemas/MarketLeverageSettingDisabled'
+        - $ref: '#/components/schemas/MarketLeverageSettingUnknown'
+
+    MarketLeverageSettingLeveraged:
+      type: object
+      required:
+        - type
+        - leverage
+      properties:
+        type:
+          type: string
+          enum: [Leveraged]
+        leverage:
+          type: number
+          format: double
+
+    MarketLeverageSettingNoMarketSettings:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [NoMarketSettings]
+
+    MarketLeverageSettingDisabled:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [Disabled]
+
+    MarketLeverageSettingUnknown:
+      type: object
+      required:
+        - type
+        - message
+      properties:
+        type:
+          type: string
+          enum: [Unknown]
+        message:
+          type: string
+
+    AccountMarketState:
+      type: object
+      required:
+        - type
+        - instrument
+      properties:
+        type:
+          type: string
+          description: The discriminator for market state types.
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+      discriminator:
+        propertyName: type
+        mapping:
+          Perp: '#/components/schemas/AccountMarketStatePerp'
+          SpotSimple: '#/components/schemas/AccountMarketStateSpotSimple'
+          SpotMargined: '#/components/schemas/AccountMarketStateSpotMargined'
+      oneOf:
+        - $ref: '#/components/schemas/AccountMarketStatePerp'
+        - $ref: '#/components/schemas/AccountMarketStateSpotSimple'
+        - $ref: '#/components/schemas/AccountMarketStateSpotMargined'
+
+    AccountMarketStatePerp:
+      type: object
+      required:
+        - type
+        - instrument
+        - currentLeverageSetting
+        - collateral
+        - position
+      properties:
+        type:
+          type: string
+          enum: [Perp]
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+        currentLeverageSetting:
+          $ref: '#/components/schemas/MarketLeverageSetting'
+        collateral:
+          $ref: '#/components/schemas/CollateralBasic'
+        position:
+          $ref: '#/components/schemas/MarketPosition'
+
+    AccountMarketStateSpotSimple:
+      type: object
+      required:
+        - type
+        - instrument
+        - base
+        - quote
+      properties:
+        type:
+          type: string
+          enum: [SpotSimple]
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+        base:
+          $ref: '#/components/schemas/AssetBalance'
+        quote:
+          $ref: '#/components/schemas/AssetBalance'
+
+    AccountMarketStateSpotMargined:
+      type: object
+      required:
+        - type
+        - instrument
+        - currentLeverageSetting
+        - collateral
+        - base
+        - quote
+      properties:
+        type:
+          type: string
+          enum: [SpotMargined]
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+        currentLeverageSetting:
+          $ref: '#/components/schemas/MarketLeverageSetting'
+        collateral:
+          $ref: '#/components/schemas/CollateralBasic'
+        base:
+          $ref: '#/components/schemas/AssetBalance'
+        quote:
+          $ref: '#/components/schemas/AssetBalance'
+
+    OrderPolicies:
+      type: object
+      properties:
+        quoteIncrement:
+          $ref: '#/components/schemas/MoneyValue'
+        baseIncrement:
+          $ref: '#/components/schemas/MoneyValue'
+        minBaseSize:
+          $ref: '#/components/schemas/MoneyValue'
+        minQuoteValue:
+          $ref: '#/components/schemas/MoneyValue'
+        reduceOnlySupported:
+          type: boolean
+        supportedTif:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderLimitTif'
+        assetPolicy:
+          $ref: '#/components/schemas/MarketAssetPolicy'
+
+    # --- Venue ---
+
+    VenueFeatures:
+      type: object
+      properties:
+        tradeFeed:
+          type: boolean
+        orderBook:
+          type: boolean
+        charts:
+          type: boolean
+
+    VenueHeader:
+      type: object
+      properties:
+        id:
+          type: string
+        isRestricted:
+          type: boolean
+        features:
+          $ref: '#/components/schemas/VenueFeatures'
+
+    VenueListQuery:
+      $ref: '#/components/schemas/BasePageQuery'
+
+    VenueMarketQuery:
+      allOf:
+        - $ref: '#/components/schemas/BasePageQuery'
+        - type: object
+          required:
+            - venueId
+          properties:
+            venueId:
+              type: string
+              description: ID of the execution venue to query
+            base:
+              type: string
+            quote:
+              type: string
+            type:
+              type: string
+
+    VenueMarketSummary:
+      type: object
+      properties:
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+        quoteIncrement:
+          $ref: '#/components/schemas/MoneyValue'
+        baseIncrement:
+          $ref: '#/components/schemas/MoneyValue'
+        minBaseSize:
+          $ref: '#/components/schemas/MoneyValue'
+        minQuoteValue:
+          $ref: '#/components/schemas/MoneyValue'
+
+
+    # --- Host ---
+
+    AccountHeader:
+      type: object
+      required:
+        - id
+        - tenantId
+        - hostId
+        - targetVenueId
+        - isPaper
+        - name
+        - credential
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        hostId:
+          type: string
+        targetVenueId:
+          type: string
+        isPaper:
+          type: boolean
+        name:
+          type: string
+        credential:
+          $ref: '#/components/schemas/AccountCredentialPublic'
+
+    AccountCredentialPublic:
+      type: object
+      required:
+        - credentialType
+      properties:
+        publicValue:
+          type: string
+          nullable: true
+        credentialType:
+          $ref: '#/components/schemas/HostCredentialType'
+
+    HostCredentialType:
+      type: string
+      enum:
+        - ApiKey
+        - Paper
+      description: Type of credentials used for the account.
+
+    HostMarketQuery:
+      allOf:
+        - $ref: '#/components/schemas/BasePageQuery'
+        - type: object
+          required:
+            - hostId
+          properties:
+            hostId:
+              type: string
+              description: ID of the execution host to query
+            base:
+              type: string
+            quote:
+              type: string
+            type:
+              type: string
+
+    HostMarketSummary:
+      type: object
+      properties:
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+        limitOrderPolicies:
+          $ref: '#/components/schemas/OrderPolicies'
+        marketOrderPolicies:
+          $ref: '#/components/schemas/OrderPolicies'
+        triggerLimitOrderPolicies:
+          $ref: '#/components/schemas/OrderPolicies'
+
+
+    HostFeatures:
+      type: object
+      properties:
+        leverageScopes:
+          type: string
+          description: Placeholder for leverage scope settings
+        positionModeScopes:
+          type: string
+          description: Placeholder for position mode scope settings
+
+    HostHeader:
+      type: object
+      properties:
+        id:
+          type: string
+        isRestricted:
+          type: boolean
+        targetVenueId:
+          type: string
+        features:
+          $ref: '#/components/schemas/HostFeatures'
+        isPaper:
+          type: boolean
+        supportedCredentialTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/HostCredentialType'
+
+    HostListQuery:
+      $ref: '#/components/schemas/BasePageQuery'
+
+    ListAllWalletsQuery:
+      allOf:
+        - $ref: '#/components/schemas/BasePageQuery'
+        - type: object
+          required:
+            - tenantId
+          properties:
+            tenantId:
+              type: string
+
+    ListWalletsQuery:
+      allOf:
+        - $ref: '#/components/schemas/BasePageQuery'
+        - type: object
+          required:
+            - accountId
+          properties:
+            accountId:
+              type: string
+
+    ListAllOpenPositionsQuery:
+      allOf:
+        - $ref: '#/components/schemas/BasePageQuery'
+        - type: object
+          required:
+            - tenantId
+          properties:
+            tenantId:
+              type: string
+
+    ListOpenPositionsQuery:
+      allOf:
+        - $ref: '#/components/schemas/BasePageQuery'
+        - type: object
+          required:
+            - accountId
+          properties:
+            accountId:
+              type: string
+
+    GetAccountMarketStateQuery:
+      type: object
+      required:
+        - accountId
+        - instrument
+      properties:
+        accountId:
+          type: string
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+
+    ListAllOpenOrdersQuery:
+      allOf:
+        - $ref: '#/components/schemas/BasePageQuery'
+        - type: object
+          required:
+            - tenantId
+          properties:
+            tenantId:
+              type: string
+
+    ListOpenOrdersQuery:
+      allOf:
+        - $ref: '#/components/schemas/BasePageQuery'
+        - type: object
+          required:
+            - accountId
+          properties:
+            accountId:
+              type: string
+
+    GetOrderQuery:
+      type: object
+      required:
+        - accountId
+        - orderId
+      properties:
+        accountId:
+          type: string
+        orderId:
+          type: string
+
+    ListRecentOrdersQuery:
+      allOf:
+        - $ref: '#/components/schemas/BasePageQuery'
+        - type: object
+          required:
+            - accountId
+            - instrument
+          properties:
+            accountId:
+              type: string
+            instrument:
+              $ref: '#/components/schemas/Instrument'
+
+    SetMarketLeverageCommand:
+      allOf:
+        - $ref: '#/components/schemas/BaseCommand'
+        - type: object
+          required:
+            - accountId
+            - instrument
+            - leverage
+          properties:
+            accountId:
+              type: string
+            instrument:
+              $ref: '#/components/schemas/Instrument'
+            leverage:
+              type: number
+              format: double
+
+    GetMarketLeverageQuery:
+      type: object
+      required:
+        - accountId
+        - instrument
+      properties:
+        accountId:
+          type: string
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+
+    SetPositionModeCommand:
+      allOf:
+        - $ref: '#/components/schemas/BaseCommand'
+        - type: object
+          required:
+            - accountId
+            - instrument
+            - mode
+          properties:
+            accountId:
+              type: string
+            instrument:
+              $ref: '#/components/schemas/Instrument'
+            mode:
+              $ref: '#/components/schemas/PositionMode'
+
+    GetPositionModeQuery:
+      type: object
+      required:
+        - accountId
+        - instrument
+      properties:
+        accountId:
+          type: string
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+
+    SubmitLimitOrderCommand:
+      allOf:
+        - $ref: '#/components/schemas/BaseCommand'
+        - type: object
+          required:
+            - accountId
+            - order
+          properties:
+            accountId:
+              type: string
+            order:
+              $ref: '#/components/schemas/LimitOrderNewSimple'
+
+    SubmitMarketOrderCommand:
+      allOf:
+        - $ref: '#/components/schemas/BaseCommand'
+        - type: object
+          required:
+            - accountId
+            - order
+          properties:
+            accountId:
+              type: string
+            order:
+              $ref: '#/components/schemas/MarketOrderNew'
+
+    SubmitLimitTriggerOrderCommand:
+      allOf:
+        - $ref: '#/components/schemas/BaseCommand'
+        - type: object
+          required:
+            - accountId
+            - order
+          properties:
+            accountId:
+              type: string
+            order:
+              $ref: '#/components/schemas/LimitOrderNewTrigger'
+
+    CancelOrderCommand:
+      allOf:
+        - $ref: '#/components/schemas/BaseCommand'
+        - type: object
+          required:
+            - accountId
+            - orderId
+          properties:
+            accountId:
+              type: string
+            orderId:
+              type: string
+
+    LimitOrderNewSimple:
+      type: object
+      required:
+        - size
+        - price
+        - side
+        - instrument
+        - reduceOnly
+        - tif
+      properties:
+        size: { $ref: '#/components/schemas/MoneyValue' }
+        price: { $ref: '#/components/schemas/MoneyValue' }
+        side: { $ref: '#/components/schemas/OrderSide' }
+        instrument: { $ref: '#/components/schemas/Instrument' }
+        reduceOnly: { type: boolean }
+        tif: { $ref: '#/components/schemas/OrderLimitTif' }
+        leverage: { $ref: '#/components/schemas/PerOrderLeverage' }
+
+    LimitOrderNewTrigger:
+      type: object
+      required:
+        - size
+        - triggerPrice
+        - price
+        - side
+        - instrument
+        - reduceOnly
+        - tif
+      properties:
+        size: { $ref: '#/components/schemas/MoneyValue' }
+        triggerPrice: { $ref: '#/components/schemas/MoneyValue' }
+        price: { $ref: '#/components/schemas/MoneyValue' }
+        side: { $ref: '#/components/schemas/OrderSide' }
+        instrument: { $ref: '#/components/schemas/Instrument' }
+        reduceOnly: { type: boolean }
+        tif: { $ref: '#/components/schemas/OrderLimitTif' }
+        leverage: { $ref: '#/components/schemas/PerOrderLeverage' }
+
+    MarketOrderNew:
+      type: object
+      required:
+        - side
+        - instrument
+        - amountAsset
+        - amount
+        - reduceOnly
+      properties:
+        side: { $ref: '#/components/schemas/OrderSide' }
+        instrument: { $ref: '#/components/schemas/Instrument' }
+        amountAsset: { $ref: '#/components/schemas/MarketAsset' }
+        amount: { $ref: '#/components/schemas/MoneyValue' }
+        reduceOnly: { type: boolean }
+        leverage: { $ref: '#/components/schemas/PerOrderLeverage' }
+
+    PerOrderLeverage:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: The discriminator for per-order leverage types.
+      discriminator:
+        propertyName: type
+        mapping:
+          UseMarketFixed: '#/components/schemas/PerOrderLeverageUseMarketFixed'
+          RangeValue: '#/components/schemas/PerOrderLeverageRangeValue'
+      oneOf:
+        - $ref: '#/components/schemas/PerOrderLeverageUseMarketFixed'
+        - $ref: '#/components/schemas/PerOrderLeverageRangeValue'
+
+    PerOrderLeverageUseMarketFixed:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [UseMarketFixed]
+
+    PerOrderLeverageRangeValue:
+      type: object
+      required:
+        - type
+        - leverage
+      properties:
+        type:
+          type: string
+          enum: [RangeValue]
+        leverage:
+          type: number
+          format: double
+
+    Leverage:
+      type: object
+      required:
+        - leverage
+      properties:
+        leverage:
+          type: number
+          format: double
+
+    CurrentPositionMode:
+      type: object
+      required:
+        - mode
+      properties:
+        mode:
+          $ref: '#/components/schemas/PositionMode'
+
+    AccountOrders:
+      type: object
+      required:
+        - accountId
+        - orders
+      properties:
+        accountId:
+          type: string
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+
+    AccountWallets:
+      type: object
+      required:
+        - accountId
+        - wallets
+      properties:
+        accountId:
+          type: string
+        wallets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Wallet'
+
+    AccountPositions:
+      type: object
+      required:
+        - accountId
+        - positions
+      properties:
+        accountId:
+          type: string
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketPosition'
+
+    # --- Paper ---
+
+    PaperAccountCreateCommand:
+      allOf:
+        - $ref: '#/components/schemas/BaseCommand'
+        - type: object
+          required:
+            - tenantId
+            - name
+            - hostId
+          properties:
+            tenantId:
+              type: string
+            name:
+              type: string
+            hostId:
+              type: string
+
+    PaperAccountDepositCommand:
+      allOf:
+        - $ref: '#/components/schemas/BaseCommand'
+        - type: object
+          required:
+            - accountId
+            - amount
+            - asset
+          properties:
+            accountId:
+              type: string
+            amount:
+              $ref: '#/components/schemas/MoneyValue'
+            asset:
+              type: string
+
+    # --- Accounts ---
+
+    ExecutionAccountCreateCommand:
+      allOf:
+        - $ref: '#/components/schemas/BaseCommand'
+        - type: object
+          required:
+            - tenantId
+            - name
+            - hostId
+            - credential
+          properties:
+            tenantId:
+              type: string
+            name:
+              type: string
+            hostId:
+              type: string
+            credential:
+              $ref: '#/components/schemas/ExecutionAccountCredentialNew'
+
+    ExecutionAccountRenameCommand:
+      allOf:
+        - $ref: '#/components/schemas/BaseCommand'
+        - type: object
+          required:
+            - accountId
+            - name
+          properties:
+            accountId:
+              type: string
+            name:
+              type: string
+
+    ExecutionAccountRefreshCommand:
+      allOf:
+        - $ref: '#/components/schemas/BaseCommand'
+        - type: object
+          required:
+            - accountId
+            - credential
+          properties:
+            accountId:
+              type: string
+            credential:
+              $ref: '#/components/schemas/ExecutionAccountCredentialNew'
+
+    ExecutionAccountDeleteCommand:
+      allOf:
+        - $ref: '#/components/schemas/BaseCommand'
+        - type: object
+          required:
+            - accountId
+          properties:
+            accountId:
+              type: string
+
+    ExecutionAccountListQuery:
+      allOf:
+        - $ref: '#/components/schemas/BasePageQuery'
+        - type: object
+          required:
+            - tenantId
+          properties:
+            tenantId:
+              type: string
+
+    ExecutionAccountGetQuery:
+      type: object
+      required:
+        - accountId
+      properties:
+        accountId:
+          type: string
+
+    ExecutionAccountCredentialNew:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+      discriminator:
+        propertyName: type
+        mapping:
+          ApiKey: '#/components/schemas/ExecutionAccountCredentialApiKey'
+      oneOf:
+        - $ref: '#/components/schemas/ExecutionAccountCredentialApiKey'
+
+    ExecutionAccountCredentialApiKey:
+      type: object
+      required:
+        - type
+        - publicKey
+        - secretKey
+      properties:
+        type:
+          type: string
+          enum: [ApiKey]
+        publicKey:
+          type: string
+        secretKey:
+          type: string
+
+    # --- Order ---
+
