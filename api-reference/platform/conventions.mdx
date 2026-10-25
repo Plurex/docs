@@ -1,0 +1,93 @@
+---
+title: "API conventions"
+description: "Understand request and response formats, paging, unions, batches, sizes, decimals, timestamps and compatibility."
+---
+
+## Requests
+
+Every operation is a `POST` with a JSON body and `Content-Type: application/json`, to a path of the form `/api/v1/{domain}/{query|command}/{Action}`. IDs such as `accountId`, `hostId` and `venueId` go in the body, never in the path.
+
+Every operation needs a body, even a list with no filters: send `{}` for the first page. Request bodies are strict: unknown fields, unknown enum values and wrong types return `400 InvalidRequest`. Send only the fields the specification defines.
+
+Account operations need both the `X-API-KEY` and `X-API-SECRET` headers. Venue operations, [List hosts](/api-reference/platform/hosts/list) and [List host markets](/api-reference/platform/hosts/list-markets) are public. See [Authentication](/authentication).
+
+## Responses
+
+Successful responses use one of three shapes:
+
+| Shape | Used for | Example |
+| --- | --- | --- |
+| `{ "data": ... }` | A single result, or an unpaged list such as a batch | `{"data": {"id": "ord_789", ...}}` |
+| `{ "items": [...], "nextCursor": ... }` | A page of a paged list | `{"items": [...], "nextCursor": null}` |
+| `{}` (`Ack`) | A command with nothing to return, such as a cancel | `{}` |
+
+An `Ack` is an empty object today; fields may be added later, so do not test it for emptiness.
+
+Every field a response schema declares is present. Optional values are sent as an explicit `null` rather than left out, so `"averagePrice": null` means the host did not report it. Errors use the [error envelope](/api-reference/platform/errors).
+
+## Paging
+
+Open-ended lists are paged, and the server chooses the page size. Omit `cursor` for the first request, then pass the returned `nextCursor` as `cursor` with the same query variant, account and filters. Stop when `nextCursor` is `null`. Follow cursors on every paged list, even one that usually fits in a single page.
+
+For example, the next request to [List accounts](/api-reference/platform/accounts/list) has this body:
+
+```json
+{
+  "tenantId": "YOUR_TENANT_ID",
+  "cursor": "CURSOR_FROM_PREVIOUS_RESPONSE"
+}
+```
+
+Cursors are opaque. A cursor sent with a different query or account returns `400 InvalidRequest`.
+
+Pages are read live, not from a snapshot, so items can change while you page. For host lists, the variant's capability entry gives its `defaultOrdering` (`Chronological` or `ReverseChronological`), which holds within and across pages. Candles are always newest first: they exclude the candle still forming and need the market's `listBefore` to page beyond the first page (see [Read market data](/guides/market-data#candles)).
+
+## Capabilities and variants
+
+Read [venues](/api-reference/platform/venues/list), [hosts](/api-reference/platform/hosts/list) and their market summaries before choosing operations. Each entry is an `OperationSupport`: `Supported` (on every market), `PerMarket` (check the market's summary) or `NotSupported`. Calling an unsupported operation or variant returns `422 NotSupported`. See [Capabilities](/capabilities/overview).
+
+Unions use a `type` discriminator. Operations with several access patterns take them as variants in a `query` or `command` field, for example `GetOrder` with `ById`, `ByClientOrderId` or `ByClientOrderIdForInstrument`. `SubmitOrder` takes an `order` whose `type` is `Limit`, `Market`, `TriggerLimit` or `TriggerMarket`. Each variant has its own required fields and its own capability entry; all variants of one operation return the same shape.
+
+## Batches
+
+Batch operations take a list and return one result per item, but they report missing items differently:
+
+| Operations | Input | Missing or failed items |
+| --- | --- | --- |
+| [Get prices](/api-reference/platform/venues/get-prices), [best quotes](/api-reference/platform/venues/get-best-quotes), [market statistics](/api-reference/platform/venues/get-market-statistics), [indicative fundings](/api-reference/platform/venues/get-indicative-fundings), [open interests](/api-reference/platform/venues/get-open-interests) | 1 to 50 distinct instruments on one venue | One result per instrument, in request order. A missing value is an `Unavailable` result with an error code; one instrument cannot fail the batch. |
+| [Get orders](/api-reference/platform/hosts/get-orders) | Order IDs or client order IDs | Unknown identifiers are left out of the result. |
+| [Cancel orders](/api-reference/platform/hosts/cancel-orders) | Order IDs or client order IDs | One result per identifier, `Cancelled` or `Failed` with a code. The call can partly succeed; inspect every result. |
+
+## Sizes and instruments
+
+Instruments are always sent as structured objects, never as symbols:
+
+```json
+{ "type": "Perp", "base": "BTC", "quote": "USDT" }
+```
+
+Asset codes are uppercase letters, digits and dots. Market summaries also return a canonical `symbol` such as `BTC-USDT-PERP` for display and joining, but it is not accepted as input.
+
+Every `size` (in orders, fills, positions, order books, trades and size rules) is in the market's **native contracts**, not necessarily base-asset units: one contract is `contractSize` units of `contractSizeAsset`, from the market's `contractDetails`. A `notional` is an amount of the quote asset. See [Instruments](/concepts/instruments).
+
+## Decimals and timestamps
+
+Exact decimal values, including prices, sizes, balances, rates and leverage, are **JSON strings** such as `"0.01"`. Parse them into a decimal type and keep their precision; never round-trip them through binary floating point.
+
+| Kind | Format | Example |
+| --- | --- | --- |
+| Timestamps | RFC 3339 date-time | `"2026-10-25T09:30:00.250Z"` |
+| Dates, such as a future's `expiry` | `YYYY-MM-DD` | `"2026-12-25"` |
+| Durations, such as statistics windows and candle history limits | ISO 8601 duration | `"PT24H"`, `"PT720H"` |
+
+## Errors and retries
+
+Every error uses one envelope with a stable `code`. Commands document whether they are safe to repeat, and an error alone never proves a command had no effect. See [Errors](/api-reference/platform/errors) for the code catalogue, the retry rule for each operation and how to reconcile.
+
+## Streams
+
+Account order and transaction changes also arrive over WebSocket streams, described by the AsyncAPI document: [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders) and [Stream account transactions](/api-reference/platform/hosts/subscribe-to-account-transactions). A stream has no snapshot and does not replay missed events, so pair it with a REST read; see [Stream account updates](/guides/streams).
+
+## Compatibility
+
+Responses can gain fields, enum values, union variants and error codes without a new API version. Ignore unknown response fields, handle unknown enum values and variants as an unrecognised case instead of failing, and handle an unknown error code by its HTTP status. Removing or renaming any of them would be a breaking change. Requests must still use only the fields and values the server accepts.

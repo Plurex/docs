@@ -1,5 +1,5 @@
 ---
-title: "Create Paper Account"
-description: "Create a new paper trading account"
-openapi: "POST /api/v1/paper/command/Create"
+title: "Create a paper account"
+description: "Creates a paper account on a paper host. It trades against the live order book of the venue the paper host models, through the same hosts operations as a real account. Not safe to repeat: repeating creates another account. If the outcome is unclear, check accounts/query/List before retrying."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/paper/command/CreateAccount"
 ---

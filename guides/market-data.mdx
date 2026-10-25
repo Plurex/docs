@@ -1,0 +1,265 @@
+---
+title: "Read market data"
+description: "Discover venues and markets, read order books, trades, prices and statistics in batches, judge freshness and page back through candles."
+---
+
+Venue operations are public market data. They need no API key, so you can try every example here with `curl` alone. Market data describes what is trading on a venue; to place orders, read the matching host market instead (see [Venues](/concepts/venues) for the model).
+
+Each venue lists what it supports in its capabilities, and each market says which reads it offers in `marketData`. Check them before calling; [Venue capabilities](/capabilities/venue-capabilities) explains both levels.
+
+## Discover venues and markets
+
+[List venues](/api-reference/platform/venues/list) returns every venue with its capabilities:
+
+```bash
+curl --request POST https://api.plurex.io/api/v1/venues/query/List \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+```
+
+[List venue markets](/api-reference/platform/venues/list-markets) returns a venue's markets. Filter by exact `base` and `quote` assets, by instrument `types`, or with `search`, a fuzzy, case-insensitive match on the canonical symbol:
+
+```json
+{ "venueId": "bybit", "quote": "USDT", "types": ["Perp"], "search": "BTC" }
+```
+
+Both lists are paged: follow `nextCursor` until it is `null`. Each market gives:
+
+| Field | Use it for |
+| --- | --- |
+| `symbol` | The canonical symbol, such as `BTC-USDT-PERP`, for display and joining with host markets. Requests always take the structured `instrument`. |
+| `instrument` | The value to send in every market-data request. |
+| `increments` | The grid the venue quotes on: group book levels by `price` and format sizes by `size`. These are not order rules. |
+| `contractDetails` | What one contract is. Book and trade sizes are in native contracts. |
+| `marketData` | Which reads this market supports, and on what terms. |
+
+## Order book
+
+[Get order book](/api-reference/platform/venues/get-order-book) returns the current book at the depth the venue feed provides. Both sides list the best price first.
+
+```bash
+curl --request POST https://api.plurex.io/api/v1/venues/query/GetOrderBook \
+  --header 'Content-Type: application/json' \
+  --data '{"venueId": "bybit", "instrument": {"type": "Perp", "base": "BTC", "quote": "USDT"}}'
+```
+
+```json
+{
+  "data": {
+    "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+    "bids": [
+      { "price": "64012.4", "size": "1.204" },
+      { "price": "64012.3", "size": "0.350" }
+    ],
+    "asks": [
+      { "price": "64012.5", "size": "0.812" },
+      { "price": "64012.7", "size": "2.000" }
+    ],
+    "asOf": "2026-10-25T09:30:00.250Z"
+  }
+}
+```
+
+`asOf` is the time the book is current as of. From a live feed it can be the time of your read, even when the last change arrived earlier. An unknown or unsupported market returns `422 NotSupported`.
+
+## Recent trades
+
+[Get recent trades](/api-reference/platform/venues/get-recent-trades) returns the venue's recent public trades, oldest first. The venue decides how many; it is not a complete history.
+
+```json
+{
+  "data": {
+    "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+    "trades": [
+      { "price": "64012.4", "size": "0.010", "takerSide": "Sell", "observedAt": "2026-10-25T09:29:59.870Z", "receivedAt": "2026-10-25T09:29:59.902Z" },
+      { "price": "64012.5", "size": "0.125", "takerSide": "Buy", "observedAt": "2026-10-25T09:30:00.105Z", "receivedAt": "2026-10-25T09:30:00.131Z" }
+    ],
+    "asOf": "2026-10-25T09:30:00.250Z"
+  }
+}
+```
+
+`takerSide` is the aggressor's side, or `null` when the venue does not report it. Trades carry no ID, so do not try to deduplicate them by identity across reads.
+
+## Prices, quotes and statistics in batches
+
+Five reads take a batch of 1 to 50 distinct instruments on one venue and return one result per instrument, in request order:
+
+| Operation | Returns | Market entry to check |
+| --- | --- | --- |
+| [Get prices](/api-reference/platform/venues/get-prices) | The price of one `kind`: `Traded`, `Mark` or `Index` | `marketData.prices.traded`, `.mark` or `.index` |
+| [Get best quotes](/api-reference/platform/venues/get-best-quotes) | Best bid and ask | `marketData.bestQuote` (`supportsSizes` says whether sizes are given) |
+| [Get market statistics](/api-reference/platform/venues/get-market-statistics) | Open, high, low, previous close and volumes over the market's window | `marketData.statistics` |
+| [Get indicative fundings](/api-reference/platform/venues/get-indicative-fundings) | Indicative funding rate and next funding time, for perpetuals | `marketData.indicativeFunding` |
+| [Get open interests](/api-reference/platform/venues/get-open-interests) | Open interest, for derivatives | `marketData.openInterest` |
+
+An instrument without a value does not fail the batch. It comes back as `Unavailable` with the code a single read would have returned: `NotSupported` when the market does not offer this read, `NotFound` when the venue reported no value, and `UpstreamFailure` when the venue read failed.
+
+```bash
+curl --request POST https://api.plurex.io/api/v1/venues/query/GetPrices \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "venueId": "bybit",
+    "kind": "Mark",
+    "instruments": [
+      {"type": "Perp", "base": "BTC", "quote": "USDT"},
+      {"type": "Perp", "base": "ETH", "quote": "USDT"},
+      {"type": "Spot", "base": "BTC", "quote": "USDT"}
+    ]
+  }'
+```
+
+```json
+{
+  "data": [
+    {
+      "type": "Observed",
+      "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+      "value": { "price": "64013.1" },
+      "observedAt": "2026-10-25T09:30:00.120Z",
+      "confirmedAt": "2026-10-25T09:30:01Z",
+      "receivedAt": "2026-10-25T09:30:00.135Z"
+    },
+    {
+      "type": "Observed",
+      "instrument": { "type": "Perp", "base": "ETH", "quote": "USDT" },
+      "value": { "price": "2521.43" },
+      "observedAt": "2026-10-25T09:30:00.090Z",
+      "confirmedAt": null,
+      "receivedAt": "2026-10-25T09:30:00.140Z"
+    },
+    {
+      "type": "Unavailable",
+      "instrument": { "type": "Spot", "base": "BTC", "quote": "USDT" },
+      "code": "NotSupported",
+      "message": "Mark price is not reported for BTC-USDT-SPOT"
+    }
+  ]
+}
+```
+
+Match results to your request by position or by `instrument`, and handle each `Unavailable` result on its own. Price kinds are never relabelled: a market without a mark price returns `Unavailable` for `Mark`, not its traded price.
+
+### Judge freshness
+
+Each `Observed` result carries three times:
+
+| Field | Meaning |
+| --- | --- |
+| `confirmedAt` | The latest venue time at which a continuous live feed covered the value, even if it did not change. `null` without a live feed. |
+| `observedAt` | The venue's time for the value. `null` when the venue gives none. |
+| `receivedAt` | When Plurex received the value. |
+
+Judge freshness by `confirmedAt`, falling back to `observedAt`. A value can be old but still current: an unchanged price on a quiet market keeps an early `observedAt` while `confirmedAt` moves forward. A value the venue stops reporting is cleared rather than kept: `price` or `amount` becomes `null`.
+
+### Read the terms of each value
+
+- **Statistics windows differ by venue.** Read `marketData.statistics.window`: `Rolling` with an ISO 8601 `length` such as `PT24H`, or `CalendarDay` in a named `timeZone`. Two venues' 24-hour figures need not cover the same period. Fields outside `supportedFields` are always `null`.
+- **Indicative funding is an estimate.** The rate that settles can differ from the one you read.
+- **Open interest has a unit.** `unit` is `Contracts`, `BaseAsset` or `QuoteAsset`, and is also listed in `marketData.openInterest.unit`. Convert before comparing venues.
+- **Best quote sizes** are `null` when the market's `supportsSizes` is `false`.
+
+## Candles
+
+[List candles](/api-reference/platform/venues/list-candles) returns closed candles for one market, price kind and interval, newest first across every page. The candle still forming is never included, and a page has no gaps: there is one candle for every interval it spans.
+
+Before you call, read the market's `marketData.candles` entry for the price kind (`traded`, `mark` or `index`):
+
+```json
+{
+  "supportedIntervals": ["Minute1", "Minute5", "Minute15", "Hour1", "Hour4", "Day1"],
+  "maxHistoryAgeByInterval": { "Minute1": "PT48H", "Minute5": "PT48H", "Minute15": "PT168H", "Hour1": "PT720H", "Hour4": "PT720H", "Day1": "PT720H" },
+  "list": true,
+  "listBefore": true
+}
+```
+
+- The interval must be in `supportedIntervals`. Intervals are aligned to whole multiples from the Unix epoch, in UTC.
+- `list` allows `ByInstrument`, which starts from the latest closed candle.
+- `listBefore` allows `ByInstrumentBefore`, which starts from candles that end at or before `before`, and is needed to page past the first page with either variant.
+- `maxHistoryAgeByInterval` gives how far back history reaches per interval, as an ISO 8601 duration. An interval without an entry has no declared limit. These values are examples; read them from the market.
+
+```json
+{
+  "venueId": "bybit",
+  "priceKind": "Traded",
+  "interval": "Hour1",
+  "query": {
+    "type": "ByInstrument",
+    "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" }
+  }
+}
+```
+
+```json
+{
+  "items": [
+    {
+      "startAt": "2026-10-25T08:00:00Z",
+      "endAt": "2026-10-25T09:00:00Z",
+      "open": "63880.1",
+      "high": "64120.0",
+      "low": "63790.5",
+      "close": "64010.2",
+      "volume": { "asset": "BTC", "value": "1532.118" },
+      "turnover": { "asset": "USDT", "value": "97934821.55" }
+    }
+  ],
+  "nextCursor": "eyJiIjoiMjAyNi0xMC0yNVQwODowMDowMFoifQ"
+}
+```
+
+Each candle covers `[startAt, endAt)`. `volume` and `turnover` name their asset, because the asset depends on the market, and are `null` when the venue does not report them.
+
+To start at a point in the past, use `ByInstrumentBefore`:
+
+```json
+{
+  "venueId": "bybit",
+  "priceKind": "Traded",
+  "interval": "Hour1",
+  "query": {
+    "type": "ByInstrumentBefore",
+    "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+    "before": "2026-10-20T00:00:00Z"
+  }
+}
+```
+
+### Page back in time
+
+Send each `nextCursor` with the same venue, price kind, interval and query until it is `null` or you reach the start time you need:
+
+```python
+from datetime import datetime
+import requests
+
+URL = "https://api.plurex.io/api/v1/venues/query/ListCandles"
+
+def parse(timestamp):
+    return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+
+def candles_back_to(start_at, query, venue_id="bybit", price_kind="Traded", interval="Hour1"):
+    """Yield closed candles newest first, stopping before start_at (an aware datetime)."""
+    body = {"venueId": venue_id, "priceKind": price_kind, "interval": interval, "query": query}
+    while True:
+        response = requests.post(URL, json=body, timeout=10)
+        response.raise_for_status()
+        page = response.json()
+        for candle in page["items"]:
+            if parse(candle["startAt"]) < start_at:
+                return
+            yield candle
+        if page["nextCursor"] is None:
+            return
+        body["cursor"] = page["nextCursor"]
+```
+
+Paging past the first page needs the series' `listBefore`, and how far back you can go is bounded by `maxHistoryAgeByInterval`. Stop when `nextCursor` is `null`.
+
+## Related
+
+- [Venues](/concepts/venues): venues, venue markets and how they relate to hosts.
+- [Venue capabilities](/capabilities/venue-capabilities): reading venue and market support before you call.
+- [Instruments](/concepts/instruments): instrument types, canonical symbols and native contract sizes.
+- [API conventions](/api-reference/platform/conventions): paging, decimals and timestamps.

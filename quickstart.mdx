@@ -1,0 +1,266 @@
+---
+title: "Quickstart"
+description: "Go from a new Plurex account to a filled paper order in about ten minutes, using curl."
+---
+
+This guide takes you from zero to a filled order on a paper account: simulated funds, live order books, and the same
+API calls you will later use to trade for real. You need a terminal with `curl`.
+
+## Before you start
+
+You need a Plurex account and an API key.
+
+1. Sign up in the [Plurex web app](https://platform.plurex.io) with your email, confirm the 6-digit code sent to you,
+   and choose a handle and password.
+2. Open **DevTools**. Copy your **Tenant ID**.
+3. Under **API Keys**, create a key with a label. Copy the **Key** and **Secret** now: the secret is shown only once.
+
+Export them in your shell:
+
+```bash
+export PLUREX_TENANT_ID="your-tenant-id"
+export PLUREX_API_KEY="your-api-key"
+export PLUREX_API_SECRET="your-api-secret"
+```
+
+<Warning>
+  An API key acts as your tenant, with full access to its accounts. Keep it out of source control and browser code. See
+  [Authentication](/authentication).
+</Warning>
+
+## Place your first paper order
+
+<Steps>
+  <Step title="Find a paper host">
+    Host discovery is public, so this call needs no key:
+
+    ```bash
+    curl --request POST \
+      --url https://api.plurex.io/api/v1/hosts/query/List \
+      --header 'Content-Type: application/json' \
+      --data '{}'
+    ```
+
+    The response lists every host. Paper hosts have `isPaper: true`, and `modelHostId` names the real host each one
+    simulates (`capabilities` is left out here):
+
+    ```json
+    {
+      "items": [
+        {
+          "id": "bybit-paper",
+          "venueIds": ["bybit"],
+          "modelHostId": "bybit",
+          "isPaper": true,
+          "supportedCredentialTypes": ["Paper"]
+        }
+      ],
+      "nextCursor": null
+    }
+    ```
+
+    Pick a paper host and export its ID. This guide uses `bybit-paper`; use whichever paper host the list returns.
+
+    ```bash
+    export PLUREX_HOST_ID="bybit-paper"
+    ```
+
+    List results come in pages. When `nextCursor` is not `null`, send it back as `cursor` to read the next page.
+  </Step>
+
+  <Step title="Read the market's order rules">
+    Look up BTC/USDT spot on that host:
+
+    ```bash
+    curl --request POST \
+      --url https://api.plurex.io/api/v1/hosts/query/ListMarkets \
+      --header 'Content-Type: application/json' \
+      --data "{\"hostId\": \"$PLUREX_HOST_ID\", \"base\": \"BTC\", \"quote\": \"USDT\", \"types\": [\"Spot\"]}"
+    ```
+
+    The market's `orderTypes` are its order rules. For a market buy, look at `orderTypes.market`:
+
+    ```json
+    {
+      "market": {
+        "sizingSupport": { "buy": ["Notional"], "sell": ["Size"] },
+        "size": { "increment": "0.000001", "min": "0.000048" },
+        "notional": { "increment": null, "min": "1" },
+        "options": { "supportsReduceOnly": false, "supportedTimeInForce": ["IOC", "FOK"], "supportsPositionEffect": false }
+      }
+    }
+    ```
+
+    These values are an example; read your own. `sizingSupport.buy` says how you may size a market buy: `Notional`
+    (an amount of the quote asset to spend) or `Size` (an amount in native contracts, a whole multiple of
+    `size.increment` and at least `size.min`; on spot markets one contract is normally one unit of the base asset, as
+    the market's `contractDetails` confirms). If the host has no BTC/USDT spot market, or `orderTypes.market` is
+    `null`, choose another market from the list.
+  </Step>
+
+  <Step title="Create a paper account">
+    ```bash
+    curl --request POST \
+      --url https://api.plurex.io/api/v1/paper/command/CreateAccount \
+      --header 'Content-Type: application/json' \
+      --header "X-API-KEY: $PLUREX_API_KEY" \
+      --header "X-API-SECRET: $PLUREX_API_SECRET" \
+      --data @- <<EOF
+    {
+      "tenantId": "$PLUREX_TENANT_ID",
+      "name": "Quickstart",
+      "hostId": "$PLUREX_HOST_ID"
+    }
+    EOF
+    ```
+
+    The new account is under `data`. Export its ID:
+
+    ```bash
+    export PLUREX_ACCOUNT_ID="the data.id value"
+    ```
+
+    <Warning>
+      Creating an account is not safe to repeat: a repeat creates a second account. If the call times out, check
+      [List accounts](/api-reference/platform/accounts/list) for a new account on `$PLUREX_HOST_ID` before trying
+      again; identify it by host, not by name. A `422 AccountLimit` error means your plan does not allow another paper
+      account.
+    </Warning>
+  </Step>
+
+  <Step title="Deposit simulated funds">
+    A new paper account is empty. Deposit the quote asset to buy with:
+
+    ```bash
+    curl --request POST \
+      --url https://api.plurex.io/api/v1/paper/command/Deposit \
+      --header 'Content-Type: application/json' \
+      --header "X-API-KEY: $PLUREX_API_KEY" \
+      --header "X-API-SECRET: $PLUREX_API_SECRET" \
+      --data @- <<EOF
+    {
+      "accountId": "$PLUREX_ACCOUNT_ID",
+      "amount": "1000",
+      "asset": "USDT"
+    }
+    EOF
+    ```
+
+    The response is the resulting USDT wallet. A deposit is not safe to repeat either: each call credits the account
+    again. If a deposit times out, check the account's `Deposit` transactions with
+    [List transactions](/api-reference/platform/hosts/list-transactions) before trying again.
+  </Step>
+
+  <Step title="Submit a market order">
+    Buy 50 USDT of BTC. If the market's `sizingSupport.buy` includes `Notional` and 50 is at least `notional.min`, send:
+
+    ```bash
+    curl --request POST \
+      --url https://api.plurex.io/api/v1/hosts/command/SubmitOrder \
+      --header 'Content-Type: application/json' \
+      --header "X-API-KEY: $PLUREX_API_KEY" \
+      --header "X-API-SECRET: $PLUREX_API_SECRET" \
+      --data @- <<EOF
+    {
+      "accountId": "$PLUREX_ACCOUNT_ID",
+      "order": {
+        "type": "Market",
+        "instrument": { "type": "Spot", "base": "BTC", "quote": "USDT" },
+        "side": "Buy",
+        "sizing": { "type": "Notional", "notional": "50" },
+        "reduceOnly": false,
+        "tif": "IOC"
+      }
+    }
+    EOF
+    ```
+
+    If the market sizes buys by `Size` instead, compute a size from the rules: a whole multiple of `size.increment`,
+    at least `size.min`, and small enough for your deposit at the current price. Then send
+    `"sizing": { "type": "Size", "size": "0.0005" }` with your own value.
+
+    The paper host matches the order against the live order book. The response shows the order, already filled:
+
+    ```json
+    {
+      "data": {
+        "type": "Market",
+        "id": "ord_789",
+        "createdAt": "2026-10-25T09:30:00.120Z",
+        "side": "Buy",
+        "instrument": { "type": "Spot", "base": "BTC", "quote": "USDT" },
+        "state": "Filled",
+        "sizeTraded": "0.000441",
+        "averagePrice": "113378.25",
+        "realizedPnl": null,
+        "totalFees": [{ "asset": "USDT", "value": "0.05" }],
+        "clientOrderId": null,
+        "sizing": { "type": "Notional", "notional": "50" }
+      }
+    }
+    ```
+
+    Export the order ID:
+
+    ```bash
+    export PLUREX_ORDER_ID="the data.id value"
+    ```
+
+    <Note>
+      Submitting an order is not safe to repeat. If a submission times out, look the order up before resubmitting. Set
+      a `clientOrderId` on the order to make that lookup easy; see [Orders](/guides/orders).
+    </Note>
+  </Step>
+
+  <Step title="Read the order back">
+    ```bash
+    curl --request POST \
+      --url https://api.plurex.io/api/v1/hosts/query/GetOrder \
+      --header 'Content-Type: application/json' \
+      --header "X-API-KEY: $PLUREX_API_KEY" \
+      --header "X-API-SECRET: $PLUREX_API_SECRET" \
+      --data @- <<EOF
+    {
+      "accountId": "$PLUREX_ACCOUNT_ID",
+      "query": { "type": "ById", "orderId": "$PLUREX_ORDER_ID" }
+    }
+    EOF
+    ```
+
+    You get the same order record. Its fills, with price, size, fees and maker or taker role, are available from
+    [List fills](/api-reference/platform/hosts/list-fills).
+  </Step>
+
+  <Step title="Check your balances">
+    ```bash
+    curl --request POST \
+      --url https://api.plurex.io/api/v1/hosts/query/ListWallets \
+      --header 'Content-Type: application/json' \
+      --header "X-API-KEY: $PLUREX_API_KEY" \
+      --header "X-API-SECRET: $PLUREX_API_SECRET" \
+      --data "{\"accountId\": \"$PLUREX_ACCOUNT_ID\"}"
+    ```
+
+    You now hold some BTC, and your USDT balance is lower by the amount spent plus the fee.
+  </Step>
+</Steps>
+
+You have run the whole order flow end to end: discovery, order rules, an account, funding, execution and reconciliation.
+Every step after creating and funding the account works the same on a connected exchange account.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Stream account updates" icon="bolt" href="/guides/streams">
+    Follow order changes and transactions live instead of polling.
+  </Card>
+  <Card title="Read capabilities" icon="list-check" href="/capabilities/overview">
+    Learn what each host and market supports before you call it.
+  </Card>
+  <Card title="Paper trading" icon="flask" href="/paper/overview">
+    How paper fills orders, holds funds and charges fees and funding.
+  </Card>
+  <Card title="Go live" icon="rocket" href="/paper/going-live">
+    Switch from paper to a connected exchange account.
+  </Card>
+</CardGroup>

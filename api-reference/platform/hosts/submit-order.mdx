@@ -1,0 +1,5 @@
+---
+title: "Submit an order"
+description: "Submits one order and returns it as the host accepted it. Not safe to repeat: repeating may place a second order. If the outcome is unclear (a timeout or 5xx), look the order up with GetOrder ByClientOrderId before resubmitting. 409 DuplicateClientOrderId means an order with that clientOrderId already exists."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/command/SubmitOrder"
+---

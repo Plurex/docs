@@ -1,38 +1,81 @@
 ---
-title: "Overview"
-description: "The Plurex Platform API uses a Command & Query Separation (CQS) architecture for managing exchange accounts, hosts, and venues."
+title: "Platform API"
+description: "Base URLs, specifications, authentication and the structure of the Plurex Platform API and its streams."
 ---
 
-The Plurex Platform API is designed to expose the full range of functionality available through the [Plurex web application](https://platform.plurex.io). 
+The Platform API is a JSON-over-HTTP API with WebSocket streams for account activity. This reference is generated from the Plurex OpenAPI and AsyncAPI specifications. For concepts and how-to guides, start with [How Plurex works](/how-plurex-works).
 
-## CQS Architecture
+## Base URLs
 
-The API follows a **Command & Query Separation (CQS)** pattern:
-- **Queries**: Read-only operations used to fetch state. (e.g., listing venues, getting balances)
-- **Commands**: State-changing operations used to perform actions. (e.g., submitting orders, creating accounts)
+| Interface | Base URL |
+| --- | --- |
+| HTTP operations | `https://api.plurex.io` |
+| WebSocket streams | `wss://api.plurex.io` |
 
-All operations use **HTTP POST** with JSON payloads, regardless of whether they are commands or queries.
+## Specifications
 
-## Key Modules
+The specifications are the contract. Use them to generate clients or validate payloads.
 
-The Platform API is structured around several key functional areas:
+| Document | Covers |
+| --- | --- |
+| OpenAPI 3.2 (`plurex-platform-api.yaml`) | Every HTTP operation, schema and error |
+| AsyncAPI 3.0 (`plurex-platform-async-api.yaml`) | The account order and transaction streams |
 
-<CardGroup cols={2}>
-  <Card title="Venues" icon="building-columns" href="/api-reference/platform/venues/list">
-    Explore available liquidity venues and their markets.
-  </Card>
-  <Card title="Hosts" icon="server" href="/api-reference/platform/hosts/list">
-    Manage execution hosts (brokers), query wallets, positions, and orders.
-  </Card>
-  <Card title="Accounts" icon="user-gear" href="/api-reference/platform/accounts/list">
-    Programmatically manage your linked exchange accounts.
-  </Card>
-  <Card title="Paper Trading" icon="flask" href="/api-reference/platform/paper/create">
-    Create and manage paper trading accounts for testing.
-  </Card>
-</CardGroup>
+Download both documents from the API at `https://api.plurex.io/api/v1/spec/plurex-platform-api.yaml` and `https://api.plurex.io/api/v1/spec/plurex-platform-async-api.yaml`.
+
+<Note>
+  The specifications use OpenAPI 3.2 union nullability (`type: [string, 'null']`). If you generate a client, check that your generator decodes explicit `null` values. Also treat `ErrorCode` and other enums as open: new values can appear without a new API version.
+</Note>
+
+## Operations
+
+Every HTTP operation is a `POST` with a JSON body to a path of this form:
+
+```text
+/api/v1/{domain}/{query|command}/{Action}
+```
+
+Queries read state and are always safe to repeat. Commands change state; each one documents whether it is safe to repeat. IDs go in the body, never in the path.
+
+| Domain | Operations | Authentication |
+| --- | --- | --- |
+| [`venues`](/api-reference/platform/venues/list) | Public market data: venues, markets, order books, trades, prices, quotes, statistics, funding, open interest and candles | None |
+| [`hosts`](/api-reference/platform/hosts/list) | Hosts and their markets (public), then trading on an account: orders, fills, balances, positions, margin, settings and transactions | Discovery: none. Account operations: API key |
+| [`accounts`](/api-reference/platform/accounts/connect) | Connect, list and manage your accounts | API key |
+| [`paper`](/api-reference/platform/paper/create) | Create and fund paper accounts, and choose their fee tier | API key |
+
+Streams use the path `/api/v1/{domain}/stream/{Action}/{scope}`, for example `/api/v1/hosts/stream/SubscribeToAccountOrders/{accountId}`. They are listed beside their HTTP operations, under **Orders** and **Transactions**. See [Stream account updates](/guides/streams).
 
 ## Authentication
 
-All requests require authentication using your API Key and API Secret, which can be managed in your Plurex account settings.
+Send both headers on every authenticated request and on the stream upgrade request:
 
+```http
+X-API-KEY: <your API key>
+X-API-SECRET: <your API secret>
+```
+
+Create keys and find your tenant ID on the **DevTools** page of the [Plurex app](https://platform.plurex.io). See [Authentication](/authentication).
+
+## Badges
+
+The specification tags operations with these badges, and operation descriptions refer to them:
+
+| Badge | Meaning |
+| --- | --- |
+| No API key | Public. No authentication needed. |
+| Check capabilities | Not every host or venue supports this operation. Check its [capabilities](/capabilities/overview) first, or expect `422 NotSupported`. |
+| Paged | Returns pages. Follow `nextCursor` until it is `null`. |
+| Batch | Takes a list of identifiers or instruments and returns one result for each. |
+| Not safe to repeat | Repeating the call repeats its effect. If the outcome is unclear, check before retrying. |
+
+## Read next
+
+<CardGroup cols={2}>
+  <Card title="Conventions" icon="book" href="/api-reference/platform/conventions">
+    Envelopes, paging, decimals, timestamps, unions and compatibility.
+  </Card>
+  <Card title="Errors" icon="triangle-exclamation" href="/api-reference/platform/errors">
+    The error envelope, every error code, and how to retry and reconcile.
+  </Card>
+</CardGroup>

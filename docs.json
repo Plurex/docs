@@ -11,10 +11,55 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Platform",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get started",
+            "pages": [
+              "index",
+              "how-plurex-works",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Concepts",
+            "pages": [
+              "concepts/venues-and-hosts",
+              "concepts/venues",
+              "concepts/hosts",
+              "concepts/accounts",
+              "concepts/instruments"
+            ]
+          },
+          {
+            "group": "Capabilities",
+            "pages": [
+              "capabilities/overview",
+              "capabilities/host-capabilities",
+              "capabilities/order-rules",
+              "capabilities/venue-capabilities"
+            ]
+          },
+          {
+            "group": "Trading guides",
+            "pages": [
+              "guides/orders",
+              "guides/streams",
+              "guides/portfolio",
+              "guides/market-data"
+            ]
+          },
+          {
+            "group": "Paper trading",
+            "pages": [
+              "paper/overview",
+              "paper/fees-and-funding",
+              "paper/going-live"
+            ]
+          },
+          {
+            "group": "Web app",
             "pages": [
               "platform/overview",
               "platform/add-exchange"
@@ -26,56 +71,137 @@
         "tab": "API reference",
         "groups": [
           {
-            "group": "Platform API",
+            "group": "Getting started",
             "pages": [
               "api-reference/platform/overview",
+              "api-reference/platform/conventions",
+              "api-reference/platform/errors"
+            ]
+          },
+          {
+            "group": "Market data",
+            "pages": [
               {
-                "group": "Venues",
+                "group": "Venues and markets",
                 "pages": [
                   "api-reference/platform/venues/list",
                   "api-reference/platform/venues/list-markets"
                 ]
               },
               {
-                "group": "Hosts",
+                "group": "Order books",
+                "pages": [
+                  "api-reference/platform/venues/get-order-book"
+                ]
+              },
+              {
+                "group": "Public trades",
+                "pages": [
+                  "api-reference/platform/venues/get-recent-trades"
+                ]
+              },
+              {
+                "group": "Prices and market statistics",
+                "pages": [
+                  "api-reference/platform/venues/get-prices",
+                  "api-reference/platform/venues/get-best-quotes",
+                  "api-reference/platform/venues/get-market-statistics",
+                  "api-reference/platform/venues/get-indicative-fundings",
+                  "api-reference/platform/venues/get-open-interests"
+                ]
+              },
+              {
+                "group": "Candles",
+                "pages": [
+                  "api-reference/platform/venues/list-candles"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Trading",
+            "pages": [
+              {
+                "group": "Hosts and markets",
                 "pages": [
                   "api-reference/platform/hosts/list",
-                  "api-reference/platform/hosts/list-markets",
-                  "api-reference/platform/hosts/list-all-wallets",
-                  "api-reference/platform/hosts/list-wallets",
-                  "api-reference/platform/hosts/list-all-positions",
-                  "api-reference/platform/hosts/list-positions",
-                  "api-reference/platform/hosts/get-market-state",
-                  "api-reference/platform/hosts/list-all-orders",
-                  "api-reference/platform/hosts/list-orders",
-                  "api-reference/platform/hosts/get-order",
-                  "api-reference/platform/hosts/list-recent-orders",
-                  "api-reference/platform/hosts/submit-limit-order",
-                  "api-reference/platform/hosts/submit-market-order",
-                  "api-reference/platform/hosts/submit-limit-trigger-order",
-                  "api-reference/platform/hosts/cancel-order",
-                  "api-reference/platform/hosts/set-leverage",
-                  "api-reference/platform/hosts/get-leverage",
-                  "api-reference/platform/hosts/set-position-mode",
-                  "api-reference/platform/hosts/get-position-mode"
+                  "api-reference/platform/hosts/list-markets"
                 ]
               },
               {
-                "group": "Accounts",
+                "group": "Orders",
                 "pages": [
-                  "api-reference/platform/accounts/list",
-                  "api-reference/platform/accounts/get",
-                  "api-reference/platform/accounts/create",
-                  "api-reference/platform/accounts/rename",
-                  "api-reference/platform/accounts/refresh",
-                  "api-reference/platform/accounts/delete"
+                  "api-reference/platform/hosts/get-order",
+                  "api-reference/platform/hosts/get-orders",
+                  "api-reference/platform/hosts/list-orders",
+                  "api-reference/platform/hosts/list-closed-orders",
+                  "api-reference/platform/hosts/submit-order",
+                  "api-reference/platform/hosts/cancel-order",
+                  "api-reference/platform/hosts/cancel-orders",
+                  "api-reference/platform/hosts/cancel-all-orders",
+                  "api-reference/platform/hosts/subscribe-to-account-orders"
                 ]
               },
               {
-                "group": "Paper Trading",
+                "group": "Fills",
+                "pages": [
+                  "api-reference/platform/hosts/list-fills"
+                ]
+              },
+              {
+                "group": "Balances and positions",
+                "pages": [
+                  "api-reference/platform/hosts/list-wallets",
+                  "api-reference/platform/hosts/list-positions",
+                  "api-reference/platform/hosts/list-margin-states",
+                  "api-reference/platform/hosts/get-market-state"
+                ]
+              },
+              {
+                "group": "Leverage and position mode",
+                "pages": [
+                  "api-reference/platform/hosts/get-leverage",
+                  "api-reference/platform/hosts/get-position-mode",
+                  "api-reference/platform/hosts/set-leverage",
+                  "api-reference/platform/hosts/set-position-mode"
+                ]
+              },
+              {
+                "group": "Transactions",
+                "pages": [
+                  "api-reference/platform/hosts/list-transactions",
+                  "api-reference/platform/hosts/subscribe-to-account-transactions"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Accounts",
+            "pages": [
+              "api-reference/platform/accounts/connect",
+              "api-reference/platform/accounts/update-connection",
+              "api-reference/platform/accounts/rename",
+              "api-reference/platform/accounts/delete",
+              "api-reference/platform/accounts/list",
+              "api-reference/platform/accounts/get"
+            ]
+          },
+          {
+            "group": "Paper trading",
+            "pages": [
+              {
+                "group": "Paper accounts",
                 "pages": [
                   "api-reference/platform/paper/create",
                   "api-reference/platform/paper/deposit"
+                ]
+              },
+              {
+                "group": "Paper fees",
+                "pages": [
+                  "api-reference/platform/paper/set-fee-tier",
+                  "api-reference/platform/paper/get-fee-settings",
+                  "api-reference/platform/paper/get-effective-fee-rates"
                 ]
               }
             ]
@@ -103,21 +229,56 @@
   },
   "contextual": {
     "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
   },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+  "redirects": [
+    {
+      "source": "/api-reference/platform/accounts/create",
+      "destination": "/api-reference/platform/accounts/connect"
+    },
+    {
+      "source": "/api-reference/platform/accounts/refresh",
+      "destination": "/api-reference/platform/accounts/update-connection"
+    },
+    {
+      "source": "/api-reference/platform/hosts/list-all-orders",
+      "destination": "/api-reference/platform/hosts/list-orders"
+    },
+    {
+      "source": "/api-reference/platform/hosts/list-all-positions",
+      "destination": "/api-reference/platform/hosts/list-positions"
+    },
+    {
+      "source": "/api-reference/platform/hosts/list-all-wallets",
+      "destination": "/api-reference/platform/hosts/list-wallets"
+    },
+    {
+      "source": "/api-reference/platform/hosts/list-recent-orders",
+      "destination": "/api-reference/platform/hosts/list-closed-orders"
+    },
+    {
+      "source": "/api-reference/platform/hosts/submit-limit-order",
+      "destination": "/api-reference/platform/hosts/submit-order"
+    },
+    {
+      "source": "/api-reference/platform/hosts/submit-market-order",
+      "destination": "/api-reference/platform/hosts/submit-order"
+    },
+    {
+      "source": "/api-reference/platform/hosts/submit-limit-trigger-order",
+      "destination": "/api-reference/platform/hosts/submit-order"
+    },
+    {
+      "source": "/api-reference/platform/quickstart",
+      "destination": "/quickstart"
     }
-  }
+  ]
 }

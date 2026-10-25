@@ -1,4 +1,95 @@
 ---
-title: "Overview"
-description: "Get a quick overview of the platform before you start."
+title: "Web app"
+description: "Use the Plurex web app to sign up, manage API keys and accounts, trade by hand and review your portfolio."
 ---
+
+The [Plurex web app](https://platform.plurex.io) is where you set up everything the API needs and where you can trade
+and check your accounts by hand. It works on the same accounts, orders and balances as the API, so anything you do in
+one shows up in the other.
+
+## Sign up
+
+<Steps>
+  <Step title="Register">
+    Open the [web app](https://platform.plurex.io), choose **Register**, enter your email and choose **Get Started**.
+  </Step>
+  <Step title="Verify your email">
+    Enter the 6-digit code from the verification email. You can ask for it to be sent again.
+  </Step>
+  <Step title="Set your login details">
+    Choose a handle (one alphanumeric word), a password of at least 8 characters, and accept the terms. Your account
+    is created and you are logged in.
+  </Step>
+</Steps>
+
+Signing up also creates your **tenant**, which owns your API keys and trading accounts.
+
+## Secure your login
+
+Turn on two-factor authentication in **User Settings → Security**: choose **Set up**, scan the QR code with an
+authenticator app, and enter the 6-digit code it shows. Once it is on, the app asks for a one-time code before
+sensitive actions, such as creating or deleting an API key.
+
+The same page lets you change your password. **User Settings → General** shows your handle and tenant ID and lets you
+change your email address, confirmed with a 6-digit code.
+
+## DevTools
+
+**DevTools** has what you need to use the API:
+
+- your **Tenant ID**, with a copy button;
+- **API Keys**: create a key with a label, see your keys by label, and delete them. A new key's secret is shown once,
+  when you create it.
+
+See [Authentication](/authentication) for how to use them.
+
+## Accounts
+
+**Accounts** lists your trading accounts. From here you can:
+
+- **Connect Account**: connect an exchange account with its API key. The wizard asks for the venue, the host, the
+  credential type and then a name and the exchange's public and secret keys. See
+  [Connect an exchange account](/platform/add-exchange).
+- **Create a paper account**: use the same wizard and pick a host marked **Paper**. Paper accounts need only a name.
+  See [Paper trading](/paper/overview).
+- **Deposit** simulated funds into a paper account.
+- **Rename** an account.
+- **Refresh** an exchange account's credentials, when you rotate its API key at the exchange.
+- **Delete** an account.
+
+<Warning>
+  Deleting an account removes it from Plurex and breaks the history records of trading activity that used it. You
+  cannot undo a delete.
+</Warning>
+
+## Terminal
+
+**Terminal** is a trading screen for one market at a time. Choose a host, a venue, a market and an account, and you
+get:
+
+- the live **order book** and **trade feed**;
+- a candlestick **chart**;
+- **manual orders**: Limit, Market, Trigger Limit and Trigger Market, sized by size, notional or contracts as the market
+  allows, with time in force, post-only, reduce-only and position effect where the market offers them. The form
+  checks your order against the market's order rules, the same rules the API enforces;
+- **leverage** and **position mode** controls for markets that have them;
+- the market's **order history**, where you can show or hide completed orders and cancel open ones;
+- for a paper account, a **deposit** button to add simulated funds.
+
+If the selected host cannot trade the market, or paper trading is not available on it, the Terminal tells you so.
+
+## Portfolio
+
+**Portfolio** shows your accounts' current state:
+
+- **Balances**: each asset's total and available balance, with an option to hide amounts;
+- **Positions**: open derivative positions;
+- **Open Orders**: orders that are still live.
+
+Each section can be refreshed on demand.
+
+## Through the API
+
+The app covers setup and manual trading. To automate a strategy, use the [API](/quickstart): it works on the same
+accounts. Some settings, such as a paper account's fee tier, are set only through the API, with
+[Set fee tier](/api-reference/platform/paper/set-fee-tier).

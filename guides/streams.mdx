@@ -1,0 +1,284 @@
+---
+title: "Stream account updates"
+description: "Follow an account's orders and balance postings over WebSocket, and keep a correct local copy through disconnects."
+---
+
+Two WebSocket streams push an account's activity as it happens, so you do not have to poll. Both work the same way for real and paper accounts.
+
+| Stream | Address | Reconcile with |
+| --- | --- | --- |
+| [Account orders](/api-reference/platform/hosts/subscribe-to-account-orders) | `wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountOrders/{accountId}` | [List open orders](/api-reference/platform/hosts/list-orders) |
+| [Account transactions](/api-reference/platform/hosts/subscribe-to-account-transactions) | `wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountTransactions/{accountId}` | [List account transactions](/api-reference/platform/hosts/list-transactions) |
+
+A stream sends only what happens after you connect. It has no snapshot and does not replay events you missed, so a correct client always pairs it with a REST read. The [reconciliation pattern](#keep-a-correct-local-copy) below shows how.
+
+## Check the host first
+
+Read the account's host from [List hosts](/api-reference/platform/hosts/list) and check its capabilities before you connect. A stream the host does not support is refused with `422 NotSupported`.
+
+| Capability | What it tells you |
+| --- | --- |
+| `accountOrders.subscribeToAccountOrders` | Whether the order stream exists on this host. |
+| `accountOrders.changes` | Which change types the host sends: `Created`, `FillApplied`, `Cancelled`, `Rejected`. A host may send fewer. |
+| `accountOrders.includesFillDetails` | Whether `FillApplied` events carry the individual execution. When `false`, `fill` is `null`; read executions with [List fills](/api-reference/platform/hosts/list-fills). |
+| `accountTransactions.subscribeToAccountTransactions` | Whether the transaction stream exists on this host. |
+| `accountTransactions.supportedTransactionTypes` | Which posting types the host reports. |
+
+See [Host capabilities](/capabilities/host-capabilities) for how to read these entries.
+
+## Connect
+
+Send the same `X-API-KEY` and `X-API-SECRET` headers you use for HTTP on the upgrade request. There is nothing to send after connecting: the account is in the path, and the server ignores any frames you send.
+
+With [websocat](https://github.com/vi/websocat):
+
+```bash
+websocat \
+  --header "X-API-KEY: $PLUREX_API_KEY" \
+  --header "X-API-SECRET: $PLUREX_API_SECRET" \
+  "wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountOrders/$PLUREX_ACCOUNT_ID"
+```
+
+With the Python [`websockets`](https://websockets.readthedocs.io/) library, version 14 or later:
+
+```python
+import asyncio, json, os
+from websockets.asyncio.client import connect
+
+HEADERS = {
+    "X-API-KEY": os.environ["PLUREX_API_KEY"],
+    "X-API-SECRET": os.environ["PLUREX_API_SECRET"],
+}
+URL = f"wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountOrders/{os.environ['PLUREX_ACCOUNT_ID']}"
+
+async def main():
+    async with connect(URL, additional_headers=HEADERS) as ws:
+        async for message in ws:
+            event = json.loads(message)
+            print(event["data"]["change"]["type"], event["data"]["order"]["state"])
+
+asyncio.run(main())
+```
+
+If the upgrade fails, for example because the credentials are wrong, the account does not exist or the host does not support the stream, you get an ordinary HTTP error response with the [error envelope](/api-reference/platform/errors), before any WebSocket is opened. Treat it like the same error from an HTTP operation: fix the request rather than reconnecting in a loop.
+
+WebSocket ping and pong frames keep the connection alive; most client libraries answer pings for you.
+
+<Warning>
+  Browser authentication is not supported. Browsers cannot set custom headers on a WebSocket upgrade, so connect from a server or a native client.
+</Warning>
+
+## Messages
+
+Every message is one JSON text frame with the same envelope: `timestamp` is when Plurex sent the event, and `data` is the payload.
+
+### Order events
+
+Each order event carries the `change` that happened and the complete `order`, exactly as [Get an order](/api-reference/platform/hosts/get-order) returns it:
+
+```json
+{
+  "timestamp": "2026-10-25T09:31:12.408Z",
+  "data": {
+    "change": {
+      "type": "FillApplied",
+      "fill": {
+        "orderId": "ord_789",
+        "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+        "side": "Buy",
+        "executedAt": "2026-10-25T09:31:12.391Z",
+        "price": "60000.0",
+        "size": "0.004",
+        "fees": [{ "asset": "USDT", "value": "0.048" }],
+        "realizedPnl": null,
+        "id": "exec_5521",
+        "role": "Maker"
+      }
+    },
+    "order": {
+      "type": "Limit",
+      "id": "ord_789",
+      "createdAt": "2026-10-25T09:30:00Z",
+      "side": "Buy",
+      "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+      "state": "Live",
+      "sizeTraded": "0.004",
+      "averagePrice": "60000.0",
+      "realizedPnl": null,
+      "totalFees": [{ "asset": "USDT", "value": "0.048" }],
+      "clientOrderId": "grid-buy-0042",
+      "size": "0.010",
+      "price": "60000.0"
+    }
+  }
+}
+```
+
+| `change.type` | Meaning |
+| --- | --- |
+| `Created` | The host has the order. |
+| `FillApplied` | The traded size increased. The order carries the cumulative `sizeTraded`, `averagePrice` and `state`. `fill` is the execution, or `null` when the host reports only the cumulative order state. |
+| `Cancelled` | The order was cancelled. |
+| `Rejected` | The host rejected the order. `reason` and `code` are the host's own text and code, or `null`. The `code` is the host's native code, not a Plurex error code. |
+| `Unknown` | A host change with no standard meaning. `nativeType` holds the host's own event type. |
+
+```json
+{
+  "timestamp": "2026-10-25T09:32:40.020Z",
+  "data": {
+    "change": { "type": "Rejected", "reason": "Insufficient margin", "code": "MARGIN_LOW" },
+    "order": {
+      "type": "Market",
+      "id": "ord_812",
+      "createdAt": "2026-10-25T09:32:39.950Z",
+      "side": "Buy",
+      "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+      "state": "Rejected",
+      "sizeTraded": "0",
+      "averagePrice": null,
+      "realizedPnl": null,
+      "totalFees": [],
+      "clientOrderId": null,
+      "sizing": { "type": "Size", "size": "5.000" }
+    }
+  }
+}
+```
+
+Because every event carries the whole order, you do not need to rebuild state from the change. Store the latest order you receive for each order ID and use `change` to decide what to react to. New change types can be added, so handle an unrecognised `type` the same way as `Unknown`.
+
+### Transaction events
+
+Each transaction event is one balance posting, with the same `id` that [List account transactions](/api-reference/platform/hosts/list-transactions) returns for it:
+
+```json
+{
+  "timestamp": "2026-10-25T09:31:12.512Z",
+  "data": {
+    "id": "txn_40213",
+    "effectiveAt": "2026-10-25T09:31:12.391Z",
+    "amount": { "asset": "USDT", "value": "-0.048" },
+    "type": "TradingFee",
+    "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+    "orderId": "ord_789",
+    "fillId": "exec_5521",
+    "positionId": null,
+    "groupId": null,
+    "nativeType": "TRADE",
+    "description": null
+  }
+}
+```
+
+`amount` is signed from your side: positive increases the balance, negative decreases it. Transaction events are ordered among themselves but not relative to order events, so a fee can arrive before or after the fill it belongs to. See [Balances, positions and settings](/guides/portfolio#transactions) for posting types and links.
+
+## Keep a correct local copy
+
+The streams promise no snapshot, no replay, no sequence numbers and no resume point. The pattern that stays correct anyway:
+
+<Steps>
+  <Step title="Connect first">
+    Open the stream before reading anything. Events that arrive from now on are buffered by your client.
+  </Step>
+  <Step title="Read the current state">
+    Page through [List open orders](/api-reference/platform/hosts/list-orders) (or recent [transactions](/api-reference/platform/hosts/list-transactions)) until `nextCursor` is `null`. This is your starting copy.
+  </Step>
+  <Step title="Apply events on top">
+    Apply buffered events, then live ones, in the order they arrive. For orders the newest event for an order ID replaces what you hold; drop an order from your open set once its state is `Filled`, `Cancelled` or `Rejected`. For transactions, add any posting whose `id` you do not have.
+  </Step>
+  <Step title="After any disconnect, do both again">
+    Events sent while you were disconnected are gone. Reconnect, then read the REST state again and replace your copy.
+  </Step>
+</Steps>
+
+Connecting before you read is what closes the gap: anything that changes after your REST read also arrives as an event, and because each event carries the complete order, applying an event on top of slightly newer REST data still ends on the latest state.
+
+This sketch keeps the set of open orders correct across reconnects. It uses `websockets` 14 or later and `httpx`:
+
+```python
+import asyncio, json, os
+import httpx
+from websockets.asyncio.client import connect
+from websockets.exceptions import ConnectionClosed, InvalidHandshake, InvalidStatus
+
+API = "https://api.plurex.io/api/v1"
+ACCOUNT = os.environ["PLUREX_ACCOUNT_ID"]
+HEADERS = {
+    "X-API-KEY": os.environ["PLUREX_API_KEY"],
+    "X-API-SECRET": os.environ["PLUREX_API_SECRET"],
+}
+STREAM = f"wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountOrders/{ACCOUNT}"
+TERMINAL = {"Filled", "Cancelled", "Rejected"}
+
+async def read_open_orders(http):
+    orders, cursor = {}, None
+    while True:
+        body = {"accountId": ACCOUNT, "query": {"type": "Global"}}
+        if cursor:
+            body["cursor"] = cursor
+        response = await http.post(f"{API}/hosts/query/ListOpenOrders", json=body, headers=HEADERS)
+        response.raise_for_status()
+        page = response.json()
+        for order in page["items"]:
+            orders[order["id"]] = order
+        cursor = page["nextCursor"]
+        if cursor is None:
+            return orders
+
+def apply(open_orders, event):
+    order = event["data"]["order"]
+    if order["state"] in TERMINAL:
+        open_orders.pop(order["id"], None)
+    else:
+        open_orders[order["id"]] = order   # newest event wins
+
+async def follow_orders():
+    delay = 1
+    async with httpx.AsyncClient(timeout=10) as http:
+        while True:
+            try:
+                async with connect(STREAM, additional_headers=HEADERS) as ws:   # 1. connect
+                    open_orders = await read_open_orders(http)                 # 2. read state
+                    delay = 1
+                    async for message in ws:                                   # 3. apply events
+                        apply(open_orders, json.loads(message))
+            except InvalidStatus as error:
+                if error.response.status_code in (401, 403, 404, 422):
+                    raise          # credentials, access, account or NotSupported: fix, do not loop
+            except httpx.HTTPStatusError as error:
+                if error.response.status_code in (400, 401, 403, 404, 422):
+                    raise          # the REST read itself is wrong: fix, do not loop
+            except (ConnectionClosed, InvalidHandshake, OSError, httpx.HTTPError):
+                pass               # 4. reconnect and read state again
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, 60)
+
+asyncio.run(follow_orders())
+```
+
+The `websockets` client holds messages that arrive while you read the REST state, so they are applied after it, in order. The loop backs off on network failures and on `429` and `5xx` responses, and stops on errors that need a fix.
+
+For transactions, the same loop works with `ListTransactions` in place of `ListOpenOrders`. Keep posting IDs you have seen, and after reconnecting re-read history a little further back than the newest posting you hold, so a posting that reached the host's history late is not missed. The `listTransactions` capability's `defaultOrdering` says whether history comes newest or oldest first.
+
+## Close codes
+
+| Code | Meaning | What to do |
+| --- | --- | --- |
+| `1000` | Normal shutdown. | Reconnect if you still need updates, then read the REST state again. |
+| `1011` with reason `Upstream stream ended` | The host's own feed ended or failed. | Reconnect with a backoff, then read the REST state again. |
+
+Any other disconnect, such as a network failure, is handled the same way: reconnect, then reconcile.
+
+## What a stream does not promise
+
+- No snapshot on connect, and no replay of missed events.
+- No sequence numbers or resume tokens. A gap is detected only by a disconnect.
+- No ordering between the order stream and the transaction stream.
+- No individual executions when `includesFillDetails` is `false`.
+- No browser authentication.
+
+## Related
+
+- [Place and manage orders](/guides/orders): order states and how to read an order.
+- [Balances, positions and settings](/guides/portfolio): transactions and balances.
+- [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders) and [Stream account transactions](/api-reference/platform/hosts/subscribe-to-account-transactions): the message reference.

@@ -1,43 +1,42 @@
-# Mintlify Starter Kit
+# Plurex documentation
 
-Use the starter kit to get your docs deployed and ready to customize.
+Mintlify documentation for the [Plurex platform](https://platform.plurex.io), public market data, account trading and paper trading.
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+## Local development
 
-- Guide pages
-- Navigation
-- Customizations
-- API reference pages
-- Use of popular components
+Install or upgrade the Mintlify CLI, then start the preview from this directory:
 
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
-
-## Development
-
-Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
-
-```
-npm i -g mint
-```
-
-Run the following command at the root of your documentation, where your `docs.json` is located:
-
-```
+```bash
+npm install --global mint@latest
 mint dev
 ```
 
-View your local preview at `http://localhost:3000`.
+The preview runs at `http://localhost:3000`. Site settings and navigation live in `docs.json`. OpenAPI 3.2 support and build validation have been verified with Mintlify CLI `4.2.1125`.
 
-## Publishing changes
+## Updating the Platform API
 
-Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
+The docs describe a pinned commit of the [plurex repository](https://github.com/Plurex/plurex), recorded in `upstream.lock.json`. `.upstream/plurex` is a gitignored clone of it, checked out at that commit and excluded from Mintlify by `.mintignore`. See `AGENTS.md` for how the specs and authored pages divide the work, and `agent_plans/automated_docs_bootstrap.md` for the refresh plan.
 
-## Need help?
+`api-reference/platform/plurex-platform-api.yaml` (**OpenAPI 3.2**) and `plurex-platform-async-api.yaml` (**AsyncAPI 3.0**) are copies of `platform-public-api/` at the pinned commit. Endpoint and stream pages reference these files directly, preserving their schemas, tag hierarchy and operation metadata.
 
-### Troubleshooting
+After replacing the specs, sync the endpoint and stream pages and the API reference navigation:
 
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
+```bash
+python3 -m venv /tmp/plurex-docs-venv
+/tmp/plurex-docs-venv/bin/pip install -r scripts/requirements.txt
+/tmp/plurex-docs-venv/bin/python scripts/sync-platform-api.py
+```
 
-### Resources
-- [Mintlify documentation](https://mintlify.com/docs)
+The script uses the spec's navigation tags, summaries and descriptions, while retaining established URLs for existing operations. It writes endpoint and stream frontmatter and the whole API reference tab, placing each stream beside its HTTP operations; keep explanatory prose in authored pages. When operations are removed, remove their obsolete pages and add appropriate redirects in `docs.json`.
+
+Validate changes with an up-to-date Mintlify CLI:
+
+```bash
+mint openapi-check api-reference/platform/plurex-platform-api.yaml
+mint validate
+mint broken-links
+```
+
+## Publishing
+
+The Mintlify GitHub integration deploys changes pushed to the configured default branch. Manage the integration in the [Mintlify dashboard](https://dashboard.mintlify.com).

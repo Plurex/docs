@@ -1,0 +1,269 @@
+---
+title: "Venues"
+description: "How Plurex models public market data: venue markets, order books, trades, observations, freshness and candles."
+---
+
+A venue is an exchange where markets trade and prices form. Every venue operation is public market data and needs no API key. This page explains the model behind that data, so you know exactly what each value means and how fresh it is. For step-by-step recipes, see [Market data](/guides/market-data).
+
+## Venues and their capabilities
+
+[List venues](/api-reference/platform/venues/list) returns each venue's `id` and its `capabilities`: every market-data operation the venue offers, with its support.
+
+- `GetOrderBook` and `GetRecentTrades` are supported on every venue.
+- The other reads are usually `PerMarket`: the venue offers them, and each market's `marketData` entry says whether that market does.
+- `NotSupported` means the venue does not offer the read: single-market reads (order book, recent trades, candles) return `422 NotSupported`, and the batch observation reads return an `Unavailable` result with code `NotSupported` for each instrument. For example, a venue that publishes no index prices declares `prices.index.getPrices` as `NotSupported`.
+
+See [Venue capabilities](/capabilities/venue-capabilities) for the full structure and how to resolve support for one market.
+
+## Venue markets
+
+[List venue markets](/api-reference/platform/venues/list-markets) returns a venue's markets, filtered by `base`, `quote`, `types` or a fuzzy `search` on the canonical symbol. The listing is paged; follow `nextCursor` until it is `null`.
+
+Each `VenueMarketSummary` describes one market:
+
+| Field | Meaning |
+| --- | --- |
+| `symbol` | The canonical symbol, such as `BTC-USDT-PERP`. For display and lookup; never sent as input. |
+| `instrument` | The structured instrument you send to every market-data operation. |
+| `increments` | The grid the venue quotes market data on: `price` for book levels and trade prices, `size` for book level sizes in native contracts. **Not order rules.** |
+| `contractDetails` | What one contract is. Every size in market data is in native contracts. See [Instruments and sizing](/concepts/instruments). |
+| `marketData` | Which reads this market supports, and on what terms. |
+
+A BTC/USDT linear perpetual on a venue that reports all three price kinds might look like this (values are illustrative; read the live summary):
+
+```json
+{
+  "symbol": "BTC-USDT-PERP",
+  "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+  "increments": { "price": "0.1", "size": "0.001" },
+  "contractDetails": {
+    "contractType": "Linear",
+    "settlementAsset": "USDT",
+    "contractSize": "1",
+    "contractSizeAsset": "BTC"
+  },
+  "marketData": {
+    "prices": { "traded": { "get": true }, "mark": { "get": true }, "index": { "get": true } },
+    "bestQuote": { "supportsSizes": true, "get": true },
+    "statistics": {
+      "window": { "type": "Rolling", "length": "PT24H" },
+      "supportedFields": ["Open", "High", "Low", "VolumeBase", "VolumeQuote"],
+      "get": true
+    },
+    "indicativeFunding": { "get": true },
+    "openInterest": { "unit": "Contracts", "get": true },
+    "candles": {
+      "traded": {
+        "supportedIntervals": ["Minute1", "Minute5", "Minute15", "Hour1", "Hour4", "Day1"],
+        "maxHistoryAgeByInterval": { "Minute1": "PT48H", "Minute5": "PT48H", "Minute15": "PT168H", "Hour1": "PT720H", "Hour4": "PT720H", "Day1": "PT720H" },
+        "list": true,
+        "listBefore": true
+      },
+      "mark": null,
+      "index": null
+    }
+  }
+}
+```
+
+A `null` entry in `marketData` means the market does not offer that read. A non-null entry still has its own `get` (or `list` and `listBefore`) flags; check them.
+
+Use `increments.price` to set display precision (its decimal scale) and to group book levels in whole multiples of it. An increment, not a number of decimals, is used because a tick such as `0.5` cannot be expressed as a precision. Never price or size an order from `increments`: order rules come from the [host market](/concepts/hosts#host-markets).
+
+Option markets are not listed.
+
+## Order books and recent trades
+
+[Get order book](/api-reference/platform/venues/get-order-book) returns the current book of one market, at the depth the venue feed provides:
+
+```json
+{
+  "data": {
+    "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+    "bids": [
+      { "price": "64012.4", "size": "1.250" },
+      { "price": "64012.3", "size": "0.400" }
+    ],
+    "asks": [
+      { "price": "64012.5", "size": "0.873" },
+      { "price": "64012.7", "size": "2.010" }
+    ],
+    "asOf": "2026-10-25T09:30:00.120Z"
+  }
+}
+```
+
+- `bids` are best (highest) first; `asks` are best (lowest) first.
+- Level sizes are native contracts.
+- `asOf` is the time the book is current as of. From Plurex's live feed this can be the read time, even when the last change arrived earlier.
+
+[Get recent trades](/api-reference/platform/venues/get-recent-trades) returns the venue's recent public trades, oldest first, with an `asOf`. The venue bounds how many come back; it is not a complete history. Each `PublicTrade` has a `price`, a `size` in native contracts, the `takerSide` (`null` when the venue does not report the aggressor), the venue time `observedAt` and the time Plurex received it, `receivedAt`. Public trades carry no identity. Trade sizes can be finer than `increments.size`, for example a fill of an order sized by notional.
+
+Both reads are served from Plurex's live feed for the market when one is running, and otherwise fetched from the venue. Either way the response means the same thing. An unknown or unsupported market returns `422 NotSupported`; an unknown venue returns `404 NotFound`.
+
+## Observations
+
+There is no "ticker" operation. A ticker bundles last price, best bid and ask, 24-hour statistics and funding into one object, as if they were observed together. They rarely are: each value updates on its own schedule, and venues define them differently. Plurex returns each observation separately, with its own venue time, so you never act on a value that is older than it looks. Ask for the specific observations your strategy uses.
+
+| Read | Value | Market entry | Notes |
+| --- | --- | --- | --- |
+| [Get prices](/api-reference/platform/venues/get-prices) | `price` | `marketData.prices.{traded,mark,index}` | One `kind` per request: `Traded`, `Mark` or `Index`. |
+| [Get best quotes](/api-reference/platform/venues/get-best-quotes) | `bid`, `ask` (each `price`, `size`) | `marketData.bestQuote` | `size` is `null` when `supportsSizes` is false. |
+| [Get market statistics](/api-reference/platform/venues/get-market-statistics) | `window`, `open`, `high`, `low`, `previousClose`, `volumeBase`, `volumeQuote` | `marketData.statistics` | Fields outside `supportedFields` are always `null`. |
+| [Get indicative fundings](/api-reference/platform/venues/get-indicative-fundings) | `rate`, `nextFundingTime` | `marketData.indicativeFunding` | Perpetuals only. |
+| [Get open interests](/api-reference/platform/venues/get-open-interests) | `amount`, `unit` | `marketData.openInterest` | Derivatives only. |
+
+### Prices by kind
+
+`PriceKind` says what the venue reports a price to be. **Kinds are never relabelled or derived from one another.** If a market has no index price, Plurex does not substitute the mark price, and it does not compute a mark price from the order book. Request a kind the market does not report and you get an `Unavailable` result with code `NotSupported`.
+
+| Kind | What it is |
+| --- | --- |
+| `Traded` | The venue's last traded price. |
+| `Mark` | The venue's mark price for a derivative. |
+| `Index` | The venue's index price for a derivative's underlying. |
+
+Mark, index, funding and open interest are what the venue reports. They are not the terms a particular host applies to your position.
+
+### Statistics windows
+
+Statistics are computed by the venue over the market's declared `window`: `Rolling` with an ISO 8601 `length` such as `PT24H`, or `CalendarDay` in an IANA `timeZone`. Two venues' windows need not mean the same, so read `window` before comparing "24-hour" figures across venues. `volumeBase` is in the base asset and `volumeQuote` in the quote asset.
+
+### Indicative funding
+
+The indicative funding `rate` is the venue's current estimate of a perpetual's funding rate, with the `nextFundingTime` when the venue gives it. The rate that actually settles can differ. Your settled funding payments appear in the account's [transactions](/concepts/hosts#transactions).
+
+### Open interest
+
+`unit` says how `amount` is measured: `Contracts`, `BaseAsset` or `QuoteAsset`. It is fixed per market and declared in `marketData.openInterest.unit`. Convert with `contractDetails` before comparing open interest across venues.
+
+## Batch reads
+
+The five observation reads are batches. Send 1 to 50 distinct instruments; you get exactly one result per instrument, in request order. A result is either `Observed`, with the value and its timestamps, or `Unavailable`, with the error code a single read would have returned. One instrument cannot fail the batch.
+
+```json
+{
+  "venueId": "bybit",
+  "kind": "Mark",
+  "instruments": [
+    { "type": "Perp", "base": "BTC", "quote": "USDT" },
+    { "type": "Spot", "base": "BTC", "quote": "USDT" }
+  ]
+}
+```
+
+```json
+{
+  "data": [
+    {
+      "type": "Observed",
+      "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+      "value": { "price": "64012.5" },
+      "observedAt": "2026-10-25T09:30:00.120Z",
+      "confirmedAt": "2026-10-25T09:30:01.000Z",
+      "receivedAt": "2026-10-25T09:30:00.135Z"
+    },
+    {
+      "type": "Unavailable",
+      "instrument": { "type": "Spot", "base": "BTC", "quote": "USDT" },
+      "code": "NotSupported",
+      "message": "Mark price is not supported for BTC-USDT-SPOT"
+    }
+  ]
+}
+```
+
+| `Unavailable.code` | Meaning | What to do |
+| --- | --- | --- |
+| `NotSupported` | The market does not support this read. | Check `marketData` before asking again. |
+| `NotFound` | The venue reported no value. | Treat as missing; try later. |
+| `UpstreamFailure` | The venue read failed. | Transient; retry with backoff. |
+
+## Timestamps and freshness
+
+Every observation carries up to three times:
+
+| Field | Meaning |
+| --- | --- |
+| `observedAt` | Venue time of the value. `null` when the venue gives none. |
+| `confirmedAt` | The latest venue time at which a continuous live feed covered the value, even if the value did not change. `null` without a live feed. |
+| `receivedAt` | When Plurex received the value. |
+
+**Judge freshness by `confirmedAt`, falling back to `observedAt`.** A price that has not moved for a minute can still be current: `confirmedAt` tells you the feed was watching it. `receivedAt` is not venue time, so it says nothing about how old the value was when the venue produced it.
+
+```python
+from datetime import datetime, timedelta, timezone
+
+def is_fresh(result, max_age: timedelta) -> bool:
+    if result["type"] != "Observed":
+        return False
+    venue_time = result["confirmedAt"] or result["observedAt"]
+    if venue_time is None:
+        return False  # no venue time: decide your own policy
+    as_of = datetime.fromisoformat(venue_time.replace("Z", "+00:00"))
+    return datetime.now(timezone.utc) - as_of <= max_age
+```
+
+Stale data looks stale. When a venue stops reporting a value, Plurex clears it rather than serving the last one it saw: `price` and open interest `amount` become `null`. A `null` value inside an `Observed` result means "no current value", never zero.
+
+## Candles
+
+[List candles](/api-reference/platform/venues/list-candles) returns OHLC candles for one market, one price kind and one interval.
+
+- **Closed only.** The candle still forming is never included.
+- **Newest first**, within and across pages.
+- **No gaps within a page:** one candle for every interval the page spans.
+- **Aligned to UTC.** Each `CandleInterval` (`Minute1`, `Minute3`, `Minute5`, `Minute15`, `Minute30`, `Hour1`, `Hour2`, `Hour4`, `Hour6`, `Hour12`, `Day1`) is aligned to whole multiples of itself from the Unix epoch, in UTC.
+- **Half-open.** A candle covers `[startAt, endAt)`.
+
+```json
+{
+  "venueId": "bybit",
+  "priceKind": "Traded",
+  "interval": "Hour1",
+  "query": {
+    "type": "ByInstrumentBefore",
+    "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+    "before": "2026-10-25T00:00:00Z"
+  }
+}
+```
+
+```json
+{
+  "items": [
+    {
+      "startAt": "2026-10-24T23:00:00Z",
+      "endAt": "2026-10-25T00:00:00Z",
+      "open": "63880.1",
+      "high": "64105.0",
+      "low": "63850.2",
+      "close": "64012.5",
+      "volume": { "asset": "BTC", "value": "1520.441" },
+      "turnover": { "asset": "USDT", "value": "97240311.52" }
+    }
+  ],
+  "nextCursor": "CURSOR_FROM_PREVIOUS_RESPONSE"
+}
+```
+
+There are two variants. `ByInstrument` starts from the latest closed candle. `ByInstrumentBefore` starts from the candles that end at or before `before`. Follow `nextCursor` back in time until it is `null`.
+
+Each market declares its candle series per price kind in `marketData.candles`:
+
+| Field | Meaning |
+| --- | --- |
+| `supportedIntervals` | The intervals you may request. |
+| `list` | `ByInstrument` is available. |
+| `listBefore` | `ByInstrumentBefore` is available, and so is paging past the first page. |
+| `maxHistoryAgeByInterval` | How far back history reaches per interval, as an ISO 8601 duration. An interval without an entry has no declared limit. |
+
+Read these from the live summary rather than hard-coding them. A price kind, interval or variant the market does not list returns `422 NotSupported`.
+
+`volume` and `turnover` are `AssetValue`s, each naming its asset, because a bare number is ambiguous: on an inverse market the volume may be counted in the quote asset. Either is `null` when the venue does not report it.
+
+## Related
+
+- [Venues and hosts](/concepts/venues-and-hosts) for how venue markets join host markets.
+- [Venue capabilities](/capabilities/venue-capabilities) to decide what to call before calling.
+- [Market data guide](/guides/market-data) for step-by-step recipes.

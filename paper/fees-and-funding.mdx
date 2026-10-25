@@ -1,0 +1,237 @@
+---
+title: "Fees and funding"
+description: "Choose a paper account's fee tier, read the rates it pays, and follow perpetual funding and settlement through its transactions."
+---
+
+A paper account pays trading fees and perpetual funding just as a live account does, so a forward test shows your
+strategy's results after costs. Fees come from a tier you choose. Funding follows the venue's real published rates.
+Both post to the account as transactions you can read back and reconcile.
+
+## Trading fees
+
+Paper fees are simulation terms you select, not a copy of your live exchange account. Each paper host offers a list of
+fee tiers that approximate its exchange's published schedules; they are not guaranteed to match the exchange's
+current rates. You pick the tier, and paper charges it on every fill: the maker rate
+when a resting order fills, the taker rate when an order takes liquidity.
+
+Paper does not move you between tiers by trading volume, and does not apply VIP or regional schedules, promotions or
+fee-token discounts.
+
+<Tip>
+  Choose the tier that matches your expected live account, so your paper results carry realistic costs.
+</Tip>
+
+### Choose a tier
+
+<Steps>
+  <Step title="Read the available tiers">
+    Call [Get fee settings](/api-reference/platform/paper/get-fee-settings) with the account ID:
+
+    ```json
+    { "accountId": "acc_123" }
+    ```
+
+    The response lists every tier and the one selected. Each tier has default rates and may override them for
+    instruments whose canonical symbol matches `instrumentPattern`, a regular expression:
+
+    ```json
+    {
+      "data": {
+        "tiers": [
+          {
+            "id": 1,
+            "name": "Tier A",
+            "defaults": { "makerFeePercent": "0.08", "takerFeePercent": "0.12", "fractionDigits": 8 },
+            "instrumentOverrides": [
+              {
+                "instrumentPattern": ".*-.*-(PERP|PERPINV)",
+                "rates": { "makerFeePercent": "0.015", "takerFeePercent": "0.045", "fractionDigits": 8 }
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "name": "Tier B",
+            "defaults": { "makerFeePercent": "-0.01", "takerFeePercent": "0.04", "fractionDigits": 8 },
+            "instrumentOverrides": []
+          }
+        ],
+        "selectedTier": 1
+      }
+    }
+    ```
+
+    The values above are illustrative. Read the real tiers and rates from the API; they can change.
+  </Step>
+  <Step title="Select a tier">
+    Call [Set fee tier](/api-reference/platform/paper/set-fee-tier) with a tier `id`:
+
+    ```json
+    { "accountId": "acc_123", "tier": 2 }
+    ```
+
+    The response is the updated fee settings. Selecting the tier that is already selected changes nothing, so the call
+    is safe to repeat.
+  </Step>
+  <Step title="Check the rates for an instrument">
+    Call [Get effective fee rates](/api-reference/platform/paper/get-effective-fee-rates) to see exactly what new
+    orders on one instrument will pay, after any instrument override:
+
+    ```json
+    {
+      "accountId": "acc_123",
+      "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" }
+    }
+    ```
+
+    With the illustrative Tier B selected, the response shows a maker rebate:
+
+    ```json
+    {
+      "data": { "makerFeePercent": "-0.01", "takerFeePercent": "0.04", "fractionDigits": 8 }
+    }
+    ```
+  </Step>
+</Steps>
+
+New accounts start on the paper host's default tier. You can choose a tier when you create the account by passing a
+tier ID from Get fee settings as `feeTier` in [Create a paper account](/api-reference/platform/paper/create), but since
+you can only read the tiers once an account exists, the simplest path is to omit `feeTier` and call Set fee tier
+afterwards.
+
+### Reading the rates
+
+- Rates are **percentages** as decimal strings: `"0.04"` means 0.04% of the fill's value.
+- A **negative rate is a rebate**: the account receives it instead of paying it.
+- `fractionDigits` is the number of decimal places each fee is rounded to; `null` means fees are not rounded.
+  Paper rounds each fill's fee separately, so a very small fill can carry a fee of zero.
+
+### Which asset fees are charged in
+
+| Market | Fee asset |
+| --- | --- |
+| Spot | The quote asset, on buys and sells |
+| Linear perpetual | The settlement asset, usually the quote asset |
+| Inverse perpetual | The settlement asset, the base asset |
+
+### Fee terms are fixed when you place an order
+
+An order keeps the rates in force when it was placed. If you change tier while orders are resting, waiting to
+trigger or partly filled, those orders go on paying their original rates; only orders placed after the change use the
+new tier. Get effective fee rates always describes new orders.
+
+## Perpetual funding
+
+Paper charges funding on linear and inverse perpetuals at each of the venue's **funding times**, using the venue's
+**finalised** funding rate for the period. Spot markets pay no funding. Funding is never charged from indicative or
+predicted rates, such as those [Get indicative fundings](/api-reference/platform/venues/get-indicative-fundings)
+returns, and a finalised rate of zero pays nothing.
+
+### Who pays
+
+- With a **positive** rate, long positions pay and short positions receive.
+- With a **negative** rate, short positions pay and long positions receive.
+- In hedging mode, the long and short legs are charged separately and never netted against each other.
+
+### Which position counts
+
+The position that counts is the one you held **immediately before** the funding time.
+
+- A position closed exactly at the funding time still pays for that funding time.
+- A position opened exactly at the funding time pays from the next one.
+
+### How much
+
+The payment is the position's value at the funding time multiplied by the rate. The price is estimated from the venue's
+mark price at the funding time.
+
+For a **linear** perpetual, paid in the settlement asset:
+
+$$
+\text{funding} = \text{contracts} \times \text{contract size} \times \text{price} \times \text{rate}
+$$
+
+For an **inverse** perpetual, paid in the base asset:
+
+$$
+\text{funding} = \frac{\text{contracts} \times \text{contract size}}{\text{price}} \times \text{rate}
+$$
+
+For example, a long of 2 contracts of a linear perpetual with a contract size of 1, a price of 100 and a finalised
+rate of 0.01 pays 2 × 1 × 100 × 0.01 = 2 units of the settlement asset. A short of the same size receives 2. Read
+`contractSize` and `settlementAsset` from the market's `contractDetails`.
+
+### When it posts
+
+Each payment posts as a signed `FundingPayment` transaction whose `effectiveAt` is the funding time. Paper waits for
+the venue to publish the finalised rate and for the price it needs, so a payment can appear some time after the
+funding time it belongs to. Funding posts in full even if it takes a balance negative.
+
+`FundingPayment` appears in the paper host's `accountTransactions.supportedTransactionTypes` when the host charges
+funding. It means payments may appear, not that every market pays at every funding time: paper charges nothing for a
+period when the inputs it needs are not available.
+
+If the paper host is not running at a funding time, that payment may post later, when your position in the market next
+changes, or not at all if the position stays unchanged.
+
+## Settlement
+
+On perpetuals, realised profit and loss posts as a `Settlement` transaction when a fill reduces or closes a position:
+positive for a gain, negative for a loss. Spot trades do not post settlements; the trade itself moves your balances.
+
+## Read it all back
+
+Every fee, funding payment, settlement and deposit is a transaction on the account. Read them with
+[List transactions](/api-reference/platform/hosts/list-transactions) or, where the host supports it, follow them live
+with the [transaction stream](/api-reference/platform/hosts/subscribe-to-account-transactions). Paper hosts offer
+transaction history and the transaction stream when their model host does, so check the paper host's
+`accountTransactions` capabilities:
+
+```json
+{
+  "accountTransactions": {
+    "listTransactions": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Native" },
+    "subscribeToAccountTransactions": { "type": "NotSupported" },
+    "supportedTransactionTypes": ["Deposit", "TradingFee", "Settlement", "FundingPayment"]
+  }
+}
+```
+
+A paper account reports these transaction types:
+
+| Type | Posted when | Links |
+| --- | --- | --- |
+| `Deposit` | You call Deposit | none |
+| `TradingFee` | A fill is charged a fee, or receives a rebate as a positive amount | `instrument`, `orderId`, `fillId`, `groupId` |
+| `Settlement` | A perpetual fill realises profit or loss | `instrument`, `orderId`, `fillId`, `groupId` |
+| `FundingPayment` | Funding is paid or received for a funding time | `instrument`, `groupId` |
+
+`groupId` ties together postings that belong to the same event: the fee and settlement from one fill share it, and so
+do the funding payments for one instrument at one funding time. Treat it as an opaque string. A funding payment looks
+like this:
+
+```json
+{
+  "id": "funding-charge-7f3a",
+  "effectiveAt": "2026-10-25T08:00:00Z",
+  "amount": { "asset": "USDT", "value": "-2" },
+  "type": "FundingPayment",
+  "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+  "orderId": null,
+  "fillId": null,
+  "positionId": null,
+  "groupId": "funding:BTC-USDT-PERP:1792915200000",
+  "nativeType": null,
+  "description": null
+}
+```
+
+<Note>
+  Because funding can post after its funding time, a `FundingPayment` can sort behind history you have already read.
+  If you track funding through List transactions, re-read the most recent page or two after each funding time, and
+  match transactions by `id`, which is stable across history and the stream.
+</Note>
+
+Order records also carry the totals: each order's `totalFees` and `realizedPnl`, and each fill's `fees`,
+`realizedPnl` and `role` (maker or taker), through [Get an order](/api-reference/platform/hosts/get-order) and
+[List fills](/api-reference/platform/hosts/list-fills).

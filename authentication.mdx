@@ -1,0 +1,107 @@
+---
+title: "Authentication"
+description: "Create API keys, authenticate requests and streams with two headers, and know which operations are public."
+---
+
+Plurex authenticates API requests with an API key and its secret, sent as two headers. Market data and host discovery
+are public; everything that touches an account needs a key.
+
+## Your tenant
+
+Every account and API key belongs to a **tenant**. Your tenant is created when you sign up, and you act as it whenever
+you call the API with one of your keys. Your **tenant ID** is shown on the **DevTools** page of the
+[Plurex web app](https://platform.plurex.io), next to your API keys.
+
+## Create an API key
+
+<Steps>
+  <Step title="Open DevTools">
+    Log in to the [web app](https://platform.plurex.io) and open **DevTools**.
+  </Step>
+  <Step title="Create the key">
+    Under **API Keys**, choose **+ API Key** and give the key a label that says where you will use it, such as
+    `research-server`. If you have two-factor authentication turned on, enter your one-time code when asked.
+  </Step>
+  <Step title="Save the key and secret">
+    The app shows the **Key** and the **Secret**. Store both somewhere safe, such as a secrets manager. This is the
+    only time the secret is shown; if you lose it, delete the key and create a new one.
+  </Step>
+</Steps>
+
+To revoke a key, delete it on the same page. Anything still using it stops working. Deleting a key also
+needs your one-time code when two-factor authentication is on.
+
+<Warning>
+  A key acts as your tenant, with full access to all its accounts: it can place and cancel orders, and connect,
+  update and delete accounts. Keys have no scopes and no expiry. Use them only from your own servers, never in browser
+  or mobile code, and keep them out of source control. Create a separate key for each application so you can revoke one
+  without affecting the others.
+</Warning>
+
+## Authenticate a request
+
+Every operation is a `POST` to `https://api.plurex.io/api/v1/...` with a JSON body. Send your key and secret in two
+headers:
+
+| Header | Value |
+| --- | --- |
+| `X-API-KEY` | Your API key |
+| `X-API-SECRET` | Its secret |
+
+Both are required. A request with only one of them is treated as unauthenticated.
+
+```bash
+curl --request POST \
+  --url https://api.plurex.io/api/v1/accounts/query/List \
+  --header 'Content-Type: application/json' \
+  --header "X-API-KEY: $PLUREX_API_KEY" \
+  --header "X-API-SECRET: $PLUREX_API_SECRET" \
+  --data "{\"tenantId\": \"$PLUREX_TENANT_ID\"}"
+```
+
+## Public operations
+
+These operations need no key, so you can explore markets and hosts before you sign up.
+
+| Area | Operations |
+| --- | --- |
+| Market data | Every venue operation: [List venues](/api-reference/platform/venues/list), [List venue markets](/api-reference/platform/venues/list-markets), order books, recent trades, prices, best quotes, market statistics, indicative funding, open interest and candles |
+| Host discovery | [List hosts](/api-reference/platform/hosts/list) and [List host markets](/api-reference/platform/hosts/list-markets) |
+
+Every other operation, including all paper operations, needs both headers.
+
+## Tenant ID or account ID
+
+Operations that create or list accounts work across your tenant, so they take a `tenantId`:
+
+- [Connect an account](/api-reference/platform/accounts/connect)
+- [List accounts](/api-reference/platform/accounts/list)
+- [Create a paper account](/api-reference/platform/paper/create)
+
+Every other authenticated operation acts on one account and takes an `accountId`. Plurex checks that the account
+belongs to the tenant your key acts for.
+
+## Authentication errors
+
+| Status | Code | Meaning | What to do |
+| --- | --- | --- | --- |
+| 401 | `Unauthenticated` | A header is missing, or the key or secret is wrong | Check both headers and that the key has not been deleted |
+| 403 | `Forbidden` | The key is valid but has no access to that account or operation | Check the `accountId` or `tenantId` belongs to your tenant |
+
+Authentication is checked before the request body, so a request with bad credentials returns 401 even if its body is
+also invalid. See [Errors](/api-reference/platform/errors) for every error code.
+
+## Streams
+
+The account streams use the same headers. Send `X-API-KEY` and `X-API-SECRET` with the WebSocket upgrade request:
+
+```bash
+websocat \
+  --header "X-API-KEY: $PLUREX_API_KEY" \
+  --header "X-API-SECRET: $PLUREX_API_SECRET" \
+  "wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountOrders/$PLUREX_ACCOUNT_ID"
+```
+
+If authentication or access fails, the server answers the upgrade request with an ordinary HTTP error and the usual
+error body, instead of opening the stream. Browsers cannot set these headers on a WebSocket, so browser
+authentication for streams is not supported; connect from your server. See [Streams](/guides/streams).

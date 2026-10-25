@@ -1,6 +1,154 @@
 ---
-title: "Add Exchange"
-description: "Add your first Exchange account."
+title: "Connect an exchange account"
+description: "Create an exchange API key and connect your exchange account to Plurex in the web app or through the API."
 ---
 
-TODO
+Connecting an exchange account lets Plurex read its balances, positions and orders and trade on it for you, through
+the web app or the API. Plurex talks to the exchange with an API key you create at the exchange; your exchange login
+never passes through Plurex.
+
+## Before you start
+
+You need:
+
+- **An account on a supported exchange.** The real hosts in [List hosts](/api-reference/platform/hosts/list) (those
+  with `isPaper: false`) are the exchanges you can connect. Today these are Bybit and VALR.
+- **A Plurex account.** For the API route, you also need your tenant ID and an API key from **DevTools**; see
+  [Authentication](/authentication).
+
+<Tip>
+  Not ready to connect real funds? Create a [paper account](/paper/overview) instead. It trades the same markets
+  through the same API calls, with simulated funds.
+</Tip>
+
+## Create an API key at the exchange
+
+In your exchange's API management settings, create an API key for Plurex that can **read** your account and **trade**.
+Plurex verifies the key with the exchange when you connect, and refuses it if the exchange rejects it or it cannot
+both read and trade, for example a read-only key or one without full trading permissions. Keep the exchange's public key and secret key to hand for the next step.
+
+- **Bybit**: the key must belong to a **Unified Trading Account** and have trading permissions for spot, contracts,
+  derivatives and options. Plurex requires all of them, even if you plan to trade only some markets.
+- **VALR**: the key must be able to view the account and trade.
+
+Follow your exchange's own documentation for creating keys. Store the exchange secret as carefully as your Plurex API
+secret: anyone holding both halves can trade your exchange account.
+
+## Connect in the web app
+
+<Steps>
+  <Step title="Open Accounts">
+    In the [web app](https://platform.plurex.io), open **Accounts** and choose **Connect Account**.
+  </Step>
+  <Step title="Choose the venue and host">
+    **Select Venue** picks the exchange. **Select Host** picks how you trade on it: choose the real host, not one
+    marked **Paper**.
+  </Step>
+  <Step title="Choose the credential type">
+    Choose **ApiKey**. If the host offers only one credential type, it is selected for you.
+  </Step>
+  <Step title="Enter the account details">
+    Give the account a name you will recognise, such as `Bybit main`, and paste the exchange's **Public Key** and
+    **Secret Key**. Plurex checks the key with the exchange, then adds the account to your list.
+  </Step>
+</Steps>
+
+## Connect through the API
+
+Call [Connect an account](/api-reference/platform/accounts/connect) with your tenant ID, a name, the real host's ID and
+the exchange key:
+
+```bash
+curl --request POST \
+  --url https://api.plurex.io/api/v1/accounts/command/Connect \
+  --header 'Content-Type: application/json' \
+  --header "X-API-KEY: $PLUREX_API_KEY" \
+  --header "X-API-SECRET: $PLUREX_API_SECRET" \
+  --data @- <<EOF
+{
+  "tenantId": "$PLUREX_TENANT_ID",
+  "name": "Bybit main",
+  "hostId": "bybit",
+  "credential": {
+    "type": "ApiKey",
+    "publicKey": "$EXCHANGE_API_KEY",
+    "secretKey": "$EXCHANGE_API_SECRET"
+  }
+}
+EOF
+```
+
+The `X-API-KEY` and `X-API-SECRET` headers authenticate you to Plurex; the `credential` in the body is the exchange's
+key. The host must list `ApiKey` in its `supportedCredentialTypes`.
+
+The response is the new account. Its `credential` shows the public key and the credential type; the secret is never
+returned.
+
+```json
+{
+  "data": {
+    "id": "acc_123",
+    "tenantId": "ten_abc",
+    "hostId": "bybit",
+    "isPaper": false,
+    "name": "Bybit main",
+    "credential": { "publicValue": "your-exchange-public-key", "credentialType": "ApiKey" }
+  }
+}
+```
+
+Use `data.id` as the `accountId` for every trading operation. Before trading, read the host's capabilities and the
+market's order rules with [List hosts](/api-reference/platform/hosts/list) and
+[List host markets](/api-reference/platform/hosts/list-markets).
+
+### If connecting fails
+
+If the exchange rejects the key, or the key cannot read and trade, Plurex refuses it and no account is created.
+Retrying with the same key will not help. Check that you copied both halves correctly, that the key is active, and that
+it has the permissions [listed above](#create-an-api-key-at-the-exchange); fix it at the exchange or create a new key,
+then connect again.
+
+| Error | Meaning | What to do |
+| --- | --- | --- |
+| `429 RateLimited` | The exchange rate-limited the check | Wait and try again, after checking as below |
+| `500`, `502`, `503` or `504` | Plurex or the exchange could not complete the request | Check as below, then retry; if the same key keeps failing, check it as above |
+
+<Warning>
+  Connecting is not safe to repeat: if a first attempt succeeded, a repeat connects a second account. When the outcome
+  is unclear, for example after a timeout or a 5xx error, check [List accounts](/api-reference/platform/accounts/list)
+  for an account with the same `hostId` whose `credential.publicValue` is your exchange public key before trying
+  again. Identify it by host and key, not by name.
+</Warning>
+
+## Rotate credentials
+
+When you replace the API key at the exchange, update the account rather than connecting a new one, so its ID and
+history stay the same.
+
+- **Web app**: in **Accounts**, choose **Refresh** on the account and enter the new public and secret keys.
+- **API**: call [Update account credentials](/api-reference/platform/accounts/update-connection):
+
+```json
+{
+  "accountId": "acc_123",
+  "credential": {
+    "type": "ApiKey",
+    "publicKey": "new-exchange-public-key",
+    "secretKey": "new-exchange-secret-key"
+  }
+}
+```
+
+The new key is checked with the exchange in the same way, and the call is safe to repeat with the same values.
+Plurex does not check that the new key belongs to the same exchange account, so use a key for that account; otherwise
+the account's orders, balances and history will come from a different exchange account.
+
+## Remove an account
+
+Delete the account in **Accounts** or with [Delete an account](/api-reference/platform/accounts/delete). Deleting
+breaks the history records of trading activity that used the account, and it cannot be undone. A repeat after a
+successful delete returns an error, because the account no longer exists; confirm with
+[List accounts](/api-reference/platform/accounts/list) that it is gone.
+
+Deleting the account in Plurex does not delete the API key at the exchange. Revoke it there too if you no longer need
+it.

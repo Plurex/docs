@@ -1,0 +1,228 @@
+---
+title: "Hosts"
+description: "How Plurex models trading: host markets, orders, fills, wallets, positions, margin, market settings and transactions."
+---
+
+A host holds trading accounts and executes orders on a venue's markets: an exchange's own account service, or a paper host that simulates one. Every account action goes through a host, and every host uses the same operations and the same shapes. This page explains that model. For step-by-step trading, see [Orders](/guides/orders), [Streams](/guides/streams) and [Portfolio](/guides/portfolio).
+
+## Promise only what every host can keep
+
+Plurex aggregates hosts that report different things. Its models follow one rule: **a field is required only when every supported host can report it truthfully.** Anything a host may not report is nullable, and `null` always means "the host did not report it". Plurex never estimates, derives or backfills a value the host did not give.
+
+| Field | When it is `null` | What Plurex does not do |
+| --- | --- | --- |
+| `Order.averagePrice` | The host does not report an average execution price. | Calculate it from fills. |
+| `Order.sizing` (market orders) | The host does not report both the amount and its unit. | Infer the unit from fills or default to one. |
+| `Order.clientOrderId` | None was submitted, or the host does not report it. | Fill it in from your request. |
+| `Fill.id` | The host has no execution ID. | Invent one. |
+| `Fill.role` | The host does not say whether you were maker or taker. | Guess from price or timing. |
+| `Position.entryPrice` | The host does not report it. | Compute it from your fills. |
+| `AccountTransaction.orderId`, `fillId`, `positionId` | The host does not report the link reliably. | Match postings to orders by time or amount. |
+
+Where hosts differ in what they *support*, rather than what they report, the difference is declared in their capabilities and market summaries. See [Capabilities](/capabilities/overview).
+
+## The host header
+
+[List hosts](/api-reference/platform/hosts/list) is public and returns one `HostHeader` per host, real and paper:
+
+| Field | Meaning |
+| --- | --- |
+| `id` | The host ID you pass as `hostId`, for example `bybit` or `bybit-paper`. |
+| `venueIds` | The venues this host executes on. Read it as a list. |
+| `isPaper` | `true` for a paper host. |
+| `modelHostId` | For a paper host, the real host whose markets and order rules it simulates. `null` for a real host. |
+| `supportedCredentialTypes` | How accounts are created: `ApiKey` for hosts you connect with exchange credentials, `Paper` for paper hosts. |
+| `capabilities` | Every operation the host offers, grouped by area, with each variant's support. See [Host capabilities](/capabilities/host-capabilities). |
+
+## Host markets
+
+[List host markets](/api-reference/platform/hosts/list-markets) is public and returns what you may trade on a host. Each `HostMarketSummary` has:
+
+- `venueId`, `symbol` and `instrument`, which join it to the [venue market](/concepts/venues-and-hosts#joining-a-venue-market-to-a-host-market);
+- `contractDetails`, which says what one contract is (see [Instruments and sizing](/concepts/instruments));
+- `orderTypes`: `limit` is always present; `market`, `triggerLimit` and `triggerMarket` are `null` where the market does not offer them. Each carries the market's **order rules**: increments, minimums and the options it accepts;
+- `settings`: `leverage` and `positionMode`, each `null` where the market has no such setting.
+
+Plurex validates orders against exactly these rules and never rounds your input. See [Order rules](/capabilities/order-rules).
+
+## Orders
+
+Submit one of four order types with [Submit an order](/api-reference/platform/hosts/submit-order):
+
+| Type | Priced by | Sized by |
+| --- | --- | --- |
+| `Limit` | `price` | `size` in native contracts |
+| `Market` | best available | `sizing`: `Size` (native contracts) or `Notional` (quote asset) |
+| `TriggerLimit` | `price`, placed when the `trigger` fires | `size` |
+| `TriggerMarket` | best available, when the `trigger` fires | `sizing` |
+
+The host returns an `Order`, the same shape that [Get an order](/api-reference/platform/hosts/get-order), the list operations and the order stream return. It is host-reported state:
+
+```json
+{
+  "type": "Limit",
+  "id": "5d1a7c3e-90b2-4f51-a8c4-1e0f9b2d7a61",
+  "createdAt": "2026-10-25T09:30:00.412Z",
+  "side": "Buy",
+  "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+  "state": "Live",
+  "sizeTraded": "0.004",
+  "averagePrice": "64010.0",
+  "realizedPnl": null,
+  "totalFees": [{ "asset": "USDT", "value": "0.0512" }],
+  "clientOrderId": "mm-bid-0412",
+  "size": "0.010",
+  "price": "64010.0"
+}
+```
+
+### Order state
+
+| `state` | Meaning |
+| --- | --- |
+| `Live` | Open on the host. A partly filled order is `Live` with `sizeTraded` above zero. |
+| `Filled` | Fully filled. |
+| `Cancelled` | Cancelled; `sizeTraded` shows anything that filled first. |
+| `Rejected` | The host refused it. |
+
+These four states are the set every host can report without guessing. There is no `PartiallyFilled` state: check `sizeTraded`. There is no `updatedAt`: an order has `createdAt`, and each fill has its own `executedAt`.
+
+### What an order does not echo
+
+The options you submit (`tif`, `postOnly`, `reduceOnly`, `positionEffect`) are not echoed back, because hosts do not report them consistently. Keep your own record of what you sent, keyed by `id` or `clientOrderId`.
+
+For `Market` and `TriggerMarket` orders, `sizing` is the requested amount and unit as the host accepted it. The host may round a notional. It is `null` when the host does not report both, because a guessed unit would be worse than none: `Size` and `Notional` read very differently.
+
+`averagePrice` is the host's own figure. Plurex does not calculate it from fills, so it can be `null` while `sizeTraded` is above zero.
+
+## Fills
+
+[List fills](/api-reference/platform/hosts/list-fills) returns executions for one order, one instrument or the whole account; which variants a host offers is in its capabilities.
+
+```json
+{
+  "orderId": "5d1a7c3e-90b2-4f51-a8c4-1e0f9b2d7a61",
+  "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+  "side": "Buy",
+  "executedAt": "2026-10-25T09:30:02.087Z",
+  "price": "64010.0",
+  "size": "0.004",
+  "fees": [{ "asset": "USDT", "value": "0.0512" }],
+  "realizedPnl": null,
+  "id": "e3b9f0c2-41d7-4a8e-9b65-0c2d8f1a7e44",
+  "role": "Maker"
+}
+```
+
+- `side` is **your** side, which is your order's side, not the aggressor's side.
+- `size` is in native contracts.
+- `id` is the host's execution ID, or `null` when the host has none.
+- `role` is `Maker` or `Taker`, or `null` when not reported.
+
+## Portfolio
+
+Four reads describe what the account holds. All need an API key; none needs anything but the `accountId` (and an `instrument` for the per-market read).
+
+| Operation | Returns |
+| --- | --- |
+| [List wallets](/api-reference/platform/hosts/list-wallets) | One `Wallet` per balance: `asset`, `totalBalance`, `availableBalance`. `id` and `name` are `null` when the host has a single unnamed wallet per asset. |
+| [List positions](/api-reference/platform/hosts/list-positions) | One `MarketPosition` per derivative market with an open position. |
+| [List margin states](/api-reference/platform/hosts/list-margin-states) | One `AccountMarginState` per margin group: `baseCollateralAsset`, `totalCollateralValue`, `totalInitialMargin`, `totalMaintenanceMargin`, and `accountMarginRatio` when the host reports it. |
+| [Get market account state](/api-reference/platform/hosts/get-market-state) | Balances, position, collateral and leverage for one market. |
+
+### Positions
+
+A `MarketPosition` always has both a `long` and a `short` leg, each with a `size` in native contracts and an `entryPrice` when the host reports it. In `Netting` mode the market holds one net position, so at most one leg is non-zero. In `Hedging` mode both can be open at once:
+
+```json
+{
+  "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+  "long": { "size": "0.010", "entryPrice": "63800.0" },
+  "short": { "size": "0.004", "entryPrice": "64200.0" },
+  "mode": "Hedging"
+}
+```
+
+`mode` is `null` when the host does not report it.
+
+### Per-market account state
+
+[Get market account state](/api-reference/platform/hosts/get-market-state) answers "what can I do on this market right now?" in one call. The result is one of three shapes, by `type`:
+
+| `type` | Returned for | Contains |
+| --- | --- | --- |
+| `Derivative` | Perpetuals and other derivatives | `currentLeverageSetting`, `collateral` (`valueAsset`, `total`, `available`) and the `position` |
+| `Spot` | Spot markets | `available` balances of the `base` and `quote` assets |
+| `SpotMargin` | Spot markets whose leverage is a market-level setting (only where `settings.leverage` is non-null) | Leverage, collateral and both balances |
+
+Spot margin that a host offers only per order is not modelled; those markets are returned as `Spot`.
+
+## Market settings: leverage and position mode
+
+Leverage and position mode are **settings of a market on your account**, not fields on an order. A market's `settings` says whether each exists there:
+
+- `settings.leverage` is `null` when the market has no leverage control. Otherwise it gives `min`, `max` and `step` (accepted values are exactly `min` plus a whole number of steps), whether you can read it (`get`), and `setEffectScope`: what a change affects (`Market`, a host-defined `MarketGroup`, or the whole `Account`), or `null` when it cannot be set.
+- `settings.positionMode` lists the modes the market offers (`Hedging`, `Netting`), with the same `get` and `setEffectScope`.
+
+[Get market leverage](/api-reference/platform/hosts/get-leverage) returns one of three settings:
+
+| `type` | Meaning |
+| --- | --- |
+| `Leveraged` | Leverage is on, at `leverage`. |
+| `Disabled` | The control exists and leverage is off for this account, so orders are not leveraged. |
+| `Unknown` | The host cannot report the setting truthfully; `message` says why. |
+
+`settings.leverage: null` means the market has no leverage control, so you cannot get or set it. `Disabled` from Get market leverage means the control exists and is off. A `Derivative` market state always includes `currentLeverageSetting`; on a market with no leverage control (for example on a paper host) it reads `Disabled`, meaning orders are not leveraged. [Set market leverage](/api-reference/platform/hosts/set-leverage) and [Set market position mode](/api-reference/platform/hosts/set-position-mode) return the resulting setting and are safe to repeat with the same values. When `setEffectScope` is wider than `Market`, re-read the other markets it affects rather than assume.
+
+## Transactions
+
+[List transactions](/api-reference/platform/hosts/list-transactions) returns the account's balance postings: the ledger behind its wallets. Each `AccountTransaction` is one posting of one asset.
+
+- `amount` is signed from your point of view: positive increases the balance, negative decreases it.
+- `type` classifies the posting: `TradingFee`, `FundingPayment`, `BorrowInterest`, `Financing`, `LiquidationFee`, `Settlement`, `Rebate`, `Deposit`, `Withdrawal`, `Transfer`, `Conversion`, `Adjustment` or `Other`. A host lists the types it reports in `accountTransactions.supportedTransactionTypes`.
+- `nativeType` keeps the host's own classification. `Other` is used only for a real posting whose host meaning has no standard type.
+- `id` is stable within the account and identical in history and in the [transaction stream](/api-reference/platform/hosts/subscribe-to-account-transactions), so you can merge the two without duplicates.
+- `groupId` links postings that come from one host record, such as the settlement and fee of one execution.
+
+```json
+{
+  "items": [
+    {
+      "id": "tx-88410-1",
+      "effectiveAt": "2026-10-25T10:02:14.530Z",
+      "amount": { "asset": "USDT", "value": "12.40" },
+      "type": "Settlement",
+      "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+      "orderId": "7a20c6d4-3b18-4e0f-92d5-6f8e1c4b9a07",
+      "fillId": "b81e4f27-6c3a-4d95-8e10-2a7f5c9d3b66",
+      "positionId": null,
+      "groupId": "88410",
+      "nativeType": "TRADE",
+      "description": null
+    },
+    {
+      "id": "tx-88410-2",
+      "effectiveAt": "2026-10-25T10:02:14.530Z",
+      "amount": { "asset": "USDT", "value": "-0.0384" },
+      "type": "TradingFee",
+      "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+      "orderId": "7a20c6d4-3b18-4e0f-92d5-6f8e1c4b9a07",
+      "fillId": "b81e4f27-6c3a-4d95-8e10-2a7f5c9d3b66",
+      "positionId": null,
+      "groupId": "88410",
+      "nativeType": "TRADE",
+      "description": null
+    }
+  ],
+  "nextCursor": null
+}
+```
+
+Results come in the order the host's `accountTransactions.listTransactions` capability states. A host without transaction history returns `422 NotSupported`.
+
+## Related
+
+- [Venues and hosts](/concepts/venues-and-hosts) for where hosts fit.
+- [Host capabilities](/capabilities/host-capabilities) and [Order rules](/capabilities/order-rules) to decide what to send.
+- [Orders](/guides/orders), [Streams](/guides/streams) and [Portfolio](/guides/portfolio) for how-to guides.
+- [Paper trading](/paper/overview) for paper hosts.

@@ -1,0 +1,422 @@
+---
+title: "Market order rules"
+description: "Read a host market's order types, per-input rules, options, trigger rules and settings, and build orders that pass them exactly."
+---
+
+Every market a host lists has a **host market summary**: the order types it accepts, the rules for every order input, the options each order type supports, and the market's settings. It is everything you need to build a valid order before you send it.
+
+Plurex validates orders against exactly these published rules and never rounds your inputs. An order that follows them is passed to the host; one that breaks them returns `422 Rejected` without reaching the host.
+
+Read summaries with [List host markets](/api-reference/platform/hosts/list-markets). It is public and paged, and takes optional filters:
+
+```bash
+curl --request POST https://api.plurex.io/api/v1/hosts/query/ListMarkets \
+  --header 'Content-Type: application/json' \
+  --data '{ "hostId": "bybit", "base": "BTC", "types": ["Perp"] }'
+```
+
+## The host market summary
+
+| Field | Meaning |
+| --- | --- |
+| `venueId` | The venue the market trades on. Join to the venue market with the same `instrument`. |
+| `symbol` | The canonical symbol, such as `BTC-USDT-PERP`. Read-only; orders take `instrument`. |
+| `instrument` | The instrument to put in orders. See [Instruments](/concepts/instruments). |
+| `contractDetails` | What one unit of `size` is. |
+| `orderTypes` | One entry per order type; `null` means the market does not accept it. |
+| `settings` | Leverage and position mode on this market; `null` means the setting does not exist here. |
+
+Every field is always present. Nullable fields are sent as `null`, never omitted.
+
+## Contract details: what a size means
+
+Every size is in **native contracts**: one contract is `contractSize` units of `contractSizeAsset`. This applies to orders, fills, positions and size rules. A size is not necessarily an amount of the base asset. Notionals are always amounts of the quote asset.
+
+| `contractType` | Typical `contractSizeAsset` | Example: size `"2"` with `contractSize` `"1"` |
+| --- | --- | --- |
+| `Spot` | The base asset | 2 BTC |
+| `Linear` | The base asset | A position of 2 BTC, settled in `settlementAsset` |
+| `Inverse` | The quote asset | 2 USD of exposure, settled in `settlementAsset` (for example BTC) |
+
+`Quanto` contracts also exist; as always, read `contractSize` and `contractSizeAsset` rather than assuming them from the type. `settlementAsset` is `null` for spot markets, which have no single settlement asset.
+
+The **value** of a priced order, in the quote asset, is computed from `contractDetails`:
+
+- When `contractSizeAsset` is the instrument's base asset: `value = price × size × contractSize`.
+- When `contractSizeAsset` is the instrument's quote asset: `value = size × contractSize`. The price does not matter.
+
+## Order types
+
+`orderTypes` has one entry for each order type in [SubmitOrder](/api-reference/platform/hosts/submit-order):
+
+| Order `type` | Entry | Present |
+| --- | --- | --- |
+| `Limit` | `orderTypes.limit` | Always. Every listed market accepts limit orders. |
+| `Market` | `orderTypes.market` | When non-null |
+| `TriggerLimit` | `orderTypes.triggerLimit` | When non-null |
+| `TriggerMarket` | `orderTypes.triggerMarket` | When non-null |
+
+Order types have no entry in the host header; the market summary is the only place to check. Sending a type whose entry is `null` returns `422 NotSupported`. Different order types on the same market can have different rules, so always read the entry for the type you send.
+
+## Input rules
+
+Each order type carries one rules object per input. Every number names the input it limits.
+
+| Rules object | On | Fields | Rule |
+| --- | --- | --- | --- |
+| `price` | `limit`, `triggerLimit` | `increment` | `price` is a whole multiple of `increment`, in quote per base. |
+| `size` | `limit`, `triggerLimit`; on `market` and `triggerMarket` when `Size` sizing is offered | `increment`, `min` | `size` is a whole multiple of `increment`, in native contracts, and at least `min`. |
+| `notional` | `market`, `triggerMarket` when `Notional` sizing is offered | `increment`, `min` | `notional` is a whole multiple of `increment`, in quote, and at least `min`. |
+| `value` | `limit`, `triggerLimit` | `min` | The computed value is at least `min`. Never sent; computed from `price` and `size`. |
+| `trigger.price` | `triggerLimit`, `triggerMarket` | `increment` | `trigger.price` is a whole multiple of `increment`. |
+
+Read the edge cases precisely:
+
+- **`min: null` means the host publishes no minimum.** It does not mean zero, and the host may still reject a very small order.
+- **`notional.increment: null` means the host publishes no step.** Plurex checks only the minimum; the host may reject or round the amount. The returned order's `sizing` shows what the host accepted, when the host reports it.
+- **Market orders have no value floor here.** They have no price to check against. A host may still reject one worth too little at its own price.
+- **Maximums are not published.** The host can still reject an order above its own limits or outside its price bands.
+- **Minimum size is not enough on its own.** A limit order at the minimum size can still fall below `value.min`. Check both.
+
+## Options
+
+Every request option has its own flag, and nothing is inferred from anything else.
+
+| Flag | Request field | Rule |
+| --- | --- | --- |
+| `supportsReduceOnly` | `reduceOnly` (required on every order) | `true` only when the flag is `true`. Otherwise send `false`. |
+| `supportedTimeInForce` | `tif` | Must be in the set. Limit orders: `GTC`, `IOC`, `FOK`. Market orders: `IOC`, `FOK`; `tif` defaults to `IOC`, which must still be in the set. |
+| `supportsPostOnly` (limit types only) | `postOnly` | `true` only when the flag is `true`. Defaults to `false`. |
+| `supportsPositionEffect` | `positionEffect` | `Open` or `Close` only when the flag is `true`; otherwise omit it or send `null` to let the host decide. `Open` together with `reduceOnly: true` is rejected. |
+
+`supportsPositionEffect` is independent of position mode: a market can accept `positionEffect` whatever its position mode support.
+
+## Market order sizing
+
+A market order states its quantity in `sizing`, either `{"type": "Size", "size": ...}` in native contracts or `{"type": "Notional", "notional": ...}` in the quote asset. `sizingSupport` lists which of these each side accepts:
+
+```json
+"sizingSupport": { "buy": ["Size", "Notional"], "sell": ["Size"] }
+```
+
+`size` rules are present exactly when `Size` appears on either side, and `notional` rules exactly when `Notional` does. Using a sizing type the side does not list returns `422 Rejected`.
+
+A notional is not a size promise. The size you receive is the notional divided by the fill price, and it can fall below the market's `size.min`.
+
+## Trigger rules
+
+Trigger orders add `trigger`, a `TriggerOrderSupport`:
+
+| Field | Meaning |
+| --- | --- |
+| `price` | Rules for the order's `trigger.price`. |
+| `buyConditions`, `sellConditions` | The conditions allowed for each side. `RefPriceGTE` fires when the reference price is at or above `trigger.price`; `RefPriceLTE` when it is at or below. |
+| `referencePrice` | Who chooses the price the trigger watches. |
+
+`referencePrice` has two forms, and they require opposite things of your request:
+
+| Policy | Example | Your `trigger.reference` |
+| --- | --- | --- |
+| `UserSelectable` | `{"type": "UserSelectable", "prices": ["LastTrade", "Mark"]}` | **Required**, and one of `prices`. Omitting it is rejected. |
+| `HostSelected` | `{"type": "HostSelected", "price": "LastTrade"}` | **Omit it**, or send `null`. Sending any value is rejected, even the one the host uses. |
+
+With `HostSelected`, `price` tells you which reference the host uses; `null` means the host does not disclose it. Do not assume one.
+
+## Settings
+
+`settings` describes the market's account settings. Each is `null` when the setting does not exist on this market. The host header must also allow the operation; see [Host capabilities](/capabilities/host-capabilities#marketsettings).
+
+### Leverage
+
+`settings.leverage` is a `MarketLeverageSpec`:
+
+| Field | Meaning |
+| --- | --- |
+| `min`, `max` | Inclusive bounds. |
+| `step` | Accepted values are exactly `min` plus a whole number of steps. Irrelevant when `min` equals `max`, which is a single fixed leverage. |
+| `get` | [GetMarketLeverage](/api-reference/platform/hosts/get-leverage) works on this market. |
+| `setEffectScope` | [SetMarketLeverage](/api-reference/platform/hosts/set-leverage) works on this market; `null` means it cannot be set. |
+
+A valid leverage `L` satisfies `min ≤ L ≤ max` and `(L − min) / step` is a whole number. The grid starts at `min`, not at zero. Off-grid values return `422 Rejected`.
+
+Leverage is a market setting, not an order field. `settings.leverage: null` means the market has no leverage control at all. That is different from GetMarketLeverage returning `Disabled`, which means the control exists and leverage is off for the account.
+
+### Position mode
+
+`settings.positionMode` lists the modes the market accepts in `values` (`Hedging`, `Netting`), with the same `get` and `setEffectScope` fields for [GetMarketPositionMode](/api-reference/platform/hosts/get-position-mode) and [SetMarketPositionMode](/api-reference/platform/hosts/set-position-mode). Setting a mode not in `values` returns `422 Rejected`.
+
+### How far a change reaches
+
+`setEffectScope` tells you what else a set changes:
+
+| `setEffectScope.type` | A set changes |
+| --- | --- |
+| `Market` | This market only. |
+| `MarketGroup` | A host-defined group of markets that includes this one. |
+| `Account` | Every market on the account. |
+
+After a set with a wider scope, re-read the setting on the other markets you trade instead of assuming their values.
+
+## Build a valid order
+
+Use exact decimal arithmetic throughout; every value is a JSON string such as `"0.001"`. Rounding direction is a trading decision, so Plurex leaves it to you.
+
+<Steps>
+  <Step title="Find the order type's rules">
+    Take `orderTypes.limit`, `.market`, `.triggerLimit` or `.triggerMarket`. If it is `null`, the market does not accept that type.
+  </Step>
+  <Step title="Put price inputs on their grid">
+    Round `price` and `trigger.price` to whole multiples of their increments. For a buy, rounding the limit price down never pays more than you intended; for a sell, rounding up never sells for less.
+  </Step>
+  <Step title="Put the quantity on its grid">
+    For a size, round down to a whole multiple of `size.increment` and check it is at least `size.min`. For a notional, check the side allows `Notional`, round to `notional.increment` when it is non-null, and check `notional.min`.
+  </Step>
+  <Step title="Check the value floor">
+    For limit and trigger limit orders, compute the value from `contractDetails` and check it is at least `value.min`. If it is short, raise the size by whole increments.
+  </Step>
+  <Step title="Set the options from the flags">
+    Pick a `tif` from `supportedTimeInForce`; set `postOnly`, `reduceOnly` and `positionEffect` only where their flags allow.
+  </Step>
+  <Step title="Set the trigger">
+    Pick a condition from `buyConditions` or `sellConditions` for your side. Send `trigger.reference` from `prices` for `UserSelectable`; omit it for `HostSelected`.
+  </Step>
+</Steps>
+
+```python
+from decimal import Decimal, ROUND_FLOOR, ROUND_CEILING
+
+def to_grid(x: Decimal, inc: Decimal, rounding) -> Decimal:
+    return (x / inc).to_integral_value(rounding) * inc
+
+def order_value(market, price: Decimal, size: Decimal) -> Decimal:
+    cd, inst = market["contractDetails"], market["instrument"]
+    contract_size = Decimal(cd["contractSize"])
+    if cd["contractSizeAsset"] == inst["base"]:
+        return price * size * contract_size
+    if cd["contractSizeAsset"] == inst["quote"]:
+        return size * contract_size
+    raise ValueError("unrecognised contract size asset")
+
+def limit_order(market, side, price: Decimal, budget_quote: Decimal):
+    spec = market["orderTypes"]["limit"]
+    if "GTC" not in spec["options"]["supportedTimeInForce"]:
+        raise ValueError("GTC not offered on this market")
+    price = to_grid(price, Decimal(spec["price"]["increment"]),
+                    ROUND_FLOOR if side == "Buy" else ROUND_CEILING)
+    unit_value = order_value(market, price, Decimal(1))       # value of one contract
+    inc = Decimal(spec["size"]["increment"])
+    size = to_grid(budget_quote / unit_value, inc, ROUND_FLOOR)
+    if spec["size"]["min"] is not None and size < Decimal(spec["size"]["min"]):
+        raise ValueError("budget below the minimum size")
+    if spec["value"]["min"] is not None and order_value(market, price, size) < Decimal(spec["value"]["min"]):
+        raise ValueError("budget below the minimum value")
+    return {"type": "Limit", "instrument": market["instrument"], "side": side,
+            "price": str(price), "size": str(size), "reduceOnly": False, "tif": "GTC"}
+```
+
+## Worked examples
+
+The rules in these examples are illustrative; read the live values from List host markets.
+
+### Limit buy on a linear perpetual
+
+Rules: `price.increment` `"0.1"`, `size.increment` `"0.001"`, `size.min` `"0.001"`, `value.min` `"5"`, one contract is 1 BTC. You want to buy about 1,000 USDT of BTC at 64,123.47.
+
+1. Price: 64,123.47 is not a multiple of 0.1. Round down for a buy: **64123.4**. Sending `"64123.47"` returns `422 Rejected`.
+2. Size: 1,000 / 64,123.4 = 0.015594…; round down to 0.001: **0.015**, which is at least 0.001.
+3. Value: 64,123.4 × 0.015 × 1 = 961.851 USDT, at least 5.
+
+```json
+{
+  "accountId": "acc_123",
+  "order": {
+    "type": "Limit",
+    "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+    "side": "Buy",
+    "size": "0.015",
+    "price": "64123.4",
+    "reduceOnly": false,
+    "tif": "GTC",
+    "postOnly": true,
+    "clientOrderId": "entry-2026-10-25-001"
+  }
+}
+```
+
+`postOnly` is allowed because `supportsPostOnly` is `true`; `clientOrderId` because the host's `submitOrder.clientOrderId` is supported.
+
+### The value floor
+
+Rules: `price.increment` `"0.00001"`, `size.increment` `"1"`, `size.min` `"1"`, `value.min` `"5"`, one contract is 1 DOGE. A buy of 20 at 0.15 passes the size rules, but its value is 0.15 × 20 = 3 USDT, below 5: `422 Rejected`. The smallest valid size at this price is 5 / 0.15 = 33.3…, rounded **up** to 34, worth 5.10 USDT.
+
+### Sizing an inverse perpetual
+
+`contractDetails`: `{"contractType": "Inverse", "settlementAsset": "BTC", "contractSize": "1", "contractSizeAsset": "USD"}` on a BTC/USD `PerpInv`. One contract is 1 USD. For 2,500 USD of exposure, send `size` `"2500"`, whatever the price. The order's value is 2,500 × 1 = 2,500 USD at any price. Never compute an inverse size as a BTC amount times the price.
+
+### Market buy by notional
+
+Rules on a BTC/ZAR spot market: `sizingSupport.buy` `["Size", "Notional"]`, `notional` `{"increment": null, "min": "10"}`, `size.min` `"0.0001"`.
+
+```json
+{
+  "accountId": "acc_123",
+  "order": {
+    "type": "Market",
+    "instrument": { "type": "Spot", "base": "BTC", "quote": "ZAR" },
+    "side": "Buy",
+    "sizing": { "type": "Notional", "notional": "2500" },
+    "reduceOnly": false,
+    "tif": "IOC"
+  }
+}
+```
+
+With no published increment, Plurex checks only that 2,500 is at least 10; the host may round it, and the returned order's `sizing` shows what it accepted. At a fill price of 1,100,000 ZAR you receive about 0.00227 BTC. A 10 ZAR buy would pass the notional minimum but receive about 0.0000091 BTC, below `size.min`, too small to sell again with a size-based order.
+
+### Leverage grid
+
+| Spec | Accepted | Rejected |
+| --- | --- | --- |
+| `min` `"1"`, `max` `"100"`, `step` `"0.01"` | `"12.34"`, `"1"`, `"100"` | `"12.345"` (off grid), `"150"` (above max), `"0.5"` (below min) |
+| `min` `"1.5"`, `max` `"10"`, `step` `"1"` | `"2.5"`, `"9.5"` | `"2"` (the grid starts at 1.5), `"10"` (off grid: the accepted values are 1.5, 2.5, …, 9.5) |
+| `min` `"5"`, `max` `"5"`, `step` `"1"` | `"5"` only | anything else |
+
+### Stop-loss sell on a perpetual
+
+You hold a long of 0.015 BTC and want to close it at market if the mark price falls to 58,000. Rules: `triggerMarket.trigger.price.increment` `"0.1"`, `referencePrice` `{"type": "UserSelectable", "prices": ["LastTrade", "Index", "Mark"]}`, `sellConditions` `["RefPriceGTE", "RefPriceLTE"]`, `options.supportsReduceOnly` `true`, `supportedTimeInForce` `["IOC"]`.
+
+```json
+{
+  "accountId": "acc_123",
+  "order": {
+    "type": "TriggerMarket",
+    "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+    "side": "Sell",
+    "sizing": { "type": "Size", "size": "0.015" },
+    "reduceOnly": true,
+    "trigger": { "price": "58000.0", "condition": "RefPriceLTE", "reference": "Mark" }
+  }
+}
+```
+
+`tif` is omitted, so it defaults to `IOC`, which the set allows. A trigger price of `"58000.05"` would be rejected as off grid, and omitting `reference` would be rejected because the policy is `UserSelectable`.
+
+On a market whose policy is `{"type": "HostSelected", "price": "LastTrade"}`, the same intent leaves `reference` out, here as a stop-limit sell:
+
+```json
+{
+  "accountId": "acc_123",
+  "order": {
+    "type": "TriggerLimit",
+    "instrument": { "type": "Spot", "base": "BTC", "quote": "ZAR" },
+    "side": "Sell",
+    "size": "0.002",
+    "price": "1080000",
+    "reduceOnly": false,
+    "tif": "GTC",
+    "trigger": { "price": "1090000", "condition": "RefPriceLTE" }
+  }
+}
+```
+
+## Example summaries
+
+Illustrative summaries for a linear perpetual and a spot market. The structure is exact; the numbers are examples, so read the live values with List host markets.
+
+<CodeGroup>
+
+```json Linear perpetual
+{
+  "venueId": "bybit",
+  "symbol": "BTC-USDT-PERP",
+  "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+  "contractDetails": { "contractType": "Linear", "settlementAsset": "USDT", "contractSize": "1", "contractSizeAsset": "BTC" },
+  "orderTypes": {
+    "limit": {
+      "price": { "increment": "0.1" },
+      "size": { "increment": "0.001", "min": "0.001" },
+      "value": { "min": "5" },
+      "options": { "supportsReduceOnly": true, "supportedTimeInForce": ["GTC", "IOC", "FOK"], "supportsPostOnly": true, "supportsPositionEffect": true }
+    },
+    "market": {
+      "sizingSupport": { "buy": ["Size"], "sell": ["Size"] },
+      "size": { "increment": "0.001", "min": "0.001" },
+      "notional": null,
+      "options": { "supportsReduceOnly": true, "supportedTimeInForce": ["IOC"], "supportsPositionEffect": true }
+    },
+    "triggerLimit": {
+      "price": { "increment": "0.1" },
+      "size": { "increment": "0.001", "min": "0.001" },
+      "value": { "min": "5" },
+      "options": { "supportsReduceOnly": true, "supportedTimeInForce": ["GTC", "IOC", "FOK"], "supportsPostOnly": true, "supportsPositionEffect": true },
+      "trigger": {
+        "price": { "increment": "0.1" },
+        "referencePrice": { "type": "UserSelectable", "prices": ["LastTrade", "Index", "Mark"] },
+        "sellConditions": ["RefPriceGTE", "RefPriceLTE"],
+        "buyConditions": ["RefPriceGTE", "RefPriceLTE"]
+      }
+    },
+    "triggerMarket": {
+      "sizingSupport": { "buy": ["Size"], "sell": ["Size"] },
+      "size": { "increment": "0.001", "min": "0.001" },
+      "notional": null,
+      "options": { "supportsReduceOnly": true, "supportedTimeInForce": ["IOC"], "supportsPositionEffect": true },
+      "trigger": {
+        "price": { "increment": "0.1" },
+        "referencePrice": { "type": "UserSelectable", "prices": ["LastTrade", "Index", "Mark"] },
+        "sellConditions": ["RefPriceGTE", "RefPriceLTE"],
+        "buyConditions": ["RefPriceGTE", "RefPriceLTE"]
+      }
+    }
+  },
+  "settings": {
+    "leverage": { "min": "1", "max": "100", "step": "0.01", "get": true, "setEffectScope": { "type": "Market" } },
+    "positionMode": { "values": ["Netting", "Hedging"], "get": true, "setEffectScope": { "type": "Market" } }
+  }
+}
+```
+
+```json Spot
+{
+  "venueId": "valr",
+  "symbol": "BTC-ZAR-SPOT",
+  "instrument": { "type": "Spot", "base": "BTC", "quote": "ZAR" },
+  "contractDetails": { "contractType": "Spot", "settlementAsset": null, "contractSize": "1", "contractSizeAsset": "BTC" },
+  "orderTypes": {
+    "limit": {
+      "price": { "increment": "1" },
+      "size": { "increment": "0.00000001", "min": "0.0001" },
+      "value": { "min": "10" },
+      "options": { "supportsReduceOnly": false, "supportedTimeInForce": ["GTC", "IOC", "FOK"], "supportsPostOnly": true, "supportsPositionEffect": false }
+    },
+    "market": {
+      "sizingSupport": { "buy": ["Size", "Notional"], "sell": ["Size", "Notional"] },
+      "size": { "increment": "0.00000001", "min": "0.0001" },
+      "notional": { "increment": null, "min": "10" },
+      "options": { "supportsReduceOnly": false, "supportedTimeInForce": ["IOC", "FOK"], "supportsPositionEffect": false }
+    },
+    "triggerLimit": {
+      "price": { "increment": "1" },
+      "size": { "increment": "0.00000001", "min": "0.0001" },
+      "value": { "min": "10" },
+      "options": { "supportsReduceOnly": false, "supportedTimeInForce": ["GTC", "IOC", "FOK"], "supportsPostOnly": true, "supportsPositionEffect": false },
+      "trigger": {
+        "price": { "increment": "1" },
+        "referencePrice": { "type": "HostSelected", "price": "LastTrade" },
+        "sellConditions": ["RefPriceGTE", "RefPriceLTE"],
+        "buyConditions": ["RefPriceGTE", "RefPriceLTE"]
+      }
+    },
+    "triggerMarket": null
+  },
+  "settings": { "leverage": null, "positionMode": null }
+}
+```
+
+</CodeGroup>
+
+Reading the spot summary: no trigger market orders; no reduce-only or position effect; market orders can be sized either way on both sides, with no notional step; the host picks the trigger reference, so you must omit it; and there is no leverage or position mode to set.
+
+## Venue increments are not order rules
+
+A venue market summary also has `increments` for `price` and `size`. They are the grid the venue quotes market data on, for formatting and grouping order book levels. They are not order rules: never price or size an order from them. Use the host market summary. See [Venue capabilities](/capabilities/venue-capabilities).

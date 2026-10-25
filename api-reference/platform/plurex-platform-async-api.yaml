@@ -1,0 +1,819 @@
+asyncapi: 3.0.0
+info:
+  title: Plurex Platform Streams
+  version: 1.0.0
+  description: >-
+    Live updates over WebSocket, grouped like the REST API: hosts streams follow one account's trading activity. Each stream
+    is one WebSocket connection at `/api/v1/{domain}/stream/{Action}`, named after the capability that says whether it is
+    supported (for example subscribeToAccountOrders), with its scope in the path.
+
+
+    **Connecting.** Send the X-API-KEY and X-API-SECRET headers with the upgrade request. Authentication and access failures
+    are ordinary HTTP errors with the ErrorEnvelope body, before the upgrade. Browser authentication is not supported yet.
+    WebSocket ping/pong frames keep the connection alive.
+
+
+    **Reconciling.** A stream starts with no snapshot and does not replay missed events. Connect first, then read the current
+    state with the matching REST operation and apply events on top of it. After any disconnect, do both again. Close code
+    1000 is a normal shutdown; 1011 "Upstream stream ended" means the host's own feed ended or failed.
+
+
+    **Compatibility.** Enum values, union variants, error codes and fields are added over time without a new version. Ignore
+    fields you do not recognise, and treat unknown enum values and variants as an unrecognised case instead of failing.
+  tags:
+  - name: hosts
+    description: 'Live trading activity on one account: order changes and balance postings. Paper accounts stream the same
+      way.'
+  - name: orders
+    description: Order changes on one account.
+  - name: transactions
+    description: 'Balance postings: fees, funding payments, deposits and so on.'
+servers:
+  api:
+    host: api.plurex.io
+    protocol: wss
+    security:
+    - $ref: '#/components/securitySchemes/ApiKeyPair'
+channels:
+  hostsSubscribeToAccountOrders:
+    address: /api/v1/hosts/stream/SubscribeToAccountOrders/{accountId}
+    parameters:
+      accountId:
+        description: The account to stream. Requires access to the account.
+    messages:
+      AccountOrderEnvelope:
+        $ref: '#/components/messages/AccountOrderEnvelope'
+  hostsSubscribeToAccountTransactions:
+    address: /api/v1/hosts/stream/SubscribeToAccountTransactions/{accountId}
+    parameters:
+      accountId:
+        description: The account to stream. Requires access to the account.
+    messages:
+      AccountTransactionEnvelope:
+        $ref: '#/components/messages/AccountTransactionEnvelope'
+operations:
+  hostsSubscribeToAccountOrders:
+    action: send
+    channel:
+      $ref: '#/channels/hostsSubscribeToAccountOrders'
+    summary: Stream account orders
+    description: 'Every change to the account''s orders: created, filled, cancelled, rejected. Each event carries the change
+      and the complete order, as GetOrder returns it. Reconcile with ListOpenOrders. Supported when the host''s accountOrders.subscribeToAccountOrders
+      is; accountOrders.changes lists the changes it sends.'
+    tags:
+    - name: hosts
+    - name: orders
+  hostsSubscribeToAccountTransactions:
+    action: send
+    channel:
+      $ref: '#/channels/hostsSubscribeToAccountTransactions'
+    summary: Stream account transactions
+    description: New balance postings on the account (fees, funding payments, deposits and so on), each with the same ID ListTransactions
+      returns. Reconcile with ListTransactions. Transaction events are ordered only among themselves, not relative to order
+      events. Supported when the host's accountTransactions.subscribeToAccountTransactions is.
+    tags:
+    - name: hosts
+    - name: transactions
+components:
+  securitySchemes:
+    ApiKeyPair:
+      type: httpApiKey
+      in: header
+      name: X-API-KEY
+      description: X-API-KEY and X-API-SECRET headers are both required.
+  messages:
+    AccountOrderEnvelope:
+      name: AccountOrderEnvelope
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/StreamEnvelopeAccountOrderEvent'
+    AccountTransactionEnvelope:
+      name: AccountTransactionEnvelope
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/StreamEnvelopeAccountTransaction'
+  schemas:
+    Instrument:
+      oneOf:
+      - $ref: '#/components/schemas/InstrumentFuture'
+      - $ref: '#/components/schemas/InstrumentFutureInv'
+      - $ref: '#/components/schemas/InstrumentOption'
+      - $ref: '#/components/schemas/InstrumentPerp'
+      - $ref: '#/components/schemas/InstrumentPerpInv'
+      - $ref: '#/components/schemas/InstrumentSpot'
+      description: 'An instrument, identified by its fields rather than a venue symbol: type, base, quote, and expiry, strike
+        and right where they apply. type takes the InstrumentType values; unknown types are rejected. Market summaries also
+        give its canonical symbol.'
+    InstrumentFuture:
+      type: object
+      properties:
+        base:
+          type: string
+          pattern: ^[A-Z0-9.]{1,32}$
+        quote:
+          type: string
+          pattern: ^[A-Z0-9.]{1,32}$
+        expiry:
+          type: string
+          format: date
+          description: Contract expiry date (YYYY-MM-DD).
+        type:
+          type: string
+          enum:
+          - Future
+      required:
+      - type
+      - base
+      - quote
+      - expiry
+    InstrumentFutureInv:
+      type: object
+      properties:
+        base:
+          type: string
+          pattern: ^[A-Z0-9.]{1,32}$
+        quote:
+          type: string
+          pattern: ^[A-Z0-9.]{1,32}$
+        expiry:
+          type: string
+          format: date
+          description: Contract expiry date (YYYY-MM-DD).
+        type:
+          type: string
+          enum:
+          - FutureInv
+      required:
+      - type
+      - base
+      - quote
+      - expiry
+    InstrumentOption:
+      type: object
+      properties:
+        base:
+          type: string
+          pattern: ^[A-Z0-9.]{1,32}$
+        quote:
+          type: string
+          pattern: ^[A-Z0-9.]{1,32}$
+        expiry:
+          type: string
+          format: date
+          description: Contract expiry date (YYYY-MM-DD).
+        strike:
+          type: string
+          pattern: ^(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$
+          description: Positive strike price in the quote asset, in canonical form so identity is exact; a plain decimal with
+            no exponent and no trailing fractional zeros (50000, not 50000.0 or 5E4).
+        right:
+          $ref: '#/components/schemas/OptionRight'
+        type:
+          type: string
+          enum:
+          - Option
+      required:
+      - type
+      - base
+      - quote
+      - expiry
+      - strike
+      - right
+      description: Option contract. Option markets are not listed or tradable yet; options appear only where a host reports
+        account activity on them.
+    OptionRight:
+      type: string
+      enum:
+      - Call
+      - Put
+    InstrumentPerp:
+      type: object
+      properties:
+        base:
+          type: string
+          pattern: ^[A-Z0-9.]{1,32}$
+        quote:
+          type: string
+          pattern: ^[A-Z0-9.]{1,32}$
+        type:
+          type: string
+          enum:
+          - Perp
+      required:
+      - type
+      - base
+      - quote
+    InstrumentPerpInv:
+      type: object
+      properties:
+        base:
+          type: string
+          pattern: ^[A-Z0-9.]{1,32}$
+        quote:
+          type: string
+          pattern: ^[A-Z0-9.]{1,32}$
+        type:
+          type: string
+          enum:
+          - PerpInv
+      required:
+      - type
+      - base
+      - quote
+    InstrumentSpot:
+      type: object
+      properties:
+        base:
+          type: string
+          pattern: ^[A-Z0-9.]{1,32}$
+        quote:
+          type: string
+          pattern: ^[A-Z0-9.]{1,32}$
+        type:
+          type: string
+          enum:
+          - Spot
+      required:
+      - type
+      - base
+      - quote
+    AccountOrderEvent:
+      type: object
+      properties:
+        change:
+          $ref: '#/components/schemas/OrderChange'
+        order:
+          $ref: '#/components/schemas/Order'
+      required:
+      - change
+      - order
+    OrderChange:
+      oneOf:
+      - $ref: '#/components/schemas/OrderChangeCancelled'
+      - $ref: '#/components/schemas/OrderChangeCreated'
+      - $ref: '#/components/schemas/OrderChangeFillApplied'
+      - $ref: '#/components/schemas/OrderChangeRejected'
+      - $ref: '#/components/schemas/OrderChangeUnknown'
+    OrderChangeCancelled:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Cancelled
+      required:
+      - type
+    OrderChangeCreated:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Created
+      required:
+      - type
+    OrderChangeFillApplied:
+      type: object
+      properties:
+        fill:
+          anyOf:
+          - $ref: '#/components/schemas/Fill'
+          - type: 'null'
+          description: Execution details of the fill; null when the host does not supply them (accountOrders.includesFillDetails
+            is false).
+        type:
+          type: string
+          enum:
+          - FillApplied
+      required:
+      - fill
+      - type
+      description: The traded size increased. The order contains cumulative sizeTraded, averagePrice and state. fill is absent/null
+        when the host reports only cumulative order state; call ListFills for individual executions. includesFillDetails advertises
+        whether executions accompany these changes.
+    Fill:
+      type: object
+      properties:
+        orderId:
+          type: string
+          description: ID of the order this execution belongs to, as returned on Order.id.
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+        side:
+          $ref: '#/components/schemas/OrderSide'
+          description: The account's side of the execution, which is its order's side, not the taker's side.
+        executedAt:
+          type: string
+          format: date-time
+        price:
+          $ref: '#/components/schemas/Decimal'
+        size:
+          $ref: '#/components/schemas/Decimal'
+          description: Native contract units; see ContractDetails.
+        fees:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssetValue'
+        realizedPnl:
+          anyOf:
+          - $ref: '#/components/schemas/AssetValue'
+          - type: 'null'
+          description: Host-reported value; null if the host does not supply it.
+        id:
+          type:
+          - string
+          - 'null'
+          description: The host's execution ID; null when the host does not report one. Plurex does not invent one.
+        role:
+          anyOf:
+          - $ref: '#/components/schemas/TradeRole'
+          - type: 'null'
+          description: Maker/taker classification, null when not reported.
+      required:
+      - orderId
+      - instrument
+      - side
+      - executedAt
+      - price
+      - size
+      - fees
+      - realizedPnl
+      - id
+      - role
+    AssetValue:
+      type: object
+      properties:
+        asset:
+          type: string
+        value:
+          $ref: '#/components/schemas/Decimal'
+      required:
+      - asset
+      - value
+    TradeRole:
+      type: string
+      enum:
+      - Maker
+      - Taker
+    OrderChangeRejected:
+      type: object
+      properties:
+        reason:
+          type:
+          - string
+          - 'null'
+          description: Host-supplied rejection reason; null if the host gives none.
+        code:
+          type:
+          - string
+          - 'null'
+          description: Host-native rejection code; null if the host gives none. Not an ErrorCode.
+        type:
+          type: string
+          enum:
+          - Rejected
+      required:
+      - reason
+      - code
+      - type
+    OrderChangeUnknown:
+      type: object
+      properties:
+        nativeType:
+          type: string
+        type:
+          type: string
+          enum:
+          - Unknown
+      required:
+      - type
+      - nativeType
+      description: A host order change with no standard meaning; nativeType holds the host's own event type.
+    Order:
+      oneOf:
+      - $ref: '#/components/schemas/OrderLimit'
+      - $ref: '#/components/schemas/OrderMarket'
+      - $ref: '#/components/schemas/OrderTriggerLimit'
+      - $ref: '#/components/schemas/OrderTriggerMarket'
+    OrderLimit:
+      type: object
+      properties:
+        id:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        side:
+          $ref: '#/components/schemas/OrderSide'
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+        state:
+          $ref: '#/components/schemas/OrderState'
+        sizeTraded:
+          $ref: '#/components/schemas/Decimal'
+        averagePrice:
+          anyOf:
+          - $ref: '#/components/schemas/Decimal'
+          - type: 'null'
+          description: Host-reported average execution price; null if unavailable. Plurex does not calculate it from fills.
+        realizedPnl:
+          anyOf:
+          - $ref: '#/components/schemas/AssetValue'
+          - type: 'null'
+          description: Host-reported value; null if the host does not supply it.
+        totalFees:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssetValue'
+        clientOrderId:
+          type:
+          - string
+          - 'null'
+          description: clientOrderId submitted with the order; null if none was submitted or the host does not report it.
+        size:
+          $ref: '#/components/schemas/Decimal'
+          description: Native contract units; see ContractDetails.
+        price:
+          $ref: '#/components/schemas/Decimal'
+        type:
+          type: string
+          enum:
+          - Limit
+      required:
+      - type
+      - id
+      - createdAt
+      - side
+      - instrument
+      - state
+      - sizeTraded
+      - averagePrice
+      - realizedPnl
+      - totalFees
+      - clientOrderId
+      - size
+      - price
+      description: Host-reported order state. Submitted options (tif, postOnly, reduceOnly, positionEffect) are not echoed.
+    OrderSide:
+      type: string
+      enum:
+      - Buy
+      - Sell
+    OrderState:
+      type: string
+      enum:
+      - Live
+      - Filled
+      - Cancelled
+      - Rejected
+    OrderMarket:
+      type: object
+      properties:
+        id:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        side:
+          $ref: '#/components/schemas/OrderSide'
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+        state:
+          $ref: '#/components/schemas/OrderState'
+        sizeTraded:
+          $ref: '#/components/schemas/Decimal'
+        averagePrice:
+          anyOf:
+          - $ref: '#/components/schemas/Decimal'
+          - type: 'null'
+          description: Host-reported average execution price; null if unavailable. Plurex does not calculate it from fills.
+        realizedPnl:
+          anyOf:
+          - $ref: '#/components/schemas/AssetValue'
+          - type: 'null'
+          description: Host-reported value; null if the host does not supply it.
+        totalFees:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssetValue'
+        clientOrderId:
+          type:
+          - string
+          - 'null'
+          description: clientOrderId submitted with the order; null if none was submitted or the host does not report it.
+        sizing:
+          anyOf:
+          - $ref: '#/components/schemas/MarketSizing'
+          - type: 'null'
+          description: The requested amount and its unit, as the host accepted it (it may round a notional). Null when the
+            host does not report both; never inferred from fills.
+        type:
+          type: string
+          enum:
+          - Market
+      required:
+      - type
+      - id
+      - createdAt
+      - side
+      - instrument
+      - state
+      - sizeTraded
+      - averagePrice
+      - realizedPnl
+      - totalFees
+      - clientOrderId
+      - sizing
+      description: Host-reported order state. Submitted options (tif, postOnly, reduceOnly, positionEffect) are not echoed.
+    OrderTriggerLimit:
+      type: object
+      properties:
+        id:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        side:
+          $ref: '#/components/schemas/OrderSide'
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+        state:
+          $ref: '#/components/schemas/OrderState'
+        sizeTraded:
+          $ref: '#/components/schemas/Decimal'
+        averagePrice:
+          anyOf:
+          - $ref: '#/components/schemas/Decimal'
+          - type: 'null'
+          description: Host-reported average execution price; null if unavailable. Plurex does not calculate it from fills.
+        realizedPnl:
+          anyOf:
+          - $ref: '#/components/schemas/AssetValue'
+          - type: 'null'
+          description: Host-reported value; null if the host does not supply it.
+        totalFees:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssetValue'
+        clientOrderId:
+          type:
+          - string
+          - 'null'
+          description: clientOrderId submitted with the order; null if none was submitted or the host does not report it.
+        size:
+          $ref: '#/components/schemas/Decimal'
+          description: Native contract units; see ContractDetails.
+        price:
+          $ref: '#/components/schemas/Decimal'
+        trigger:
+          $ref: '#/components/schemas/Trigger'
+        type:
+          type: string
+          enum:
+          - TriggerLimit
+      required:
+      - type
+      - id
+      - createdAt
+      - side
+      - instrument
+      - state
+      - sizeTraded
+      - averagePrice
+      - realizedPnl
+      - totalFees
+      - clientOrderId
+      - size
+      - price
+      - trigger
+      description: Host-reported order state. Submitted options (tif, postOnly, reduceOnly, positionEffect) are not echoed.
+    Trigger:
+      type: object
+      properties:
+        price:
+          $ref: '#/components/schemas/Decimal'
+        condition:
+          $ref: '#/components/schemas/TriggerCondition'
+        reference:
+          anyOf:
+          - $ref: '#/components/schemas/TriggerReferencePrice'
+          - type: 'null'
+          description: Price the trigger watches; null or omitted lets the host choose, as described by the market's trigger
+            referencePrice policy.
+      required:
+      - price
+      - condition
+    TriggerCondition:
+      type: string
+      enum:
+      - RefPriceGTE
+      - RefPriceLTE
+    TriggerReferencePrice:
+      type: string
+      enum:
+      - Mark
+      - Index
+      - LastTrade
+      - BestBid
+      - BestAsk
+    OrderTriggerMarket:
+      type: object
+      properties:
+        id:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        side:
+          $ref: '#/components/schemas/OrderSide'
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+        state:
+          $ref: '#/components/schemas/OrderState'
+        sizeTraded:
+          $ref: '#/components/schemas/Decimal'
+        averagePrice:
+          anyOf:
+          - $ref: '#/components/schemas/Decimal'
+          - type: 'null'
+          description: Host-reported average execution price; null if unavailable. Plurex does not calculate it from fills.
+        realizedPnl:
+          anyOf:
+          - $ref: '#/components/schemas/AssetValue'
+          - type: 'null'
+          description: Host-reported value; null if the host does not supply it.
+        totalFees:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssetValue'
+        clientOrderId:
+          type:
+          - string
+          - 'null'
+          description: clientOrderId submitted with the order; null if none was submitted or the host does not report it.
+        sizing:
+          anyOf:
+          - $ref: '#/components/schemas/MarketSizing'
+          - type: 'null'
+          description: The requested amount and its unit, as the host accepted it (it may round a notional). Null when the
+            host does not report both; never inferred from fills.
+        trigger:
+          $ref: '#/components/schemas/Trigger'
+        type:
+          type: string
+          enum:
+          - TriggerMarket
+      required:
+      - type
+      - id
+      - createdAt
+      - side
+      - instrument
+      - state
+      - sizeTraded
+      - averagePrice
+      - realizedPnl
+      - totalFees
+      - clientOrderId
+      - sizing
+      - trigger
+      description: Host-reported order state. Submitted options (tif, postOnly, reduceOnly, positionEffect) are not echoed.
+    MarketSizing:
+      oneOf:
+      - $ref: '#/components/schemas/MarketSizingNotional'
+      - $ref: '#/components/schemas/MarketSizingSize'
+    MarketSizingNotional:
+      type: object
+      properties:
+        notional:
+          $ref: '#/components/schemas/Decimal'
+          description: Amount of the quote asset.
+        type:
+          type: string
+          enum:
+          - Notional
+      required:
+      - type
+      - notional
+    MarketSizingSize:
+      type: object
+      properties:
+        size:
+          $ref: '#/components/schemas/Decimal'
+          description: Native contract units; see ContractDetails.
+        type:
+          type: string
+          enum:
+          - Size
+      required:
+      - type
+      - size
+    Decimal:
+      type: string
+      pattern: ^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$
+      description: An exact decimal number encoded as a string. No binary floating-point rounding.
+    StreamEnvelopeAccountOrderEvent:
+      type: object
+      required:
+      - timestamp
+      - data
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/AccountOrderEvent'
+    AccountTransaction:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Stable posting identifier within this account; identical across history and stream.
+        effectiveAt:
+          type: string
+          format: date-time
+        amount:
+          $ref: '#/components/schemas/AssetValue'
+          description: 'Signed from the account holder''s perspective: positive increases the balance; negative decreases
+            it.'
+        type:
+          $ref: '#/components/schemas/AccountTransactionType'
+        instrument:
+          anyOf:
+          - $ref: '#/components/schemas/Instrument'
+          - type: 'null'
+          description: Related instrument, or null when unknown or not applicable.
+        orderId:
+          type:
+          - string
+          - 'null'
+          description: Null when the host does not report it reliably.
+        fillId:
+          type:
+          - string
+          - 'null'
+          description: Null when the host does not report it reliably.
+        positionId:
+          type:
+          - string
+          - 'null'
+          description: Null when the host does not report it reliably.
+        groupId:
+          type:
+          - string
+          - 'null'
+          description: Null when the host does not report it reliably.
+        nativeType:
+          type:
+          - string
+          - 'null'
+          description: Null when the host does not report it reliably.
+        description:
+          type:
+          - string
+          - 'null'
+          description: Null when the host does not report it reliably.
+      required:
+      - id
+      - effectiveAt
+      - amount
+      - type
+      - instrument
+      - orderId
+      - fillId
+      - positionId
+      - groupId
+      - nativeType
+      - description
+      description: One posting to an account balance, such as a fee, funding payment or deposit. effectiveAt is when it took
+        effect. Links to orders, fills and positions are given only when the host reports them. All fields are always present,
+        null when empty.
+    AccountTransactionType:
+      type: string
+      enum:
+      - TradingFee
+      - FundingPayment
+      - BorrowInterest
+      - Financing
+      - LiquidationFee
+      - Settlement
+      - Rebate
+      - Deposit
+      - Withdrawal
+      - Transfer
+      - Conversion
+      - Adjustment
+      - Other
+    StreamEnvelopeAccountTransaction:
+      type: object
+      required:
+      - timestamp
+      - data
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/AccountTransaction'

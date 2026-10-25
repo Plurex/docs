@@ -1,0 +1,181 @@
+---
+title: "Instruments and sizing"
+description: "How Plurex identifies instruments, derives canonical symbols, and measures every size in native contracts."
+---
+
+Every exchange names its markets its own way. Plurex identifies an instrument by what it is, not by what a venue calls it: its type, base asset, quote asset and, where they apply, expiry, strike and right. The same instrument has the same identity on every venue and host.
+
+This page covers how to write instruments, how to read canonical symbols, and the sizing convention that matters most for getting orders right: **every size is in native contracts.**
+
+## The instrument
+
+An `Instrument` is a JSON object with a `type` discriminator. Every operation that takes a market takes a structured instrument; there is no symbol-only input.
+
+| `type` | Contract | Fields |
+| --- | --- | --- |
+| `Spot` | Spot pair | `base`, `quote` |
+| `Perp` | Perpetual | `base`, `quote` |
+| `PerpInv` | Inverse perpetual | `base`, `quote` |
+| `Future` | Dated future | `base`, `quote`, `expiry` |
+| `FutureInv` | Inverse dated future | `base`, `quote`, `expiry` |
+| `Option` | Option | `base`, `quote`, `expiry`, `strike`, `right` |
+
+```json
+{ "type": "Spot", "base": "BTC", "quote": "USDT" }
+```
+
+```json
+{ "type": "Perp", "base": "ETH", "quote": "USDT" }
+```
+
+```json
+{ "type": "PerpInv", "base": "BTC", "quote": "USD" }
+```
+
+```json
+{ "type": "Future", "base": "BTC", "quote": "USD", "expiry": "2030-03-29" }
+```
+
+```json
+{ "type": "FutureInv", "base": "BTC", "quote": "USD", "expiry": "2030-03-29" }
+```
+
+```json
+{ "type": "Option", "base": "BTC", "quote": "USD", "expiry": "2030-03-29", "strike": "50000", "right": "Call" }
+```
+
+### Field rules
+
+- **Asset IDs** (`base`, `quote`) are uppercase and contain only `A`–`Z`, `0`–`9` and dots, 1 to 32 characters, with no `-` or `_`. Digits are allowed anywhere, as in `1000PEPE`. Different assets are different instruments: `BTC`/`USDT` and `BTC`/`USDC` are separate markets.
+- **`expiry`** is a date, `YYYY-MM-DD`.
+- **`strike`** is a positive decimal string in the quote asset, in canonical form: no exponent and no trailing fractional zeros. Send `"50000"` or `"50000.5"`, never `"50000.0"` or `"5E4"`; non-canonical strikes are rejected with `400 InvalidRequest`. The canonical form makes option identity exact.
+- **`right`** is `Call` or `Put`.
+- An unknown `type` is rejected with `400 InvalidRequest`. In responses, new instrument types may appear over time: treat an unknown `type` as unrecognised rather than failing.
+
+### What is listed
+
+The instrument model covers more than any one venue lists. Discover what is actually tradable with [List host markets](/api-reference/platform/hosts/list-markets) and [List venue markets](/api-reference/platform/venues/list-markets), filtering by `types` if you need to. The current venues list spot and perpetual markets.
+
+**Options are modelled but not listed or tradable.** Neither listing returns option markets. An `Option` instrument appears only where a host reports account activity on one, for example in a position or transaction, so your code can read that data instead of failing on it.
+
+## Canonical symbols
+
+Every market summary carries a `symbol`: the Plurex canonical symbol for its instrument, independent of venue naming. It is `BASE-QUOTE-TYPE`, built from the instrument:
+
+| `type` | Type token | Example instrument | Canonical symbol |
+| --- | --- | --- | --- |
+| `Spot` | `SPOT` | BTC/USDT spot | `BTC-USDT-SPOT` |
+| `Perp` | `PERP` | ETH/USDT linear perpetual | `ETH-USDT-PERP` |
+| `PerpInv` | `PERPINV` | BTC/USD inverse perpetual | `BTC-USD-PERPINV` |
+| `Future` | `FUT_YYYYMMDD` | BTC/USD future expiring 2030-03-29 | `BTC-USD-FUT_20300329` |
+| `FutureInv` | `FUTINV_YYYYMMDD` | BTC/USD inverse future expiring 2030-03-29 | `BTC-USD-FUTINV_20300329` |
+| `Option` | `OPT_YYYYMMDD_STRIKE_RIGHT` | BTC/USD 50000 call expiring 2030-03-29 | `BTC-USD-OPT_20300329_50000_CALL` |
+
+`YYYYMMDD` is the `expiry` without dashes, `STRIKE` is the `strike` exactly as given, and `RIGHT` is `CALL` or `PUT`. A put at a fractional strike reads `BTC-USD-OPT_20300329_50000.5_PUT`.
+
+Use the symbol for display, logging and as a map key: it is the same on a host market and the venue market it trades on. It is **not an input**: send the structured `instrument` to every operation. It is also not the venue's own identifier, so do not pass it to an exchange directly. To search markets by symbol, use the `search` filter on either listing; it does fuzzy, case-insensitive token matching on the canonical symbol.
+
+## Contract details
+
+Each host and venue market has `contractDetails`, which says what one contract of the market is:
+
+| Field | Meaning |
+| --- | --- |
+| `contractType` | `Spot`, `Linear`, `Inverse` or `Quanto`. |
+| `settlementAsset` | The asset the contract settles in; `null` when the host does not report it. |
+| `contractSize` | How many units of `contractSizeAsset` one contract is. |
+| `contractSizeAsset` | The asset that one contract is denominated in. |
+
+One contract is `contractSize` units of `contractSizeAsset`.
+
+## Size is always native contracts
+
+This is the most important convention in the API, and the easiest to get wrong.
+
+**Every `size` is in native contracts**: order sizes, fill sizes, position sizes, order book and trade sizes, and the size rules on host markets. A size is not necessarily an amount of the base asset. **Every `notional` is an amount of the quote asset.**
+
+Native contracts are used because base units are wrong for inverse and fractional-contract markets. Read `contractDetails` and convert.
+
+### Linear perpetual: one contract is one BTC
+
+```json
+{
+  "contractType": "Linear",
+  "settlementAsset": "USDT",
+  "contractSize": "1",
+  "contractSizeAsset": "BTC"
+}
+```
+
+On this BTC/USDT perpetual, `"size": "0.015"` is 0.015 contracts of 1 BTC each: a position of 0.015 BTC. At a price of 64,000 USDT it is worth 960 USDT.
+
+### Inverse perpetual: one contract is one USD
+
+```json
+{
+  "contractType": "Inverse",
+  "settlementAsset": "BTC",
+  "contractSize": "1",
+  "contractSizeAsset": "USD"
+}
+```
+
+On this BTC/USD inverse perpetual, `"size": "250"` is 250 contracts of 1 USD each: **250 USD of exposure, not 250 BTC.** At a price of 64,000 USD that is about 0.0039 BTC, and the BTC amount changes as the price moves while the USD amount does not. A limit order like this is an ordinary-looking request that means something very different from the linear case:
+
+```json
+{
+  "type": "Limit",
+  "instrument": { "type": "PerpInv", "base": "BTC", "quote": "USD" },
+  "side": "Buy",
+  "size": "250",
+  "price": "64000.0",
+  "reduceOnly": false,
+  "tif": "GTC"
+}
+```
+
+### Contracts that are not one unit
+
+When `contractSize` is not 1, multiply. If a market's contract were `0.001` BTC, then `"size": "15"` would be 15 contracts, or 0.015 BTC. Always read `contractSize` from the live market summary rather than assuming 1.
+
+## The value of a priced order
+
+Host markets set a minimum **value** for limit and trigger limit orders (`value.min`, in the quote asset). You never send the value; it is computed from the order's price and size using `contractDetails`:
+
+| When `contractSizeAsset` is | Value in quote |
+| --- | --- |
+| the instrument's `base` (spot, linear) | `price × size × contractSize` |
+| the instrument's `quote` (inverse) | `size × contractSize` |
+
+Worked examples:
+
+| Market | Order | Value |
+| --- | --- | --- |
+| BTC/USDT linear perpetual, 1 BTC per contract | `size` `0.015` at `price` `64000.0` | 64000.0 × 0.015 × 1 = **960 USDT** |
+| BTC/USD inverse perpetual, 1 USD per contract | `size` `250` at `price` `64000.0` | 250 × 1 = **250 USD**, at any price |
+
+A size above the market's minimum size can still be below its minimum value, so check both. See [Order rules](/capabilities/order-rules) for the full set of rules and how to round to them.
+
+## Sizing market orders
+
+Market and trigger market orders take `sizing`, which says which unit you mean:
+
+```json
+{ "type": "Size", "size": "0.015" }
+```
+
+```json
+{ "type": "Notional", "notional": "250" }
+```
+
+`Size` is native contracts; `Notional` is an amount of the quote asset. Each market lists which units it accepts for buys and for sells in `orderTypes.market.sizingSupport`. A notional is not a size promise: the size you receive is the notional divided by the fill price, and can fall below the market's minimum size.
+
+## Decimals
+
+Prices, sizes, notionals, balances and rates are `Decimal` values: exact decimal numbers encoded as JSON strings, such as `"0.015"` or `"64000.0"`. Parse them with a decimal type, not a binary float, and send them back as strings. Floating-point rounding turns `0.1 + 0.2` into `0.30000000000000004`, which then fails an increment check.
+
+## Related
+
+- [Order rules](/capabilities/order-rules) for increments, minimums and options per order type.
+- [Venues and hosts](/concepts/venues-and-hosts) for how markets join across venues and hosts.
+- [Orders](/guides/orders) for submitting orders step by step.

@@ -1,0 +1,110 @@
+---
+title: "Errors"
+description: "The error envelope, every error code with what to do about it, and how to retry and reconcile each operation."
+---
+
+Every error, at every HTTP status, has the same shape. Use `code` in your program logic, the HTTP status as the fallback, and `message` only for logs.
+
+## The error envelope
+
+```json
+{
+  "code": "OrderNotFound",
+  "message": "Order not found: ord_789",
+  "error": null
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `code` | The specific reason, from the catalogue below. Each code always comes with the same HTTP status. |
+| `message` | Human-readable detail. Its wording can change; do not parse it. |
+| `error` | Always `null`. |
+
+The envelope is used for unknown paths (`404 NotFound`), wrong methods (`405 MethodNotAllowed`) and stream connections refused before the WebSocket upgrade, as well as for every operation's own errors.
+
+## Error codes
+
+| Code | Status | Meaning | What to do |
+| --- | --- | --- | --- |
+| `InvalidRequest` | 400 | Malformed JSON, wrong types, unknown fields or enum values, or invalid values. This includes a cursor sent with a different query. | Fix the request. Do not retry unchanged. |
+| `Unauthenticated` | 401 | Missing or invalid API key headers. | Send both `X-API-KEY` and `X-API-SECRET` with valid values. |
+| `Forbidden` | 403 | Authenticated, but without access to the account or operation. | Check that the account belongs to your tenant. |
+| `AccountNotFound` | 404 | The `accountId` does not exist. | Check the ID with [List accounts](/api-reference/platform/accounts/list). |
+| `OrderNotFound` | 404 | The account exists, but the order identifier does not. | Not proof the order never existed; see [Reconciliation rules](#reconciliation-rules). |
+| `NotFound` | 404 | Unknown path, host or venue. | Check the path and the `hostId` or `venueId`. |
+| `MethodNotAllowed` | 405 | The path exists but only accepts `POST`. | Use `POST`. |
+| `DuplicateClientOrderId` | 409 | An open order already holds this `clientOrderId`. An order that has already closed may not block the ID, so do not rely on this code to catch duplicates. | Look the order up by client order ID instead of submitting again, and use a unique `clientOrderId` for every order. |
+| `OrderAlreadyClosed` | 409 | The order is already filled, cancelled or rejected. | Do not retry the cancel. Read the order to see how it ended; it may have filled. |
+| `Conflict` | 409 | A value that must be unique is already used. | Choose a different value. |
+| `UnsupportedMediaType` | 415 | The request is not `Content-Type: application/json`. | Send the header, with a JSON body. |
+| `InsufficientFunds` | 422 | The account cannot fund the order. | Reduce the order or add funds. |
+| `InvalidProviderCredentials` | 422 | The exchange rejected the account's credentials. | Check the API key and secret, then [update the connection](/api-reference/platform/accounts/update-connection). |
+| `AccountLimit` | 422 | An account or subscription limit was reached. | Retrying will not help until you are below the limit again. |
+| `NotSupported` | 422 | The host or venue does not support this operation, variant or order type, or (for venue reads and market settings) does not list the market. | Check [capabilities](/capabilities/overview) and choose a supported operation. |
+| `Rejected` | 422 | The host, or Plurex's validation, rejected the command, for example a price off the market's increment. | Change the request; read `message` for the reason. |
+| `RateLimited` | 429 | The exchange rate limited the request. | Back off, then retry. For commands, follow the operation's retry rule. |
+| `UnexpectedError` | 500 | Unexpected server failure. | Retry queries with backoff. For commands, the outcome is unknown: reconcile first. |
+| `CancelAllFailed` | 502 | `CancelAllOrders` could not cancel at least one order. | Read [List open orders](/api-reference/platform/hosts/list-orders) to see what is still open. |
+| `UpstreamFailure` | 502 | The exchange failed or returned an unusable response. | Retry queries with backoff. For commands, reconcile first. |
+| `Unavailable` | 503 | The service or the exchange is temporarily unavailable. | Retry with backoff. For commands, reconcile first. |
+| `UpstreamTimeout` | 504 | The exchange did not respond in time. | The command may still have taken effect: reconcile before retrying. |
+
+For your own retries, use exponential backoff with jitter and a cap, and stop after a bounded number of attempts.
+
+### Tolerate new codes
+
+New codes can be added without a new API version. Handle a code you do not recognise by its HTTP status: a `4xx` means the request needs to change, a `5xx` means the outcome of a command is unknown.
+
+<Note>
+  The specification declares `ErrorCode` as a closed `enum`. If you generate a client, make sure an unknown value decodes to a fallback instead of failing; otherwise a new code turns a clear error into a parsing failure.
+</Note>
+
+## 400 or 422
+
+The two statuses separate a malformed request from a request the host will not carry out:
+
+- **400 `InvalidRequest`**: the request does not match the schema. Examples: a misspelt field such as `clientOrderID`, an unknown enum value such as `"types": ["Swap"]`, an unknown `type` variant, a lowercase asset, a decimal sent as a number, or a cursor from another query. The server rejects unknown request fields, even though responses can gain fields.
+- **422**: the request is well formed, but the host, the market or Plurex's validation will not accept it: an unsupported operation (`NotSupported`), a value that breaks the order rules (`Rejected`), too little balance (`InsufficientFunds`), bad exchange credentials (`InvalidProviderCredentials`) or a limit (`AccountLimit`).
+
+### Order of checks
+
+Operations that need an API key check authentication before they read the body. A request with missing or invalid credentials gets `401 Unauthenticated` even if its body is also invalid, so fix credentials first. Public operations have no authentication step.
+
+## Retries by operation
+
+An error or timeout does not prove that a command had no effect. Queries (`.../query/...`) only read, so they are always safe to repeat. Commands follow these rules:
+
+| Operation | Safe to repeat? | After a timeout or `5xx` |
+| --- | --- | --- |
+| [SubmitOrder](/api-reference/platform/hosts/submit-order) | No. Repeating may place a second order. | Look the order up with `GetOrder` `ByClientOrderId` before resubmitting. `409 DuplicateClientOrderId` means it already exists. See [Handle an unclear outcome](/guides/orders#handle-an-unclear-outcome). |
+| [CancelOrder](/api-reference/platform/hosts/cancel-order) | Yes. | Repeat it. A success acknowledges the cancel; confirm the final state with `GetOrder` or the order stream. If the repeat returns `404 OrderNotFound` or `409 OrderAlreadyClosed`, the first cancel may have worked or the order may have filled: read it with `GetOrder` before acting. |
+| [CancelOrders](/api-reference/platform/hosts/cancel-orders) | Yes. | Repeat it, or retry only the identifiers whose `Failed` code is transient (`RateLimited`, `Unavailable`, `UpstreamTimeout`, `UpstreamFailure`). |
+| [CancelAllOrders](/api-reference/platform/hosts/cancel-all-orders) | Yes. | Repeat it. After `502 CancelAllFailed`, read `ListOpenOrders`. |
+| [SetMarketLeverage](/api-reference/platform/hosts/set-leverage) | Yes, with the same values. | Repeat it, or read the setting with `GetMarketLeverage`. |
+| [SetMarketPositionMode](/api-reference/platform/hosts/set-position-mode) | Yes, with the same values. | Repeat it, or read the mode with `GetMarketPositionMode`. |
+| [Connect](/api-reference/platform/accounts/connect) | No. Repeating connects another account. | Check [List accounts](/api-reference/platform/accounts/list) for a new account on that `hostId` with your key's `credential.publicValue` before retrying. |
+| [UpdateConnection](/api-reference/platform/accounts/update-connection) | Yes, with the same values. | Repeat it. |
+| [Rename](/api-reference/platform/accounts/rename) | Yes, with the same values. | Repeat it. |
+| [Delete](/api-reference/platform/accounts/delete) | Repeating after success returns an error, because the account no longer exists. | Check [List accounts](/api-reference/platform/accounts/list): if the account is gone, the delete succeeded. |
+| [CreateAccount](/api-reference/platform/paper/create) (paper) | No. Repeating creates another account. | Check [List accounts](/api-reference/platform/accounts/list) for a new account on that paper `hostId` before retrying. |
+| [Deposit](/api-reference/platform/paper/deposit) (paper) | No. Repeating deposits again. | Check [List account transactions](/api-reference/platform/hosts/list-transactions) for the deposit where the paper host supports it, or compare the balance from [List wallets](/api-reference/platform/hosts/list-wallets), before retrying. |
+| [SetFeeTier](/api-reference/platform/paper/set-fee-tier) (paper) | Yes, with the same values. | Repeat it. Selecting the current tier changes nothing. |
+
+The API has no idempotency keys. A `clientOrderId` correlates an order with your own records and lets you look it up or cancel it; it is not a transport retry key.
+
+## Reconciliation rules
+
+When an outcome is unclear, read the state back before acting again:
+
+- **Not found is never success.** `OrderNotFound` can mean the order never existed, the host has forgotten a closed order, or the order is not visible yet. Check with `GetOrder` or `ListOpenOrders`, and allow time before concluding it does not exist.
+- **Already closed is not cancelled.** `OrderAlreadyClosed` means the order finished, possibly by filling. Read it to find out.
+- **An acknowledgement is not a final state.** A cancel `Ack` or a `Cancelled` batch result means the host accepted the cancel. Confirm with `GetOrder` or the [order stream](/guides/streams).
+- **Read the right source for each question.** Final order state: `GetOrder` or the order stream. What is still working: `ListOpenOrders`. Executions: `ListFills`. Balance postings: `ListTransactions`. Accounts: `accounts/query/List`.
+- **After a stream disconnect**, reconnect and read the REST state again; streams do not replay missed events.
+
+## Related
+
+- [API conventions](/api-reference/platform/conventions): envelopes, paging, decimals and compatibility.
+- [Place and manage orders](/guides/orders): recovering from an unclear order submission.
+- [Stream account updates](/guides/streams): reconnecting and reconciling streams.

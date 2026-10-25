@@ -1,0 +1,5 @@
+---
+title: "List candles"
+description: "Closed candles for one market, price kind and interval, newest first across every page. The candle still forming is never included. A page has no gaps: one candle for every interval it spans. Follow nextCursor back in time until it is null. ByInstrument starts from the latest closed candle; ByInstrumentBefore starts from the candles that end at or before `before`. The market's candles entry says which of these it supports (list, listBefore); paging past the first page needs listBefore. 422 NotSupported for an unknown market, or a price kind, interval or variant the market does not list. No API key needed."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/ListCandles"
+---
