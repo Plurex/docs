@@ -3,3 +3,7 @@ title: "List wallets"
 description: "Lists the account's asset balances."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/query/ListWallets"
 ---
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="host" none />

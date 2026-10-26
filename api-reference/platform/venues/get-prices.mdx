@@ -3,3 +3,7 @@ title: "Get prices"
 description: "The current price of one kind for each instrument. One result per requested instrument, in request order. An instrument without a value comes back as an Unavailable result with its error code, so one instrument cannot fail the batch. Served from Plurex's live feed for the market when one is running, otherwise fetched from the venue. No API key needed."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/GetPrices"
 ---
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.prices.traded.getPrices", "when": {"field": "kind", "value": "Traded"}, "support": true}, {"path": "capabilities.prices.mark.getPrices", "when": {"field": "kind", "value": "Mark"}, "support": true}, {"path": "capabilities.prices.index.getPrices", "when": {"field": "kind", "value": "Index"}, "support": true}]} market={[{"path": "marketData.prices.<kind>.get", "note": "true for each price kind the market serves"}]} perMarket />

@@ -3,3 +3,7 @@ title: "Set market leverage"
 description: "Sets the account's leverage for one market and returns the resulting setting. Safe to repeat with the same values."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/command/SetMarketLeverage"
 ---
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="host" header={[{"path": "capabilities.marketSettings.setMarketLeverage", "support": true}]} market={[{"path": "settings.leverage.setEffectScope", "note": "non-null when this market's leverage can be set"}, {"path": "settings.leverage.min", "note": "with max and step, the values you can set"}]} perMarket />

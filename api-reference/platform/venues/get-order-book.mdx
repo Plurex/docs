@@ -3,3 +3,7 @@ title: "Get order book"
 description: "The current order book of one market, at the depth the venue feed provides. 422 NotSupported for an unknown or unsupported market. Served from Plurex's live feed for the market when one is running, otherwise fetched from the venue. No API key needed."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/GetOrderBook"
 ---
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.orderBook.getOrderBook", "always": true}]} market={[]} />

@@ -57,24 +57,24 @@ Leaves marked paged are `CursorQueryCapability` values. `changes`, `includesFill
 
 | Operation | Leaf | Request variant | What it lets you do |
 | --- | --- | --- | --- |
-| [GetOrder](/api-reference/platform/hosts/get-order) | `byId` | `query.type: ById` | Read one order by Plurex order ID. Always supported. |
-| | `byClientOrderId` | `ByClientOrderId` | Read one order by your `clientOrderId` alone. |
-| | `byClientOrderIdForInstrument` | `ByClientOrderIdForInstrument` | Read one order by `clientOrderId` together with its instrument. |
-| [GetOrders](/api-reference/platform/hosts/get-orders) | `byIds` | `ByIds` | Read several named orders in one call. |
-| | `byClientOrderIds` | `ByClientOrderIds` | The same, by `clientOrderId`. |
-| | `byClientOrderIdsForInstrument` | `ByClientOrderIdsForInstrument` | The same, by `clientOrderId` within one instrument. |
-| [ListOpenOrders](/api-reference/platform/hosts/list-orders) | `global` | `Global` | Page through every live order on the account. |
-| | `byInstrument` | `ByInstrument` | Page through live orders for one instrument. |
-| [ListClosedOrders](/api-reference/platform/hosts/list-closed-orders) | `global`, `byInstrument` | `Global`, `ByInstrument` | Page through filled, cancelled and rejected orders. |
-| | `globalBefore`, `byInstrumentBefore` | `GlobalBefore`, `ByInstrumentBefore` | The same, starting from a `before` time. |
-| | `globalAfter`, `byInstrumentAfter` | `GlobalAfter`, `ByInstrumentAfter` | The same, from an `after` time. |
-| [CancelOrder](/api-reference/platform/hosts/cancel-order) | `byId` | `command.type: ById` | Cancel one order by order ID. Always supported. |
-| | `byClientOrderId` | `ByClientOrderId` | Cancel an order whose ID you do not know yet, for example after a SubmitOrder timeout. |
-| | `byClientOrderIdForInstrument` | `ByClientOrderIdForInstrument` | The same, with its instrument. |
-| [CancelOrders](/api-reference/platform/hosts/cancel-orders) | `byIds`, `byClientOrderIds`, `byClientOrderIdsForInstrument` | `ByIds`, ... | Cancel several named orders, with one result per identifier. |
-| [CancelAllOrders](/api-reference/platform/hosts/cancel-all-orders) | `global` | `Global` | Cancel every open order on the account. |
-| | `byInstrument` | `ByInstrument` | Cancel every open order on one instrument. |
-| [SubmitOrder](/api-reference/platform/hosts/submit-order) | `clientOrderId` | (a field, not a variant) | Send a `clientOrderId` with new orders. |
+| [GetOrder](/api-reference/platform/hosts/get-order) | [`byId`](/api-reference/platform/hosts/get-order) | `query.type: ById` | Read one order by Plurex order ID. Always supported. |
+| | [`byClientOrderId`](/api-reference/platform/hosts/get-order) | `ByClientOrderId` | Read one order by your `clientOrderId` alone. |
+| | [`byClientOrderIdForInstrument`](/api-reference/platform/hosts/get-order) | `ByClientOrderIdForInstrument` | Read one order by `clientOrderId` together with its instrument. |
+| [GetOrders](/api-reference/platform/hosts/get-orders) | [`byIds`](/api-reference/platform/hosts/get-orders) | `ByIds` | Read several named orders in one call. |
+| | [`byClientOrderIds`](/api-reference/platform/hosts/get-orders) | `ByClientOrderIds` | The same, by `clientOrderId`. |
+| | [`byClientOrderIdsForInstrument`](/api-reference/platform/hosts/get-orders) | `ByClientOrderIdsForInstrument` | The same, by `clientOrderId` within one instrument. |
+| [ListOpenOrders](/api-reference/platform/hosts/list-orders) | [`global`](/api-reference/platform/hosts/list-orders) | `Global` | Page through every live order on the account. |
+| | [`byInstrument`](/api-reference/platform/hosts/list-orders) | `ByInstrument` | Page through live orders for one instrument. |
+| [ListClosedOrders](/api-reference/platform/hosts/list-closed-orders) | [`global`](/api-reference/platform/hosts/list-closed-orders), [`byInstrument`](/api-reference/platform/hosts/list-closed-orders) | `Global`, `ByInstrument` | Page through filled, cancelled and rejected orders. |
+| | [`globalBefore`](/api-reference/platform/hosts/list-closed-orders), [`byInstrumentBefore`](/api-reference/platform/hosts/list-closed-orders) | `GlobalBefore`, `ByInstrumentBefore` | The same, starting from a `before` time. |
+| | [`globalAfter`](/api-reference/platform/hosts/list-closed-orders), [`byInstrumentAfter`](/api-reference/platform/hosts/list-closed-orders) | `GlobalAfter`, `ByInstrumentAfter` | The same, from an `after` time. |
+| [CancelOrder](/api-reference/platform/hosts/cancel-order) | [`byId`](/api-reference/platform/hosts/cancel-order) | `command.type: ById` | Cancel one order by order ID. Always supported. |
+| | [`byClientOrderId`](/api-reference/platform/hosts/cancel-order) | `ByClientOrderId` | Cancel an order whose ID you do not know yet, for example after a SubmitOrder timeout. |
+| | [`byClientOrderIdForInstrument`](/api-reference/platform/hosts/cancel-order) | `ByClientOrderIdForInstrument` | The same, with its instrument. |
+| [CancelOrders](/api-reference/platform/hosts/cancel-orders) | [`byIds`](/api-reference/platform/hosts/cancel-orders), [`byClientOrderIds`](/api-reference/platform/hosts/cancel-orders), [`byClientOrderIdsForInstrument`](/api-reference/platform/hosts/cancel-orders) | `ByIds`, ... | Cancel several named orders, with one result per identifier. |
+| [CancelAllOrders](/api-reference/platform/hosts/cancel-all-orders) | [`global`](/api-reference/platform/hosts/cancel-all-orders) | `Global` | Cancel every open order on the account. |
+| | [`byInstrument`](/api-reference/platform/hosts/cancel-all-orders) | `ByInstrument` | Cancel every open order on one instrument. |
+| [SubmitOrder](/api-reference/platform/hosts/submit-order) | [`clientOrderId`](/api-reference/platform/hosts/submit-order) | (a field, not a variant) | Send a `clientOrderId` with new orders. |
 
 Single and batch operations are separate because hosts support them differently: a host can support `getOrder.byClientOrderId` and not `getOrders.byClientOrderIds`.
 
@@ -86,9 +86,9 @@ The `...ForInstrument` variants exist because some hosts can find a `clientOrder
 
 | Operation | Leaf | Request variant | What it lets you do |
 | --- | --- | --- | --- |
-| [ListFills](/api-reference/platform/hosts/list-fills) | `byOrderId` | `query.type: ByOrderId` | Page through the executions of one order. |
-| | `global` | `Global` | Page through every execution on the account. |
-| | `byInstrument` | `ByInstrument` | Page through executions on one instrument. |
+| [ListFills](/api-reference/platform/hosts/list-fills) | [`byOrderId`](/api-reference/platform/hosts/list-fills) | `query.type: ByOrderId` | Page through the executions of one order. |
+| | [`global`](/api-reference/platform/hosts/list-fills) | `Global` | Page through every execution on the account. |
+| | [`byInstrument`](/api-reference/platform/hosts/list-fills) | `ByInstrument` | Page through executions on one instrument. |
 
 If `byOrderId` is not supported, read an order's executions with `byInstrument` and match on each fill's `orderId`.
 
@@ -96,10 +96,10 @@ If `byOrderId` is not supported, read an order's executions with `byInstrument` 
 
 | Operation | Leaf | Also requires, on the market |
 | --- | --- | --- |
-| [GetMarketLeverage](/api-reference/platform/hosts/get-leverage) | `getMarketLeverage` | `settings.leverage` non-null and its `get` is `true` |
-| [SetMarketLeverage](/api-reference/platform/hosts/set-leverage) | `setMarketLeverage` | `settings.leverage` non-null and its `setEffectScope` non-null |
-| [GetMarketPositionMode](/api-reference/platform/hosts/get-position-mode) | `getMarketPositionMode` | `settings.positionMode` non-null and its `get` is `true` |
-| [SetMarketPositionMode](/api-reference/platform/hosts/set-position-mode) | `setMarketPositionMode` | `settings.positionMode` non-null and its `setEffectScope` non-null |
+| [GetMarketLeverage](/api-reference/platform/hosts/get-leverage) | [`getMarketLeverage`](/api-reference/platform/hosts/get-leverage) | `settings.leverage` non-null and its `get` is `true` |
+| [SetMarketLeverage](/api-reference/platform/hosts/set-leverage) | [`setMarketLeverage`](/api-reference/platform/hosts/set-leverage) | `settings.leverage` non-null and its `setEffectScope` non-null |
+| [GetMarketPositionMode](/api-reference/platform/hosts/get-position-mode) | [`getMarketPositionMode`](/api-reference/platform/hosts/get-position-mode) | `settings.positionMode` non-null and its `get` is `true` |
+| [SetMarketPositionMode](/api-reference/platform/hosts/set-position-mode) | [`setMarketPositionMode`](/api-reference/platform/hosts/set-position-mode) | `settings.positionMode` non-null and its `setEffectScope` non-null |
 
 Settings are described per market, so these leaves are `PerMarket` or `NotSupported`. An operation applies to a market only when that market's settings entry is also non-null. The market's entry also gives the accepted leverage grid, the position modes, and how far a change reaches. See [Settings](/capabilities/order-rules#settings).
 
@@ -109,9 +109,9 @@ The order stream, [Subscribe to account orders](/api-reference/platform/hosts/su
 
 | Field | Meaning |
 | --- | --- |
-| `subscribeToAccountOrders` | Whether the host offers the order stream. |
-| `changes` | The `OrderStreamChangeType` values the stream sends: `Created`, `FillApplied`, `Cancelled`, `Rejected`. Empty when the stream is not supported. |
-| `includesFillDetails` | Whether `FillApplied` events carry the individual execution in `fill`. |
+| [`subscribeToAccountOrders`](/api-reference/platform/hosts/subscribe-to-account-orders) | Whether the host offers the order stream. |
+| [`changes`](/api-reference/platform/hosts/subscribe-to-account-orders) | The `OrderStreamChangeType` values the stream sends: `Created`, `FillApplied`, `Cancelled`, `Rejected`. Empty when the stream is not supported. |
+| [`includesFillDetails`](/api-reference/platform/hosts/subscribe-to-account-orders) | Whether `FillApplied` events carry the individual execution in `fill`. |
 
 When `includesFillDetails` is `false`, a `FillApplied` event still carries the order with its cumulative `sizeTraded`, `averagePrice` and `state`, but its `fill` is `null`. Call [ListFills](/api-reference/platform/hosts/list-fills) for the executions themselves, including their prices and fees. Read this flag from the host you are connected to; do not assume a value for any host. See [Streams](/guides/streams).
 
@@ -121,8 +121,8 @@ Transactions are balance postings: fees, funding payments, deposits and so on.
 
 | Field | Meaning |
 | --- | --- |
-| `listTransactions` | Paged transaction history, [ListTransactions](/api-reference/platform/hosts/list-transactions). |
-| `subscribeToAccountTransactions` | The transaction stream, [Subscribe to account transactions](/api-reference/platform/hosts/subscribe-to-account-transactions). |
+| [`listTransactions`](/api-reference/platform/hosts/list-transactions) | Paged transaction history, ListTransactions. |
+| [`subscribeToAccountTransactions`](/api-reference/platform/hosts/subscribe-to-account-transactions) | The transaction stream. |
 | `supportedTransactionTypes` | The `AccountTransactionType` values this host reports. Non-empty when history or the stream is supported. |
 
 The types are `TradingFee`, `FundingPayment`, `BorrowInterest`, `Financing`, `LiquidationFee`, `Settlement`, `Rebate`, `Deposit`, `Withdrawal`, `Transfer`, `Conversion`, `Adjustment` and `Other`. The host reports only the types in `supportedTransactionTypes`, so do not build logic that waits for a type it does not list. History and the stream are separate leaves: a host can offer history without a stream, in which case poll ListTransactions.
@@ -224,11 +224,11 @@ The patterns below all occur among real and paper hosts. They are why your code 
 
 | Capability | Variation you will meet | What your code does |
 | --- | --- | --- |
-| `getOrder.byClientOrderId` | `NotSupported` on a host that supports `byClientOrderIdForInstrument` | Keep the instrument with every `clientOrderId`, and use the `ForInstrument` variant. |
-| `getOrders.*` | Some batch variants supported, others not, independently of the single variants | Fall back to single GetOrder calls per identifier. |
-| `listFills.byOrderId` | `NotSupported` while `byInstrument` is supported | List by instrument and filter on `orderId`. |
-| `accountOrders.includesFillDetails` | `true` on some hosts, `false` on others | When `false`, read executions with ListFills. |
-| `subscribeToAccountTransactions` | `NotSupported` while `listTransactions` is supported | Poll ListTransactions. |
+| [`getOrder.byClientOrderId`](/api-reference/platform/hosts/get-order) | `NotSupported` on a host that supports `byClientOrderIdForInstrument` | Keep the instrument with every `clientOrderId`, and use the `ForInstrument` variant. |
+| [`getOrders.*`](/api-reference/platform/hosts/get-orders) | Some batch variants supported, others not, independently of the single variants | Fall back to single GetOrder calls per identifier. |
+| [`listFills.byOrderId`](/api-reference/platform/hosts/list-fills) | `NotSupported` while `byInstrument` is supported | List by instrument and filter on `orderId`. |
+| [`accountOrders.includesFillDetails`](/api-reference/platform/hosts/subscribe-to-account-orders) | `true` on some hosts, `false` on others | When `false`, read executions with ListFills. |
+| [`subscribeToAccountTransactions`](/api-reference/platform/hosts/subscribe-to-account-transactions) | `NotSupported` while `listTransactions` is supported | Poll ListTransactions. |
 | `supportedTransactionTypes` | Different sets per host; on a paper host, the set can grow while it runs | Never wait for a type the host does not list; re-read capabilities periodically. |
 | `marketSettings.*` | `PerMarket` for leverage and `NotSupported` for position mode on one host, and the reverse on another | Check the header leaf and the market's `settings` entry. |
 | Paper hosts | A paper host publishes its own capabilities, which can be broader or narrower than its model host's | Read the paper host's capabilities while paper trading and the `modelHostId` host's before going live. |

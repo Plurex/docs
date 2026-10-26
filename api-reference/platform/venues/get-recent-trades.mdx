@@ -3,3 +3,7 @@ title: "Get recent trades"
 description: "The venue's recent public trades for one market, oldest first. The venue bounds how many; this is not a complete history. 422 NotSupported for an unknown or unsupported market. Served from Plurex's live feed for the market when one is running, otherwise fetched from the venue. No API key needed."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/GetRecentTrades"
 ---
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.trades.getRecentTrades", "always": true}]} market={[]} />

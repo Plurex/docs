@@ -3,3 +3,7 @@ title: "Get market account state"
 description: "Gets the account's balances, position, collateral and leverage for one market."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/query/GetAccountMarketState"
 ---
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="host" none />

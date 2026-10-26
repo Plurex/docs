@@ -1,0 +1,65 @@
+export const CapabilityCheck = ({ source = "host", header = [], market = [], none = false, stream = false, perMarket = false }) => {
+  const isHost = source === "host";
+  const noun = isHost ? "host" : "venue";
+  const list = `/api-reference/platform/${noun}s/list`;
+  const markets = `/api-reference/platform/${noun}s/list-markets`;
+  const guide = `/capabilities/${noun}-capabilities`;
+  const gated = header.some((item) => item.support);
+  const keyed = header.find((item) => item.when);
+  const path = (value) => value.replace(/^capabilities\./, "");
+  return (
+    <Info>
+      <p><strong>Check support</strong></p>
+      {none ? (
+        <p>No capability gates this operation.</p>
+      ) : (
+        <>
+          <p>
+            Read the {noun} with <a href={list}>List {noun}s</a>. In its <code>capabilities</code>
+            {keyed ? <>, by your request's <code>{keyed.when.field}</code></> : null}:
+          </p>
+          <ul>
+            {header.map((item) => (
+              <li key={item.path}>
+                {item.when ? <><code>{item.when.value}</code> → </> : null}
+                <code>{path(item.path)}</code>
+                {item.always ? <>, always <code>Supported</code></> : null}
+                {item.note ? <>: {item.note}</> : null}
+              </li>
+            ))}
+          </ul>
+          {gated ? (
+            <p>
+              <code>Supported</code>: go ahead.{" "}
+              {perMarket ? <><code>PerMarket</code>: check the market below. </> : null}
+              <code>NotSupported</code>:{" "}
+              {stream ? (
+                <>the account is <code>Rejected</code> with <code>NotSupported</code>.</>
+              ) : (
+                <>the call fails with <code>422 NotSupported</code>.</>
+              )}
+            </p>
+          ) : null}
+          {market.length > 0 ? (
+            <>
+              <p>
+                On the market, from <a href={markets}>List {noun} markets</a>:
+              </p>
+              <ul>
+                {market.map((item) => (
+                  <li key={item.path}>
+                    <code>{item.path}</code>: {item.note}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </>
+      )}
+      <p>
+        See <a href={guide}>{isHost ? "Host" : "Venue"} capabilities</a> and{" "}
+        <a href="/capabilities/overview#support-values">support values</a>.
+      </p>
+    </Info>
+  );
+};

@@ -51,10 +51,10 @@ The **value** of a priced order, in the quote asset, is computed from `contractD
 
 | Order `type` | Entry | Present |
 | --- | --- | --- |
-| `Limit` | `orderTypes.limit` | Always. Every listed market accepts limit orders. |
-| `Market` | `orderTypes.market` | When non-null |
-| `TriggerLimit` | `orderTypes.triggerLimit` | When non-null |
-| `TriggerMarket` | `orderTypes.triggerMarket` | When non-null |
+| `Limit` | [`orderTypes.limit`](/api-reference/platform/hosts/submit-order) | Always. Every listed market accepts limit orders. |
+| `Market` | [`orderTypes.market`](/api-reference/platform/hosts/submit-order) | When non-null |
+| `TriggerLimit` | [`orderTypes.triggerLimit`](/api-reference/platform/hosts/submit-order) | When non-null |
+| `TriggerMarket` | [`orderTypes.triggerMarket`](/api-reference/platform/hosts/submit-order) | When non-null |
 
 Order types have no entry in the host header; the market summary is the only place to check. Sending a type whose entry is `null` returns `422 NotSupported`. Different order types on the same market can have different rules, so always read the entry for the type you send.
 
@@ -134,8 +134,8 @@ With `HostSelected`, `price` tells you which reference the host uses; `null` mea
 | --- | --- |
 | `min`, `max` | Inclusive bounds. |
 | `step` | Accepted values are exactly `min` plus a whole number of steps. Irrelevant when `min` equals `max`, which is a single fixed leverage. |
-| `get` | [GetMarketLeverage](/api-reference/platform/hosts/get-leverage) works on this market. |
-| `setEffectScope` | [SetMarketLeverage](/api-reference/platform/hosts/set-leverage) works on this market; `null` means it cannot be set. |
+| [`get`](/api-reference/platform/hosts/get-leverage) | GetMarketLeverage works on this market. |
+| [`setEffectScope`](/api-reference/platform/hosts/set-leverage) | SetMarketLeverage works on this market; `null` means it cannot be set. |
 
 A valid leverage `L` satisfies `min ≤ L ≤ max` and `(L − min) / step` is a whole number. The grid starts at `min`, not at zero. Off-grid values return `422 Rejected`.
 
@@ -143,7 +143,15 @@ Leverage is a market setting, not an order field. `settings.leverage: null` mean
 
 ### Position mode
 
-`settings.positionMode` lists the modes the market accepts in `values` (`Hedging`, `Netting`), with the same `get` and `setEffectScope` fields for [GetMarketPositionMode](/api-reference/platform/hosts/get-position-mode) and [SetMarketPositionMode](/api-reference/platform/hosts/set-position-mode). Setting a mode not in `values` returns `422 Rejected`.
+`settings.positionMode` is a `MarketPositionModeSpec`:
+
+| Field | Meaning |
+| --- | --- |
+| `values` | The modes the market accepts: `Hedging`, `Netting`. |
+| [`get`](/api-reference/platform/hosts/get-position-mode) | GetMarketPositionMode works on this market. |
+| [`setEffectScope`](/api-reference/platform/hosts/set-position-mode) | SetMarketPositionMode works on this market; `null` means it cannot be set. |
+
+Setting a mode not in `values` returns `422 Rejected`.
 
 ### How far a change reaches
 

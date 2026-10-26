@@ -1,5 +1,276 @@
 ---
 title: "Stream account transactions"
 description: "New balance postings on the subscribed accounts (fees, funding payments, deposits and so on), each with the same ID ListTransactions returns. Reconcile with ListTransactions. Transaction events are ordered only among themselves, not relative to order events. Supported when the host's accountTransactions.subscribeToAccountTransactions is, otherwise the account is Rejected with NotSupported."
-asyncapi: "/api-reference/platform/plurex-platform-async-api.yaml hostsSubscribeToAccountTransactions"
+openapi-schema: "/api-reference/platform/plurex-platform-api.yaml AccountTransaction"
 ---
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="host" header={[{"path": "capabilities.accountTransactions.subscribeToAccountTransactions", "support": true}, {"path": "capabilities.accountTransactions.supportedTransactionTypes", "note": "the posting types the host reports"}]} market={[]} stream />
+
+## Connect
+
+```text
+wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountTransactions
+```
+
+X-API-KEY and X-API-SECRET headers are both required. Send them on the WebSocket upgrade request, then subscribe accounts with the messages below. See [Stream account updates](/guides/streams) for the protocol, limits, close codes and how to reconcile.
+
+## Messages you send
+
+Subscribe and Unsubscribe the accounts whose transactions this connection streams.
+
+### Subscribe
+
+Sent by you to start streaming one or more accounts on this connection. The server answers with a Rejected for each refused account, then exactly one Subscribed; events for the accepted accounts follow that Subscribed. An account that is already streaming is listed again without a second stream.
+
+<ResponseField name="id" type="string" required>
+  Your ID for this request, echoed on its reply.
+</ResponseField>
+<ResponseField name="topics" type="object[]" required>
+  Accounts to stream, 1 to 25 per message. A connection streams at most 25 accounts in total; accounts beyond that are Rejected with InvalidRequest.
+  <Expandable title="properties">
+    <ResponseField name="accountId" type="string" required>
+      The account to stream.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="type" type="string" required>
+  Always Subscribe.
+</ResponseField>
+
+```json Example
+{
+  "type": "Subscribe",
+  "id": "r1",
+  "topics": [
+    {
+      "accountId": "acc_1"
+    },
+    {
+      "accountId": "acc_2"
+    }
+  ]
+}
+```
+
+### Unsubscribe
+
+Sent by you to stop streaming accounts. The server answers with one Unsubscribed, after which nothing more arrives for those accounts. Accounts that are not streaming are acknowledged too.
+
+<ResponseField name="id" type="string" required>
+  Your ID for this request, echoed on its reply.
+</ResponseField>
+<ResponseField name="topics" type="object[]" required>
+  Accounts to stop streaming; at least one.
+  <Expandable title="properties">
+    <ResponseField name="accountId" type="string" required>
+      The account to stream.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="type" type="string" required>
+  Always Unsubscribe.
+</ResponseField>
+
+```json Example
+{
+  "type": "Unsubscribe",
+  "id": "r2",
+  "topics": [
+    {
+      "accountId": "acc_1"
+    }
+  ]
+}
+```
+
+## Messages you receive
+
+### Subscribed
+
+Sent exactly once per Subscribe, after any Rejected for that request. Lists the accounts now streaming; their events follow this message, ordered per account but not across accounts. An empty list means every account was refused.
+
+<ResponseField name="id" type="string" required>
+  The id of the request this replies to.
+</ResponseField>
+<ResponseField name="topics" type="object[]" required>
+  The accounts now streaming from this request; empty when every account was refused.
+  <Expandable title="properties">
+    <ResponseField name="accountId" type="string" required>
+      The account to stream.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="type" type="string" required>
+  Always Subscribed.
+</ResponseField>
+
+```json Example
+{
+  "type": "Subscribed",
+  "id": "r1",
+  "topics": [
+    {
+      "accountId": "acc_1"
+    }
+  ]
+}
+```
+
+### Unsubscribed
+
+Sent exactly once per Unsubscribe. Nothing more arrives for the listed accounts.
+
+<ResponseField name="id" type="string" required>
+  The id of the request this replies to.
+</ResponseField>
+<ResponseField name="topics" type="object[]" required>
+  The accounts no longer streaming, as listed in the Unsubscribe.
+  <Expandable title="properties">
+    <ResponseField name="accountId" type="string" required>
+      The account to stream.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="type" type="string" required>
+  Always Unsubscribed.
+</ResponseField>
+
+```json Example
+{
+  "type": "Unsubscribed",
+  "id": "r2",
+  "topics": [
+    {
+      "accountId": "acc_1"
+    }
+  ]
+}
+```
+
+### Rejected
+
+Sent once per refused account, before the request's Subscribed; the connection stays open and the other accounts stream normally. Nothing arrives for a refused account.
+
+<ResponseField name="id" type="string" required>
+  The id of the request this replies to.
+</ResponseField>
+<ResponseField name="topic" type="object" required>
+  The refused account, as you sent it.
+  <Expandable title="properties">
+    <ResponseField name="accountId" type="string" required>
+      The account to stream.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="code" type="string" required>
+  Why the account was refused: for example Forbidden for an account you cannot access, NotSupported when the host does not stream it, or InvalidRequest beyond 25 accounts. One of: `InvalidRequest`, `Unauthenticated`, `Forbidden`, `AccountNotFound`, `OrderNotFound`, `NotFound`, `MethodNotAllowed`, `DuplicateClientOrderId`, `OrderAlreadyClosed`, `Conflict`, `UnsupportedMediaType`, `InsufficientFunds`, `InvalidProviderCredentials`, `AccountLimit`, `NotSupported`, `Rejected`, `RateLimited`, `UnexpectedError`, `CancelAllFailed`, `UpstreamFailure`, `Unavailable`, `UpstreamTimeout`.
+</ResponseField>
+<ResponseField name="message" type="string" required>
+  Readable detail for logs; do not parse it.
+</ResponseField>
+<ResponseField name="type" type="string" required>
+  Always Rejected.
+</ResponseField>
+
+```json Example
+{
+  "type": "Rejected",
+  "id": "r1",
+  "topic": {
+    "accountId": "acc_2"
+  },
+  "code": "Forbidden",
+  "message": "Forbidden"
+}
+```
+
+### Ended
+
+Sent when a streaming account stops without an Unsubscribe, for example because the host's own feed ended. Nothing more arrives for it: read current state through the REST API, then subscribe again. The connection and the other accounts are unaffected.
+
+<ResponseField name="topic" type="object" required>
+  The account that stopped streaming.
+  <Expandable title="properties">
+    <ResponseField name="accountId" type="string" required>
+      The account to stream.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="code" type="string" required>
+  Why it stopped, for example UpstreamFailure when the host's own feed ended. One of: `InvalidRequest`, `Unauthenticated`, `Forbidden`, `AccountNotFound`, `OrderNotFound`, `NotFound`, `MethodNotAllowed`, `DuplicateClientOrderId`, `OrderAlreadyClosed`, `Conflict`, `UnsupportedMediaType`, `InsufficientFunds`, `InvalidProviderCredentials`, `AccountLimit`, `NotSupported`, `Rejected`, `RateLimited`, `UnexpectedError`, `CancelAllFailed`, `UpstreamFailure`, `Unavailable`, `UpstreamTimeout`.
+</ResponseField>
+<ResponseField name="message" type="string" required>
+  Readable detail for logs; do not parse it.
+</ResponseField>
+<ResponseField name="type" type="string" required>
+  Always Ended.
+</ResponseField>
+
+```json Example
+{
+  "type": "Ended",
+  "topic": {
+    "accountId": "acc_1"
+  },
+  "code": "UpstreamFailure",
+  "message": "Upstream stream ended"
+}
+```
+
+### Transaction event
+
+Sent for every new balance posting on a streaming account, after that account's Subscribed, with the same ID ListTransactions returns. Ordered per account, not across accounts, and not relative to order events.
+
+<ResponseField name="topic" type="object" required>
+  The account this event belongs to.
+  <Expandable title="properties">
+    <ResponseField name="accountId" type="string" required>
+      The account to stream.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="timestamp" type="string<date-time>" required>
+  When Plurex sent the event.
+</ResponseField>
+<ResponseField name="data" type="object" required>
+  The new posting, as ListTransactions returns it. Its fields are under [Event data](#event-data) below.
+</ResponseField>
+<ResponseField name="type" type="string" required>
+  Always Event.
+</ResponseField>
+
+```json Example
+{
+  "type": "Event",
+  "topic": {
+    "accountId": "acc_1"
+  },
+  "timestamp": "2026-10-26T08:20:00.120Z",
+  "data": {
+    "id": "trade-fee:7f3a",
+    "effectiveAt": "2026-10-26T08:20:00.104Z",
+    "amount": {
+      "asset": "USDT",
+      "value": "-0.055"
+    },
+    "type": "TradingFee",
+    "instrument": {
+      "type": "Perp",
+      "base": "BTC",
+      "quote": "USDT"
+    },
+    "orderId": "BTC-USDT-PERP|0b6c1e52-2f7e-4c55-9d43-1c1a9b6f2e10",
+    "fillId": "fill-91",
+    "positionId": null,
+    "groupId": "trade:BTC-USDT-PERP:fill-91",
+    "nativeType": "TRADE_FEE",
+    "description": null
+  }
+}
+```
+
+## Event data
+
+The `data` object each event carries.

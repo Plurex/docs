@@ -3,3 +3,7 @@ title: "List open positions"
 description: "Lists the account's open derivative positions."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/query/ListOpenPositions"
 ---
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="host" none />

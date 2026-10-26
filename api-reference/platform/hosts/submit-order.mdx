@@ -3,3 +3,7 @@ title: "Submit an order"
 description: "Submits one order and returns it as the host accepted it. Not safe to repeat: repeating may place a second order. If the outcome is unclear (a timeout or 5xx), look the order up with GetOrder ByClientOrderId before resubmitting. 409 DuplicateClientOrderId means an order with that clientOrderId already exists."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/command/SubmitOrder"
 ---
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="host" header={[{"path": "capabilities.orders.submitOrder.clientOrderId", "support": true, "note": "when you send a clientOrderId"}]} market={[{"path": "orderTypes.market", "note": "non-null when the market accepts Market orders"}, {"path": "orderTypes.triggerLimit", "note": "non-null when it accepts TriggerLimit orders"}, {"path": "orderTypes.triggerMarket", "note": "non-null when it accepts TriggerMarket orders"}, {"path": "orderTypes.limit", "note": "always present; its terms are the Limit order rules"}]} />

@@ -3,3 +3,7 @@ title: "List account transactions"
 description: "Lists the account's balance postings: trading fees, funding payments, interest, deposits, withdrawals and so on. Results come in the order the host's accountTransactions.listTransactions capability states. Posting IDs never change and match the transaction stream. Requires access to the account. Hosts without transaction history return 422 NotSupported."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/query/ListTransactions"
 ---
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="host" header={[{"path": "capabilities.accountTransactions.listTransactions", "support": true}, {"path": "capabilities.accountTransactions.supportedTransactionTypes", "note": "the posting types the host reports"}]} market={[]} />

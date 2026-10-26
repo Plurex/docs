@@ -10,8 +10,14 @@ point of view of someone using it.
   `plurex-platform-async-api.yaml` (AsyncAPI 3.0) are byte-for-byte copies from `platform-public-api/` in plurex. Their
   operation, schema and field descriptions are the endpoint reference. Never edit the copies; fix wording upstream.
 - **Endpoint pages are generated.** `scripts/sync-platform-api.py` writes every page under
-  `api-reference/platform/{venues,hosts,accounts,paper}/` and the whole "API reference" tab navigation (including stream
-  pages, placed beside their REST operations). Never hand-edit them; put explanation in authored pages.
+  `api-reference/platform/{venues,hosts,accounts,paper}/` and the whole "API reference" tab navigation
+  (including stream pages, placed beside their REST operations). Never hand-edit them; put explanation in authored pages.
+  - REST pages reference the OpenAPI spec. Stream pages are rendered to MDX from the AsyncAPI spec, because Mintlify's
+    AsyncAPI view does not show nested unions or nullable references. Each stream page also embeds its event payload
+    (`openapi-schema` frontmatter), which Mintlify renders from the OpenAPI spec after the page body.
+  - Every host and venue page carries a "Check support" block (`snippets/capability-check.mdx`). Header leaves are
+    derived from the spec; market descriptors and extra notes come from the `EXTRA` table in the script, which fails
+    the sync when a path no longer exists. Change the block's wording in the snippet, and its content in `EXTRA`.
 - **Authored pages own the meaning.** Welcome, concepts, capabilities, guides, paper trading, the web app and the API
   reference's overview, conventions and errors pages explain how the platform is meant to be used. Link to endpoint
   pages for exact shapes instead of restating schemas field by field.

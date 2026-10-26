@@ -3,3 +3,7 @@ title: "List candles"
 description: "Closed candles for one market, price kind and interval, newest first across every page. The candle still forming is never included. A page has no gaps: one candle for every interval it spans. Follow nextCursor back in time until it is null. ByInstrument starts from the latest closed candle; ByInstrumentBefore starts from the candles that end at or before `before`. The market's candles entry says which of these it supports (list, listBefore); paging past the first page needs listBefore. 422 NotSupported for an unknown market, or a price kind, interval or variant the market does not list. No API key needed."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/ListCandles"
 ---
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.candles.listCandles.byInstrument", "when": {"field": "query.type", "value": "ByInstrument"}, "support": true}, {"path": "capabilities.candles.listCandles.byInstrumentBefore", "when": {"field": "query.type", "value": "ByInstrumentBefore"}, "support": true}]} market={[{"path": "marketData.candles.<priceKind>.list", "note": "true when the series can be listed with ByInstrument"}, {"path": "marketData.candles.<priceKind>.listBefore", "note": "true when it can be listed with ByInstrumentBefore"}, {"path": "marketData.candles.<priceKind>.supportedIntervals", "note": "the intervals you can request"}]} perMarket />
