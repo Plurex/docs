@@ -193,7 +193,8 @@
                 "group": "Paper accounts",
                 "pages": [
                   "api-reference/platform/paper/create",
-                  "api-reference/platform/paper/deposit"
+                  "api-reference/platform/paper/deposit",
+                  "api-reference/platform/paper/withdraw"
                 ]
               },
               {

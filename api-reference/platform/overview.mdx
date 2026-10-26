@@ -42,7 +42,7 @@ Queries read state and are always safe to repeat. Commands change state; each on
 | [`venues`](/api-reference/platform/venues/list) | Public market data: venues, markets, order books, trades, prices, quotes, statistics, funding, open interest and candles | None |
 | [`hosts`](/api-reference/platform/hosts/list) | Hosts and their markets (public), then trading on an account: orders, fills, balances, positions, margin, settings and transactions | Discovery: none. Account operations: API key |
 | [`accounts`](/api-reference/platform/accounts/connect) | Connect, list and manage your accounts | API key |
-| [`paper`](/api-reference/platform/paper/create) | Create and fund paper accounts, and choose their fee tier | API key |
+| [`paper`](/api-reference/platform/paper/create) | Create, fund and draw down paper accounts, and choose their fee tier | API key |
 
 Streams use the path `/api/v1/{domain}/stream/{Action}`, for example `/api/v1/hosts/stream/SubscribeToAccountOrders`. One connection carries one stream type, and you subscribe and unsubscribe accounts on it with messages. Streams are listed beside their HTTP operations, under **Orders** and **Transactions**. See [Stream account updates](/guides/streams).
 

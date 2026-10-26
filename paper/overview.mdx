@@ -57,7 +57,8 @@ Once created, a paper account is an ordinary account. It uses:
   [Rename](/api-reference/platform/accounts/rename) and [Delete](/api-reference/platform/accounts/delete).
 
 The only operations specific to paper are [Create a paper account](/api-reference/platform/paper/create),
-[Deposit](/api-reference/platform/paper/deposit) and the three [fee tier operations](/paper/fees-and-funding).
+[Deposit](/api-reference/platform/paper/deposit), [Withdraw](/api-reference/platform/paper/withdraw) and the three
+[fee tier operations](/paper/fees-and-funding).
 
 ## Create and fund an account
 
@@ -109,8 +110,22 @@ Deposit the asset your orders will spend or post as collateral:
 | Trade a linear perpetual | A collateral asset, typically the quote or settlement asset, for example USDT |
 | Trade an inverse perpetual | The base asset, for example BTC for an inverse BTC/USD perpetual, which settles and charges fees in base |
 
-There are no withdrawals and no reset. To start again from a clean slate, create a new paper account. You can also
-deposit and create paper accounts in the [web app](/platform/overview).
+### Withdraw to set up a scenario
+
+[Withdraw](/api-reference/platform/paper/withdraw) debits a paper account and returns the resulting wallet. Nothing
+leaves Plurex; use it to test how your strategy behaves with a low or empty balance, or with a wallet too small for its
+next order. The request has the same shape as a deposit.
+
+- Only the available balance can be withdrawn. Funds held by open orders or locked as position margin cannot, so
+  cancel orders or close positions first.
+- A withdrawal above the available balance, including from an asset the account does not hold, fails with
+  `422 InsufficientFunds` and changes nothing.
+- Each withdrawal posts a `Withdrawal` transaction with a negative amount.
+- Withdrawals are not safe to repeat: a repeat withdraws again. If the outcome is unclear, check List transactions
+  before retrying.
+
+There is no reset. To start again from a clean slate, create a new paper account. You can also deposit and create paper
+accounts in the [web app](/platform/overview).
 
 ## How orders fill
 
@@ -249,7 +264,7 @@ Two things to plan for:
 If a command's outcome is unclear, reconcile as you would on a live venue: [Get an order](/api-reference/platform/hosts/get-order)
 or [List open orders](/api-reference/platform/hosts/list-orders) for orders,
 [List transactions](/api-reference/platform/hosts/list-transactions) (where supported) or
-[List wallets](/api-reference/platform/hosts/list-wallets) for deposits, and
+[List wallets](/api-reference/platform/hosts/list-wallets) for deposits and withdrawals, and
 [List accounts](/api-reference/platform/accounts/list) for account creation.
 
 ## What paper does not simulate
@@ -260,7 +275,7 @@ or [List open orders](/api-reference/platform/hosts/list-orders) for orders,
 | Liquidation, maintenance margin, auto-deleveraging | Balances can go negative; closing is never blocked |
 | Borrowing, interest and isolated margin | Not available |
 | Dated futures and options | Not listed on paper hosts |
-| Withdrawals, transfers and resets | Create a new account to start fresh |
+| Transfers and resets | Create a new account to start fresh; use Withdraw to lower a balance |
 | Volume-based fee tiers, promotions, fee-token discounts | You select a fee tier manually |
 | Latency and market impact | Orders act instantly against the visible book |
 

@@ -1,0 +1,5 @@
+---
+title: "Withdraw from a paper account"
+description: "Debits the paper account and returns the resulting wallet. Nothing leaves Plurex: use it to set up paper scenarios such as a low or empty balance, or a wallet too small for the next order. Only the available balance can be withdrawn; funds held by open orders or locked as position margin cannot, so cancel or close first. A withdrawal above the available balance, including from an asset the account does not hold, fails with InsufficientFunds and changes nothing. It is recorded as a Withdrawal transaction with a negative amount and streams like any other posting. Not safe to repeat: repeating withdraws again. If the outcome is unclear, check ListTransactions before retrying."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/paper/command/Withdraw"
+---

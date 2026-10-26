@@ -111,12 +111,12 @@ tags:
   kind: nav
 - name: paper
   summary: Paper trading
-  description: Create and fund paper accounts and set their simulated fees. Trade them through the hosts operations like any
-    other account.
+  description: Create, fund and draw down paper accounts and set their simulated fees. Trade them through the hosts operations
+    like any other account.
   kind: nav
 - name: paper-accounts
   summary: Paper accounts
-  description: Create and fund paper accounts.
+  description: Create, fund and draw down paper accounts.
   parent: paper
   kind: nav
 - name: paper-fees
@@ -1806,6 +1806,51 @@ paths:
           $ref: '#/components/responses/UnexpectedError'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /api/v1/paper/command/Withdraw:
+    post:
+      operationId: paperWithdraw
+      summary: Withdraw from a paper account
+      description: 'Debits the paper account and returns the resulting wallet. Nothing leaves Plurex: use it to set up paper
+        scenarios such as a low or empty balance, or a wallet too small for the next order. Only the available balance can
+        be withdrawn; funds held by open orders or locked as position margin cannot, so cancel or close first. A withdrawal
+        above the available balance, including from an asset the account does not hold, fails with InsufficientFunds and changes
+        nothing. It is recorded as a Withdrawal transaction with a negative amount and streams like any other posting. Not
+        safe to repeat: repeating withdraws again. If the outcome is unclear, check ListTransactions before retrying.'
+      tags:
+      - paper-accounts
+      - not-repeat-safe
+      security:
+      - ApiKey: []
+        ApiSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawCommand'
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseEnvelopeWallet'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Rejected'
+        '500':
+          $ref: '#/components/responses/UnexpectedError'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /api/v1/paper/command/SetFeeTier:
     post:
       operationId: paperSetFeeTier
@@ -3324,6 +3369,20 @@ components:
           type: string
         amount:
           $ref: '#/components/schemas/Decimal'
+        asset:
+          type: string
+      required:
+      - accountId
+      - amount
+      - asset
+    WithdrawCommand:
+      type: object
+      properties:
+        accountId:
+          type: string
+        amount:
+          $ref: '#/components/schemas/Decimal'
+          description: Positive amount to withdraw; at most the asset's available balance.
         asset:
           type: string
       required:
@@ -6316,11 +6375,13 @@ components:
             $ref: '#/components/schemas/AccountStreamTopic'
           minItems: 1
           maxItems: 25
-          description: Accounts to stream; at most 25 per connection in total.
+          description: Accounts to stream, 1 to 25 per message. A connection streams at most 25 accounts in total; accounts
+            beyond that are Rejected with InvalidRequest.
         type:
           type: string
           enum:
           - Subscribe
+          description: Always Subscribe.
       required:
       - type
       - id
@@ -6341,11 +6402,12 @@ components:
           items:
             $ref: '#/components/schemas/AccountStreamTopic'
           minItems: 1
-          description: Accounts to stop streaming.
+          description: Accounts to stop streaming; at least one.
         type:
           type: string
           enum:
           - Unsubscribe
+          description: Always Unsubscribe.
       required:
       - type
       - id
@@ -6362,11 +6424,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AccountStreamTopic'
-          description: The accounts now streaming.
+          description: The accounts now streaming from this request; empty when every account was refused.
         type:
           type: string
           enum:
           - Subscribed
+          description: Always Subscribed.
       required:
       - type
       - id
@@ -6382,11 +6445,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AccountStreamTopic'
-          description: The accounts no longer streaming.
+          description: The accounts no longer streaming, as listed in the Unsubscribe.
         type:
           type: string
           enum:
           - Unsubscribed
+          description: Always Unsubscribed.
       required:
       - type
       - id
@@ -6400,14 +6464,19 @@ components:
           description: The id of the request this replies to.
         topic:
           $ref: '#/components/schemas/AccountStreamTopic'
+          description: The refused account, as you sent it.
         code:
           $ref: '#/components/schemas/ErrorCode'
+          description: 'Why the account was refused: for example Forbidden for an account you cannot access, NotSupported
+            when the host does not stream it, or InvalidRequest beyond 25 accounts.'
         message:
           type: string
+          description: Readable detail for logs; do not parse it.
         type:
           type: string
           enum:
           - Rejected
+          description: Always Rejected.
       required:
       - type
       - id
@@ -6421,14 +6490,18 @@ components:
       properties:
         topic:
           $ref: '#/components/schemas/AccountStreamTopic'
+          description: The account that stopped streaming.
         code:
           $ref: '#/components/schemas/ErrorCode'
+          description: Why it stopped, for example UpstreamFailure when the host's own feed ended.
         message:
           type: string
+          description: Readable detail for logs; do not parse it.
         type:
           type: string
           enum:
           - Ended
+          description: Always Ended.
       required:
       - type
       - topic
@@ -6441,16 +6514,19 @@ components:
       properties:
         topic:
           $ref: '#/components/schemas/AccountStreamTopic'
+          description: The account this event belongs to.
         timestamp:
           type: string
           format: date-time
           description: When Plurex sent the event.
         data:
           $ref: '#/components/schemas/AccountOrderEvent'
+          description: The order change and the complete order.
         type:
           type: string
           enum:
           - Event
+          description: Always Event.
       required:
       - type
       - topic
@@ -6588,16 +6664,19 @@ components:
       properties:
         topic:
           $ref: '#/components/schemas/AccountStreamTopic'
+          description: The account this event belongs to.
         timestamp:
           type: string
           format: date-time
           description: When Plurex sent the event.
         data:
           $ref: '#/components/schemas/AccountTransaction'
+          description: The new posting, as ListTransactions returns it.
         type:
           type: string
           enum:
           - Event
+          description: Always Event.
       required:
       - type
       - topic
@@ -6652,14 +6731,14 @@ components:
         path, host or venue.; MethodNotAllowed (405): The path exists but only accepts POST.; DuplicateClientOrderId (409):
         An order with this clientOrderId already exists.; OrderAlreadyClosed (409): The order is already filled, cancelled
         or rejected.; Conflict (409): A unique value (for example an account name) is already used.; UnsupportedMediaType
-        (415): The request is not Content-Type application/json.; InsufficientFunds (422): The account cannot fund the order.;
-        InvalidProviderCredentials (422): The provider rejected the account credentials.; AccountLimit (422): An account or
-        subscription limit was reached.; NotSupported (422): The host does not support this operation, variant or instrument.;
-        Rejected (422): The host or validation rejected the command.; RateLimited (429): The provider rate limited the request.;
-        UnexpectedError (500): Unexpected server failure.; CancelAllFailed (502): At least one sub-cancel failed; reconcile
-        with ListOpenOrders.; UpstreamFailure (502): The provider failed or returned an unusable response.; Unavailable (503):
-        The service or provider is temporarily unavailable.; UpstreamTimeout (504): The provider did not respond in time.
-        New codes may be added; treat an unknown code by its HTTP status.'
+        (415): The request is not Content-Type application/json.; InsufficientFunds (422): The account cannot fund the order
+        or withdrawal.; InvalidProviderCredentials (422): The provider rejected the account credentials.; AccountLimit (422):
+        An account or subscription limit was reached.; NotSupported (422): The host does not support this operation, variant
+        or instrument.; Rejected (422): The host or validation rejected the command.; RateLimited (429): The provider rate
+        limited the request.; UnexpectedError (500): Unexpected server failure.; CancelAllFailed (502): At least one sub-cancel
+        failed; reconcile with ListOpenOrders.; UpstreamFailure (502): The provider failed or returned an unusable response.;
+        Unavailable (503): The service or provider is temporarily unavailable.; UpstreamTimeout (504): The provider did not
+        respond in time. New codes may be added; treat an unknown code by its HTTP status.'
     MarketPositionModeSetting:
       type: object
       properties:

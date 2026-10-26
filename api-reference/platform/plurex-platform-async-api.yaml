@@ -52,24 +52,48 @@ channels:
   hostsSubscribeToAccountOrders:
     address: /api/v1/hosts/stream/SubscribeToAccountOrders
     messages:
-      AccountStreamControl:
-        $ref: '#/components/messages/AccountStreamControl'
-      AccountOrderStreamMessage:
-        $ref: '#/components/messages/AccountOrderStreamMessage'
+      AccountStreamSubscribe:
+        $ref: '#/components/messages/AccountStreamSubscribe'
+      AccountStreamUnsubscribe:
+        $ref: '#/components/messages/AccountStreamUnsubscribe'
+      AccountStreamSubscribed:
+        $ref: '#/components/messages/AccountStreamSubscribed'
+      AccountStreamUnsubscribed:
+        $ref: '#/components/messages/AccountStreamUnsubscribed'
+      AccountStreamRejected:
+        $ref: '#/components/messages/AccountStreamRejected'
+      AccountStreamEnded:
+        $ref: '#/components/messages/AccountStreamEnded'
+      AccountOrderStreamEvent:
+        $ref: '#/components/messages/AccountOrderStreamEvent'
   hostsSubscribeToAccountTransactions:
     address: /api/v1/hosts/stream/SubscribeToAccountTransactions
     messages:
-      AccountStreamControl:
-        $ref: '#/components/messages/AccountStreamControl'
-      AccountTransactionStreamMessage:
-        $ref: '#/components/messages/AccountTransactionStreamMessage'
+      AccountStreamSubscribe:
+        $ref: '#/components/messages/AccountStreamSubscribe'
+      AccountStreamUnsubscribe:
+        $ref: '#/components/messages/AccountStreamUnsubscribe'
+      AccountStreamSubscribed:
+        $ref: '#/components/messages/AccountStreamSubscribed'
+      AccountStreamUnsubscribed:
+        $ref: '#/components/messages/AccountStreamUnsubscribed'
+      AccountStreamRejected:
+        $ref: '#/components/messages/AccountStreamRejected'
+      AccountStreamEnded:
+        $ref: '#/components/messages/AccountStreamEnded'
+      AccountTransactionStreamEvent:
+        $ref: '#/components/messages/AccountTransactionStreamEvent'
 operations:
   hostsSubscribeToAccountOrders:
     action: send
     channel:
       $ref: '#/channels/hostsSubscribeToAccountOrders'
     messages:
-    - $ref: '#/channels/hostsSubscribeToAccountOrders/messages/AccountOrderStreamMessage'
+    - $ref: '#/channels/hostsSubscribeToAccountOrders/messages/AccountStreamSubscribed'
+    - $ref: '#/channels/hostsSubscribeToAccountOrders/messages/AccountStreamUnsubscribed'
+    - $ref: '#/channels/hostsSubscribeToAccountOrders/messages/AccountStreamRejected'
+    - $ref: '#/channels/hostsSubscribeToAccountOrders/messages/AccountStreamEnded'
+    - $ref: '#/channels/hostsSubscribeToAccountOrders/messages/AccountOrderStreamEvent'
     summary: Stream account orders
     description: 'Every change to the subscribed accounts'' orders: created, filled, cancelled, rejected. Each Event carries
       the change and the complete order, as GetOrder returns it. Reconcile with ListOpenOrders. Supported when the host''s
@@ -83,7 +107,8 @@ operations:
     channel:
       $ref: '#/channels/hostsSubscribeToAccountOrders'
     messages:
-    - $ref: '#/channels/hostsSubscribeToAccountOrders/messages/AccountStreamControl'
+    - $ref: '#/channels/hostsSubscribeToAccountOrders/messages/AccountStreamSubscribe'
+    - $ref: '#/channels/hostsSubscribeToAccountOrders/messages/AccountStreamUnsubscribe'
     summary: Choose account orders accounts
     description: Subscribe and Unsubscribe the accounts whose orders this connection streams.
     tags:
@@ -94,7 +119,11 @@ operations:
     channel:
       $ref: '#/channels/hostsSubscribeToAccountTransactions'
     messages:
-    - $ref: '#/channels/hostsSubscribeToAccountTransactions/messages/AccountTransactionStreamMessage'
+    - $ref: '#/channels/hostsSubscribeToAccountTransactions/messages/AccountStreamSubscribed'
+    - $ref: '#/channels/hostsSubscribeToAccountTransactions/messages/AccountStreamUnsubscribed'
+    - $ref: '#/channels/hostsSubscribeToAccountTransactions/messages/AccountStreamRejected'
+    - $ref: '#/channels/hostsSubscribeToAccountTransactions/messages/AccountStreamEnded'
+    - $ref: '#/channels/hostsSubscribeToAccountTransactions/messages/AccountTransactionStreamEvent'
     summary: Stream account transactions
     description: New balance postings on the subscribed accounts (fees, funding payments, deposits and so on), each with the
       same ID ListTransactions returns. Reconcile with ListTransactions. Transaction events are ordered only among themselves,
@@ -108,7 +137,8 @@ operations:
     channel:
       $ref: '#/channels/hostsSubscribeToAccountTransactions'
     messages:
-    - $ref: '#/channels/hostsSubscribeToAccountTransactions/messages/AccountStreamControl'
+    - $ref: '#/channels/hostsSubscribeToAccountTransactions/messages/AccountStreamSubscribe'
+    - $ref: '#/channels/hostsSubscribeToAccountTransactions/messages/AccountStreamUnsubscribe'
     summary: Choose account transactions accounts
     description: Subscribe and Unsubscribe the accounts whose transactions this connection streams.
     tags:
@@ -122,21 +152,186 @@ components:
       name: X-API-KEY
       description: X-API-KEY and X-API-SECRET headers are both required.
   messages:
-    AccountStreamControl:
-      name: AccountStreamControl
+    AccountStreamSubscribe:
+      name: AccountStreamSubscribe
+      title: Subscribe
+      summary: Start streaming accounts.
+      description: Sent by you to start streaming one or more accounts on this connection. The server answers with a Rejected
+        for each refused account, then exactly one Subscribed; events for the accepted accounts follow that Subscribed. An
+        account that is already streaming is listed again without a second stream.
       contentType: application/json
       payload:
-        $ref: '#/components/schemas/AccountStreamControl'
-    AccountOrderStreamMessage:
-      name: AccountOrderStreamMessage
+        $ref: '#/components/schemas/AccountStreamSubscribe'
+      examples:
+      - name: accountStreamSubscribe
+        summary: Stream two accounts.
+        payload:
+          type: Subscribe
+          id: r1
+          topics:
+          - accountId: acc_1
+          - accountId: acc_2
+    AccountStreamUnsubscribe:
+      name: AccountStreamUnsubscribe
+      title: Unsubscribe
+      summary: Stop streaming accounts.
+      description: Sent by you to stop streaming accounts. The server answers with one Unsubscribed, after which nothing more
+        arrives for those accounts. Accounts that are not streaming are acknowledged too.
       contentType: application/json
       payload:
-        $ref: '#/components/schemas/AccountOrderStreamMessage'
-    AccountTransactionStreamMessage:
-      name: AccountTransactionStreamMessage
+        $ref: '#/components/schemas/AccountStreamUnsubscribe'
+      examples:
+      - name: accountStreamUnsubscribe
+        summary: Stop streaming one account.
+        payload:
+          type: Unsubscribe
+          id: r2
+          topics:
+          - accountId: acc_1
+    AccountStreamSubscribed:
+      name: AccountStreamSubscribed
+      title: Subscribed
+      summary: 'Reply to Subscribe: the accounts now streaming.'
+      description: Sent exactly once per Subscribe, after any Rejected for that request. Lists the accounts now streaming;
+        their events follow this message, ordered per account but not across accounts. An empty list means every account was
+        refused.
       contentType: application/json
       payload:
-        $ref: '#/components/schemas/AccountTransactionStreamMessage'
+        $ref: '#/components/schemas/AccountStreamSubscribed'
+      examples:
+      - name: accountStreamSubscribed
+        summary: acc_2 was refused, so only acc_1 streams.
+        payload:
+          type: Subscribed
+          id: r1
+          topics:
+          - accountId: acc_1
+    AccountStreamUnsubscribed:
+      name: AccountStreamUnsubscribed
+      title: Unsubscribed
+      summary: 'Reply to Unsubscribe: nothing more follows.'
+      description: Sent exactly once per Unsubscribe. Nothing more arrives for the listed accounts.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/AccountStreamUnsubscribed'
+      examples:
+      - name: accountStreamUnsubscribed
+        summary: acc_1 no longer streams.
+        payload:
+          type: Unsubscribed
+          id: r2
+          topics:
+          - accountId: acc_1
+    AccountStreamRejected:
+      name: AccountStreamRejected
+      title: Rejected
+      summary: One account in a Subscribe was refused.
+      description: Sent once per refused account, before the request's Subscribed; the connection stays open and the other
+        accounts stream normally. Nothing arrives for a refused account.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/AccountStreamRejected'
+      examples:
+      - name: accountStreamRejected
+        summary: acc_2 is not accessible with this API key.
+        payload:
+          type: Rejected
+          id: r1
+          topic:
+            accountId: acc_2
+          code: Forbidden
+          message: Forbidden
+    AccountStreamEnded:
+      name: AccountStreamEnded
+      title: Ended
+      summary: An account stopped streaming.
+      description: 'Sent when a streaming account stops without an Unsubscribe, for example because the host''s own feed ended.
+        Nothing more arrives for it: read current state through the REST API, then subscribe again. The connection and the
+        other accounts are unaffected.'
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/AccountStreamEnded'
+      examples:
+      - name: accountStreamEnded
+        summary: The host's feed for acc_1 ended.
+        payload:
+          type: Ended
+          topic:
+            accountId: acc_1
+          code: UpstreamFailure
+          message: Upstream stream ended
+    AccountOrderStreamEvent:
+      name: AccountOrderStreamEvent
+      title: Order event
+      summary: A change to an order on a streaming account.
+      description: 'Sent for every change to a streaming account''s orders, after that account''s Subscribed: created, filled,
+        cancelled, rejected. Carries the change and the complete order as GetOrder returns it. Ordered per account, not across
+        accounts.'
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/AccountOrderStreamEvent'
+      examples:
+      - name: accountOrderStreamEvent
+        summary: A resting limit order was cancelled.
+        payload:
+          type: Event
+          topic:
+            accountId: acc_1
+          timestamp: '2026-10-26T08:17:18.732Z'
+          data:
+            change:
+              type: Cancelled
+            order:
+              type: Limit
+              id: BTC-USDT-SPOT|5fee96c0-8063-412d-8b4d-e36e44a8ea2d
+              createdAt: '2026-10-26T08:17:17.709Z'
+              side: Buy
+              instrument:
+                type: Spot
+                base: BTC
+                quote: USDT
+              state: Cancelled
+              sizeTraded: '0'
+              averagePrice: null
+              realizedPnl: null
+              totalFees: []
+              clientOrderId: my-order-1
+              size: '1'
+              price: '90'
+    AccountTransactionStreamEvent:
+      name: AccountTransactionStreamEvent
+      title: Transaction event
+      summary: A new balance posting on a streaming account.
+      description: Sent for every new balance posting on a streaming account, after that account's Subscribed, with the same
+        ID ListTransactions returns. Ordered per account, not across accounts, and not relative to order events.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/AccountTransactionStreamEvent'
+      examples:
+      - name: accountTransactionStreamEvent
+        summary: A trading fee was charged.
+        payload:
+          type: Event
+          topic:
+            accountId: acc_1
+          timestamp: '2026-10-26T08:20:00.120Z'
+          data:
+            id: trade-fee:7f3a
+            effectiveAt: '2026-10-26T08:20:00.104Z'
+            amount:
+              asset: USDT
+              value: '-0.055'
+            type: TradingFee
+            instrument:
+              type: Perp
+              base: BTC
+              quote: USDT
+            orderId: BTC-USDT-PERP|0b6c1e52-2f7e-4c55-9d43-1c1a9b6f2e10
+            fillId: fill-91
+            positionId: null
+            groupId: trade:BTC-USDT-PERP:fill-91
+            nativeType: TRADE_FEE
+            description: null
   schemas:
     Instrument:
       oneOf:
@@ -766,11 +961,6 @@ components:
       required:
       - accountId
       description: One account on an account stream. Requires access to the account.
-    AccountStreamControl:
-      oneOf:
-      - $ref: '#/components/schemas/AccountStreamSubscribe'
-      - $ref: '#/components/schemas/AccountStreamUnsubscribe'
-      description: A message the client sends on an account stream.
     AccountStreamSubscribe:
       type: object
       properties:
@@ -785,11 +975,13 @@ components:
             $ref: '#/components/schemas/AccountStreamTopic'
           minItems: 1
           maxItems: 25
-          description: Accounts to stream; at most 25 per connection in total.
+          description: Accounts to stream, 1 to 25 per message. A connection streams at most 25 accounts in total; accounts
+            beyond that are Rejected with InvalidRequest.
         type:
           type: string
           enum:
           - Subscribe
+          description: Always Subscribe.
       required:
       - type
       - id
@@ -810,11 +1002,12 @@ components:
           items:
             $ref: '#/components/schemas/AccountStreamTopic'
           minItems: 1
-          description: Accounts to stop streaming.
+          description: Accounts to stop streaming; at least one.
         type:
           type: string
           enum:
           - Unsubscribe
+          description: Always Unsubscribe.
       required:
       - type
       - id
@@ -831,11 +1024,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AccountStreamTopic'
-          description: The accounts now streaming.
+          description: The accounts now streaming from this request; empty when every account was refused.
         type:
           type: string
           enum:
           - Subscribed
+          description: Always Subscribed.
       required:
       - type
       - id
@@ -851,11 +1045,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AccountStreamTopic'
-          description: The accounts no longer streaming.
+          description: The accounts no longer streaming, as listed in the Unsubscribe.
         type:
           type: string
           enum:
           - Unsubscribed
+          description: Always Unsubscribed.
       required:
       - type
       - id
@@ -869,14 +1064,19 @@ components:
           description: The id of the request this replies to.
         topic:
           $ref: '#/components/schemas/AccountStreamTopic'
+          description: The refused account, as you sent it.
         code:
           $ref: '#/components/schemas/ErrorCode'
+          description: 'Why the account was refused: for example Forbidden for an account you cannot access, NotSupported
+            when the host does not stream it, or InvalidRequest beyond 25 accounts.'
         message:
           type: string
+          description: Readable detail for logs; do not parse it.
         type:
           type: string
           enum:
           - Rejected
+          description: Always Rejected.
       required:
       - type
       - id
@@ -890,14 +1090,18 @@ components:
       properties:
         topic:
           $ref: '#/components/schemas/AccountStreamTopic'
+          description: The account that stopped streaming.
         code:
           $ref: '#/components/schemas/ErrorCode'
+          description: Why it stopped, for example UpstreamFailure when the host's own feed ended.
         message:
           type: string
+          description: Readable detail for logs; do not parse it.
         type:
           type: string
           enum:
           - Ended
+          description: Always Ended.
       required:
       - type
       - topic
@@ -910,30 +1114,25 @@ components:
       properties:
         topic:
           $ref: '#/components/schemas/AccountStreamTopic'
+          description: The account this event belongs to.
         timestamp:
           type: string
           format: date-time
           description: When Plurex sent the event.
         data:
           $ref: '#/components/schemas/AccountOrderEvent'
+          description: The order change and the complete order.
         type:
           type: string
           enum:
           - Event
+          description: Always Event.
       required:
       - type
       - topic
       - timestamp
       - data
       description: One order change on a streaming account.
-    AccountOrderStreamMessage:
-      oneOf:
-      - $ref: '#/components/schemas/AccountOrderStreamEvent'
-      - $ref: '#/components/schemas/AccountStreamEnded'
-      - $ref: '#/components/schemas/AccountStreamRejected'
-      - $ref: '#/components/schemas/AccountStreamSubscribed'
-      - $ref: '#/components/schemas/AccountStreamUnsubscribed'
-      description: A message the server sends on the account orders stream.
     AccountTransaction:
       type: object
       properties:
@@ -1020,30 +1219,25 @@ components:
       properties:
         topic:
           $ref: '#/components/schemas/AccountStreamTopic'
+          description: The account this event belongs to.
         timestamp:
           type: string
           format: date-time
           description: When Plurex sent the event.
         data:
           $ref: '#/components/schemas/AccountTransaction'
+          description: The new posting, as ListTransactions returns it.
         type:
           type: string
           enum:
           - Event
+          description: Always Event.
       required:
       - type
       - topic
       - timestamp
       - data
       description: One new balance posting on a streaming account.
-    AccountTransactionStreamMessage:
-      oneOf:
-      - $ref: '#/components/schemas/AccountStreamEnded'
-      - $ref: '#/components/schemas/AccountStreamRejected'
-      - $ref: '#/components/schemas/AccountStreamSubscribed'
-      - $ref: '#/components/schemas/AccountStreamUnsubscribed'
-      - $ref: '#/components/schemas/AccountTransactionStreamEvent'
-      description: A message the server sends on the account transactions stream.
     ErrorCode:
       type: string
       enum:
@@ -1076,11 +1270,11 @@ components:
         path, host or venue.; MethodNotAllowed (405): The path exists but only accepts POST.; DuplicateClientOrderId (409):
         An order with this clientOrderId already exists.; OrderAlreadyClosed (409): The order is already filled, cancelled
         or rejected.; Conflict (409): A unique value (for example an account name) is already used.; UnsupportedMediaType
-        (415): The request is not Content-Type application/json.; InsufficientFunds (422): The account cannot fund the order.;
-        InvalidProviderCredentials (422): The provider rejected the account credentials.; AccountLimit (422): An account or
-        subscription limit was reached.; NotSupported (422): The host does not support this operation, variant or instrument.;
-        Rejected (422): The host or validation rejected the command.; RateLimited (429): The provider rate limited the request.;
-        UnexpectedError (500): Unexpected server failure.; CancelAllFailed (502): At least one sub-cancel failed; reconcile
-        with ListOpenOrders.; UpstreamFailure (502): The provider failed or returned an unusable response.; Unavailable (503):
-        The service or provider is temporarily unavailable.; UpstreamTimeout (504): The provider did not respond in time.
-        New codes may be added; treat an unknown code by its HTTP status.'
+        (415): The request is not Content-Type application/json.; InsufficientFunds (422): The account cannot fund the order
+        or withdrawal.; InvalidProviderCredentials (422): The provider rejected the account credentials.; AccountLimit (422):
+        An account or subscription limit was reached.; NotSupported (422): The host does not support this operation, variant
+        or instrument.; Rejected (422): The host or validation rejected the command.; RateLimited (429): The provider rate
+        limited the request.; UnexpectedError (500): Unexpected server failure.; CancelAllFailed (502): At least one sub-cancel
+        failed; reconcile with ListOpenOrders.; UpstreamFailure (502): The provider failed or returned an unusable response.;
+        Unavailable (503): The service or provider is temporarily unavailable.; UpstreamTimeout (504): The provider did not
+        respond in time. New codes may be added; treat an unknown code by its HTTP status.'

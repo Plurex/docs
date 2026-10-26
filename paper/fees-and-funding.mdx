@@ -181,7 +181,7 @@ positive for a gain, negative for a loss. Spot trades do not post settlements; t
 
 ## Read it all back
 
-Every fee, funding payment, settlement and deposit is a transaction on the account. Read them with
+Every fee, funding payment, settlement, deposit and withdrawal is a transaction on the account. Read them with
 [List transactions](/api-reference/platform/hosts/list-transactions) or, where the host supports it, follow them live
 with the [transaction stream](/api-reference/platform/hosts/subscribe-to-account-transactions). Paper hosts offer
 transaction history and the transaction stream when their model host does, so check the paper host's
@@ -192,7 +192,7 @@ transaction history and the transaction stream when their model host does, so ch
   "accountTransactions": {
     "listTransactions": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
     "subscribeToAccountTransactions": { "type": "NotSupported" },
-    "supportedTransactionTypes": ["Deposit", "TradingFee", "Settlement", "FundingPayment"]
+    "supportedTransactionTypes": ["Deposit", "Withdrawal", "TradingFee", "Settlement", "FundingPayment"]
   }
 }
 ```
@@ -202,6 +202,7 @@ A paper account reports these transaction types:
 | Type | Posted when | Links |
 | --- | --- | --- |
 | `Deposit` | You call Deposit | none |
+| `Withdrawal` | You call Withdraw; the amount is negative | none |
 | `TradingFee` | A fill is charged a fee, or receives a rebate as a positive amount | `instrument`, `orderId`, `fillId`, `groupId` |
 | `Settlement` | A perpetual fill realises profit or loss | `instrument`, `orderId`, `fillId`, `groupId` |
 | `FundingPayment` | Funding is paid or received for a funding time | `instrument`, `groupId` |

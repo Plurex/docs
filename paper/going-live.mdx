@@ -116,8 +116,8 @@ situation as `422 InsufficientFunds`. Handle both codes as "not enough funds or 
 
 ### Transactions
 
-Paper posts `Deposit`, `TradingFee`, `Settlement` and `FundingPayment` transactions. A live host reports its own set,
-which may include types such as `Withdrawal`, `Transfer`, `BorrowInterest` or `LiquidationFee`, and may not report
+Paper posts `Deposit`, `Withdrawal`, `TradingFee`, `Settlement` and `FundingPayment` transactions. A live host reports
+its own set, which may include types such as `Transfer`, `BorrowInterest` or `LiquidationFee`, and may not report
 some of paper's. Read `accountTransactions.supportedTransactionTypes`, and handle types you do not recognise.
 
 ### Transaction history and stream
