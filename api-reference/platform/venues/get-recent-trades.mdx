@@ -4,6 +4,10 @@ description: "The venue's recent public trades for one market, oldest first. The
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/GetRecentTrades"
 ---
 
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "public", "label": "No API key", "description": "Public market data and discovery; no authentication needed."}]} />
+
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 
 <CapabilityCheck source="venue" header={[{"path": "capabilities.trades.getRecentTrades", "always": true}]} market={[]} />

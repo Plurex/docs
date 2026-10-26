@@ -4,12 +4,13 @@
 `origin/main`, which is the same commit. Earlier feedback, `asyncapi_spec_guidelines_for_plurex.md`, was adopted in
 `7e4a8d407` (see `refresh-log/2026-10-26-66422bd-ddf3a5e.md`).
 
-Four parts, none of which change the JSON on the wire except part D:
+Five parts, none of which change the JSON on the wire except part D:
 
 - **A. Unions:** title every union variant and flag nullable unions, in both files, REST and streams alike.
 - **B. Stream payloads:** small additions that make stream payloads easier to read.
 - **C. Response examples:** the OpenAPI file has no examples, so every error example in the docs shows the wrong code.
 - **D. The `error` field:** always `null`; settle it before launch.
+- **E. Operation descriptions:** cut them to what the operation is, does and returns; leave the rest to badges.
 
 # A. Unions
 
@@ -210,3 +211,86 @@ Options:
    reason for `InvalidRequest`) and populate it.
 
 When it changes, the docs update `api-reference/platform/errors` (the envelope example and field table).
+
+# E. Operation descriptions
+
+## The problem
+
+Operation descriptions repeat what the badges already say, explain how Plurex serves data, and bury what the operation
+does. Get indicative fundings, for example (408 characters):
+
+> The current indicative funding rate for each perpetual: an estimate, so the rate that settles can differ. One result
+> per requested instrument, in request order. An instrument without a value comes back as an Unavailable result with its
+> error code, so one instrument cannot fail the batch. Served from Plurex's live feed for the market when one is
+> running, otherwise fetched from the venue. No API key needed.
+
+Only the first sentence is about this operation. The rest is the Batch badge, the batch rules in the docs' conventions
+page, the No API key badge, and how Plurex sources the data, which readers don't need.
+
+The docs now render the badge tags (`kind: badge`) on every operation page, with the tag's `summary` as the label and
+its `description` on hover. So the badges no longer need repeating in prose.
+
+## Rules
+
+1. **Say what the operation is, does and returns**, in the first sentence. Add only what is specific to this
+   operation and changes how a caller uses it: an ordering, a limit, an error code with an operation-specific meaning,
+   how to recover when the outcome is unclear.
+2. **Don't restate a badge.** No "No API key needed" (No API key), no "one result per instrument, in request order ...
+   one instrument cannot fail the batch" (Batch), no "follow nextCursor" (Paged), no "hosts without X return
+   422 NotSupported" (Check capabilities), no "Not safe to repeat: ..." (Not safe to repeat). Keep the recovery step,
+   which is specific ("If the outcome is unclear, check ListTransactions before retrying").
+3. **Don't say "Safe to repeat."** Extend the Not safe to repeat badge description instead: "Commands without this
+   badge are safe to repeat." (The docs overview already says so.) Every command without the badge is safe to repeat
+   today.
+4. **Don't describe how Plurex works inside**: no "served from Plurex's live feed when one is running, otherwise
+   fetched from the venue", no caches or feeds. Field descriptions may still say when a field is `null` or what time it
+   carries.
+5. **Don't repeat what the schemas, responses or capability fields already say**, such as which 404 codes exist, or which
+   variants a capability gates.
+6. **No "yet".** "Option markets are not listed yet" becomes "Option markets are not listed."
+7. Aim for one or two sentences. Ideally `check_contract.py` rejects descriptions that contain badge phrases.
+
+The same rules apply to the AsyncAPI operations and messages.
+
+## Proposed descriptions
+
+| Operation | Description |
+| --- | --- |
+| List venues | Lists every venue with the market data it supports. |
+| List venue markets | Lists a venue's markets with the market data each one supports, optionally filtered. Option markets are not listed. |
+| Get order book | The current order book of one market, at the depth the venue provides. An unknown market returns 422 NotSupported. |
+| Get recent trades | The venue's recent public trades for one market, oldest first. The venue limits how many; this is not a complete history. An unknown market returns 422 NotSupported. |
+| Get prices | The current price of one kind (traded, mark or index) for each instrument. |
+| Get best quotes | The best bid and ask for each instrument. |
+| Get market statistics | Venue-reported statistics for each instrument, over the window its market declares. |
+| Get indicative fundings | The current indicative funding rate for each perpetual. It is an estimate: the rate that settles can differ. |
+| Get open interests | The current open interest for each derivative, in the unit its market declares. |
+| List candles | Closed candles for one market, price kind and interval, newest first. The forming candle is never included, and a page has no gaps. ByInstrument starts from the latest closed candle, ByInstrumentBefore from the candles that end at or before `before`; paging past the first page needs the market's listBefore. A price kind or interval the market does not list returns 422 NotSupported. |
+| List hosts | Lists every host, real and paper, with the operations it supports. |
+| List host markets | Lists a host's markets with each market's order types, order rules and settings, optionally filtered. Option markets are not listed. |
+| Get an order | Gets one order by ID or clientOrderId. |
+| Get orders | Gets the orders you name. Unknown identifiers are left out. |
+| List open orders | (unchanged) |
+| List closed orders | Lists filled, cancelled and rejected orders, globally or for one instrument, optionally from a before or after time. |
+| List fills | (unchanged) |
+| List account transactions | Lists the account's balance postings: trading fees, funding payments, interest, deposits, withdrawals and more. They come in the order the host's listTransactions capability states, and posting IDs match the transaction stream. |
+| List wallets, List open positions, List margin states, Get market account state, Get market leverage, Get market position mode | (unchanged) |
+| Submit an order | Submits one order and returns it as the host accepted it. If the outcome is unclear (a timeout or 5xx), look the order up by clientOrderId before resubmitting. 409 DuplicateClientOrderId means an order with that clientOrderId already exists. |
+| Cancel an order | Cancels one open order. Ack means the host accepted the cancel; some hosts cancel asynchronously, so confirm the final state with the order stream or GetOrder. 404 OrderNotFound means the host does not know the identifier as an open order: it never existed, it closed and was forgotten, or it is not visible yet, so check rather than assume it is gone. 409 OrderAlreadyClosed means the order already finished and may have filled; do not retry. |
+| Cancel orders | Cancels the orders you name and returns one CancelResult per identifier, so a call can partly succeed. A Failed result carries the code CancelOrder would return for that identifier. An error that stops the whole call, such as a missing account, is returned as an ordinary error. |
+| Cancel all orders | Cancels every open order on the account, or on one instrument. Success means none remain open; orders already closed count as cancelled. Any other failure returns 502 CancelAllFailed: check ListOpenOrders for what is still open. |
+| Set market leverage | Sets the account's leverage for one market and returns the resulting setting. |
+| Set market position mode | Sets the account's position mode for one market and returns the resulting mode. |
+| Connect an exchange or broker account | Connects an exchange or broker account with its API credentials. If the outcome is unclear, check List accounts before retrying. |
+| Update account credentials | Replaces the account's exchange or broker credentials. |
+| Rename an account | Renames an account. |
+| Delete an account | Deletes an account. Repeating after success returns 404 AccountNotFound. |
+| List accounts | Lists your accounts, optionally filtered. |
+| Get an account | Gets one account. |
+| Create a paper account | Creates a paper account on a paper host. It trades the live market of the venue the paper host models, through the same host operations as a real account. If the outcome is unclear, check List accounts before retrying. |
+| Deposit into a paper account | Credits the paper account and returns the resulting wallet. If the outcome is unclear, check ListTransactions before retrying. |
+| Withdraw from a paper account | Debits the paper account's available balance and returns the resulting wallet, to set up scenarios such as a low balance. Funds held by open orders or position margin cannot be withdrawn; above the available balance, it fails with 422 InsufficientFunds and changes nothing. It posts a Withdrawal transaction. If the outcome is unclear, check ListTransactions before retrying. |
+| Set paper fee tier | Selects the paper account's fee tier and returns the resulting fee settings. Existing orders keep their fee terms. |
+| Get paper fee settings, Get effective paper fee rates | (unchanged) |
+
+"Boundary" in the current List closed orders text is replaced by "time".

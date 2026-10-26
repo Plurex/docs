@@ -60,7 +60,7 @@ curl --request POST https://api.plurex.io/api/v1/venues/query/GetOrderBook \
 }
 ```
 
-`asOf` is the time the book is current as of. From a live feed it can be the time of your read, even when the last change arrived earlier. An unknown or unsupported market returns `422 NotSupported`.
+`asOf` is the time the book is current as of. It can be the time of your read, even when the last change arrived earlier. An unknown or unsupported market returns `422 NotSupported`.
 
 ## Recent trades
 

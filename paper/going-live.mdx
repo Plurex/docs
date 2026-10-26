@@ -23,7 +23,7 @@ flowchart LR
 
 | | Paper and live |
 | --- | --- |
-| Operations | Every `/hosts` query and command, both account streams, and the account operations |
+| Operations | Every `/hosts` query and command, both account streams and the account operations, where the live host supports them |
 | Models | The same `Order`, `Fill`, `Wallet`, `MarketPosition` and `AccountTransaction` shapes |
 | Errors | The same error envelope and codes, such as `InsufficientFunds`, `Rejected`, `DuplicateClientOrderId`, `OrderAlreadyClosed` and `NotSupported` |
 | Order rules | The same increments, minimums and value floors, validated the same way |
@@ -71,8 +71,12 @@ capabilities before relying on:
 
 - the `ByClientOrderId` variants of order lookups and cancels, batch lookups, and the `Before` and `After` variants of
   [List closed orders](/api-reference/platform/hosts/list-closed-orders);
+- [List fills](/api-reference/platform/hosts/list-fills) by order ID;
 - [Cancel all orders](/api-reference/platform/hosts/cancel-all-orders);
-- IOC and FOK on limit orders, and FOK on market orders (`supportedTimeInForce` in each order type's options);
+- IOC and FOK on limit and trigger limit orders, and FOK on market and trigger market orders (`supportedTimeInForce`
+  in each order type's options);
+- [Get position mode](/api-reference/platform/hosts/get-position-mode) on perpetuals where the live host reports none;
+- the transaction stream (`accountTransactions.subscribeToAccountTransactions`);
 - fill details on the order stream (`accountOrders.includesFillDetails`); without them, read executions with
   [List fills](/api-reference/platform/hosts/list-fills);
 - the scope of a position mode change (`settings.positionMode.setEffectScope`); live, a change may apply to more than
@@ -89,12 +93,12 @@ capabilities before relying on:
 
 Live fees follow your real exchange account: its tier, volume, promotions, fee-token discounts and the exchange's own
 rules for which asset a fee is charged in. Paper charges the tier you selected, and charges spot fees in the quote
-asset. Live funding settles at the exchange's own price; paper estimates it from the mark price at the funding time.
+asset. Live funding settles at the exchange's own price; paper uses the venue's mark price at the funding time.
 See [Fees and funding](/paper/fees-and-funding).
 
 ### Execution realism
 
-Paper has no latency and no market impact beyond the visible book, and estimates queue position from visible size.
+Paper adds no latency of its own beyond the real path through Plurex and its live market data, has no market impact beyond the visible book, and estimates queue position from visible size.
 Expect live fills, especially passive fills and large sweeps, to differ. A live sweep across several price levels may
 report several fills where paper reports one at the average price.
 
@@ -106,8 +110,15 @@ may be accepted.
 
 ### Reduce-only orders
 
-Paper rejects a reduce-only order that is larger than the position left to close. Some exchanges trim it to the
-position size instead. Size reduce-only orders from the current position on both.
+In netting mode, paper rejects a reduce-only order that is larger than the position left to close, counting other open
+orders that would close it. In hedging mode, it trims a `Close` order to what is left of the leg. Exchanges have their
+own rules, and some trim where paper rejects. Size reduce-only orders from the current position on both.
+
+### Collateral
+
+Paper models the model host's collateral: the same kind of cross pool, its main collateral assets and their weights.
+A live account can have more: collateral tiers, assets you switch on or off, isolated margin, and maintenance margin
+that leads to liquidation. Read the live host's margin states before sizing your first live positions.
 
 ### Insufficient collateral on perpetuals
 
@@ -122,10 +133,9 @@ some of paper's. Read `accountTransactions.supportedTransactionTypes`, and handl
 
 ### Transaction history and stream
 
-A paper host offers transaction history and the transaction stream when its model host does, so this rarely changes
-when you switch. Still check `accountTransactions.listTransactions` and
-`accountTransactions.subscribeToAccountTransactions` on the live host, and fall back to polling List transactions where
-there is no stream.
+A paper host always offers transaction history and the transaction stream. A live host may not offer the stream:
+check `accountTransactions.subscribeToAccountTransactions` on the live host, and fall back to polling List
+transactions where there is no stream.
 
 ## Write strategies that adapt
 

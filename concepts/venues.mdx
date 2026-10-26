@@ -95,11 +95,11 @@ Option markets are not listed.
 
 - `bids` are best (highest) first; `asks` are best (lowest) first.
 - Level sizes are native contracts.
-- `asOf` is the time the book is current as of. From Plurex's live feed this can be the read time, even when the last change arrived earlier.
+- `asOf` is the time the book is current as of. It can be the time of your read, even when the last change arrived earlier.
 
 [Get recent trades](/api-reference/platform/venues/get-recent-trades) returns the venue's recent public trades, oldest first, with an `asOf`. The venue bounds how many come back; it is not a complete history. Each `PublicTrade` has a `price`, a `size` in native contracts, the `takerSide` (`null` when the venue does not report the aggressor), the venue time `observedAt` and the time Plurex received it, `receivedAt`. Public trades carry no identity. Trade sizes can be finer than `increments.size`, for example a fill of an order sized by notional.
 
-Both reads are served from Plurex's live feed for the market when one is running, and otherwise fetched from the venue. Either way the response means the same thing. An unknown or unsupported market returns `422 NotSupported`; an unknown venue returns `404 NotFound`.
+For both reads, an unknown or unsupported market returns `422 NotSupported`; an unknown venue returns `404 NotFound`.
 
 ## Observations
 

@@ -4,6 +4,10 @@ description: "Lists live orders, globally or for one instrument."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/query/ListOpenOrders"
 ---
 
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "paged", "label": "Paged", "description": "Returns pages; follow nextCursor until null."}]} />
+
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 
 <CapabilityCheck source="host" header={[{"path": "capabilities.orders.listOpenOrders.global", "when": {"field": "query.type", "value": "Global"}, "support": true}, {"path": "capabilities.orders.listOpenOrders.byInstrument", "when": {"field": "query.type", "value": "ByInstrument"}, "support": true}]} market={[]} />

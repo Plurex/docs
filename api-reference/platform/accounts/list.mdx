@@ -3,3 +3,7 @@ title: "List accounts"
 description: "Lists a tenant's accounts, optionally filtered."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/accounts/query/List"
 ---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "paged", "label": "Paged", "description": "Returns pages; follow nextCursor until null."}]} />

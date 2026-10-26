@@ -1,0 +1,14 @@
+export const OperationBadges = ({ badges = [] }) => {
+  const colors = { public: "green", optional: "orange", "not-repeat-safe": "red" };
+  return (
+    <p>
+      {badges.map((badge) => (
+        <span key={badge.name} style={{ marginRight: "0.5rem" }}>
+          <Tooltip tip={badge.description}>
+            <Badge color={colors[badge.name] || "gray"}>{badge.label}</Badge>
+          </Tooltip>
+        </span>
+      ))}
+    </p>
+  );
+};

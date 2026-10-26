@@ -63,7 +63,7 @@ Create keys and find your tenant ID on the **DevTools** page of the [Plurex app]
 
 ## Badges
 
-The specification tags operations with these badges, and operation descriptions refer to them:
+Each operation page shows its badges below the request line. Hover a badge for its meaning.
 
 | Badge | Meaning |
 | --- | --- |
@@ -71,7 +71,7 @@ The specification tags operations with these badges, and operation descriptions 
 | Check capabilities | Not every host or venue supports this operation. Check its [capabilities](/capabilities/overview) first, or expect `422 NotSupported`. |
 | Paged | Returns pages. Follow `nextCursor` until it is `null`. |
 | Batch | Takes a list of identifiers or instruments and returns one result for each. |
-| Not safe to repeat | Repeating the call repeats its effect. If the outcome is unclear, check before retrying. |
+| Not safe to repeat | Repeating the call repeats its effect. If the outcome is unclear, check before retrying. Commands without this badge are safe to repeat. |
 
 ## Read next
 

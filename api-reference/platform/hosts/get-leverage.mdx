@@ -4,6 +4,10 @@ description: "Gets the account's current leverage setting for one market."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/query/GetMarketLeverage"
 ---
 
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}]} />
+
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 
 <CapabilityCheck source="host" header={[{"path": "capabilities.marketSettings.getMarketLeverage", "support": true}]} market={[{"path": "settings.leverage.get", "note": "true when this market's leverage can be read"}]} perMarket />

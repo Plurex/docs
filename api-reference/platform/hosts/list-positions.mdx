@@ -4,6 +4,10 @@ description: "Lists the account's open derivative positions."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/query/ListOpenPositions"
 ---
 
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "paged", "label": "Paged", "description": "Returns pages; follow nextCursor until null."}]} />
+
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 
 <CapabilityCheck source="host" none />

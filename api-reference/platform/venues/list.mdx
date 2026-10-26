@@ -3,3 +3,7 @@ title: "List venues"
 description: "Lists every venue (exchange) with the market data it supports. No API key needed."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/List"
 ---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "public", "label": "No API key", "description": "Public market data and discovery; no authentication needed."}, {"name": "paged", "label": "Paged", "description": "Returns pages; follow nextCursor until null."}]} />

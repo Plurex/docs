@@ -4,6 +4,10 @@ description: "Venue-reported statistics for each instrument, over the window its
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/GetMarketStatistics"
 ---
 
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "public", "label": "No API key", "description": "Public market data and discovery; no authentication needed."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "batch", "label": "Batch", "description": "Takes a list of identifiers or instruments and returns one result for each."}]} />
+
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 
 <CapabilityCheck source="venue" header={[{"path": "capabilities.statistics.getMarketStatistics", "support": true}]} market={[{"path": "marketData.statistics.get", "note": "true when the market serves statistics"}, {"path": "marketData.statistics.supportedFields", "note": "which statistics it reports"}]} perMarket />

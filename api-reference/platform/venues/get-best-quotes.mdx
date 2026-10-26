@@ -4,6 +4,10 @@ description: "The top of book for each instrument. One result per requested inst
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/GetBestQuotes"
 ---
 
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "public", "label": "No API key", "description": "Public market data and discovery; no authentication needed."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "batch", "label": "Batch", "description": "Takes a list of identifiers or instruments and returns one result for each."}]} />
+
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 
 <CapabilityCheck source="venue" header={[{"path": "capabilities.bestQuote.getBestQuotes", "support": true}]} market={[{"path": "marketData.bestQuote.get", "note": "true when the market serves a best quote"}]} perMarket />

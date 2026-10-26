@@ -18,6 +18,8 @@ point of view of someone using it.
   - Every host and venue page carries a "Check support" block (`snippets/capability-check.mdx`). Header leaves are
     derived from the spec; market descriptors and extra notes come from the `EXTRA` table in the script, which fails
     the sync when a path no longer exists. Change the block's wording in the snippet, and its content in `EXTRA`.
+  - Every REST page shows the operation's badges (`snippets/operation-badges.mdx`), from the spec's `kind: badge`
+    tags: label from the tag `summary`, hover text from its `description`.
 - **Authored pages own the meaning.** Welcome, concepts, capabilities, guides, paper trading, the web app and the API
   reference's overview, conventions and errors pages explain how the platform is meant to be used. Link to endpoint
   pages for exact shapes instead of restating schemas field by field.
@@ -32,7 +34,8 @@ record the disagreement as spec feedback for plurex instead of papering over it.
 
 - Document only what exists at the locked commit. No roadmap items, no "coming soon", nothing planned.
 - Never describe how Plurex is built: no internal architecture, storage, event sourcing, policies, thresholds, internal
-  module names or class names.
+  module names or class names. That includes how data is sourced or served (feeds, caches, "fetched from the venue"):
+  say what a value means, not how Plurex got it.
 - Every claim about behaviour must be traceable to the spec or source at the locked commit. If unsure, leave it out.
 - Never hard-code facts the API reports at runtime when they can change (fee rates, leverage ranges, increments,
   candle history limits). Show them as examples and tell the reader where to read the live value.
@@ -69,6 +72,10 @@ per-market fidelity and substitution tables.
 
 ## Voice and style
 
+- Keep it to the point: say what a thing is, what it does and what it returns, then only what changes how the reader
+  uses it. Cut anything a badge, a schema, a capability or the conventions page already says. Badges (No API key,
+  Check capabilities, Paged, Batch, Not safe to repeat) are not restated in prose. Wordy spec descriptions are fixed
+  upstream (see `agent_plans/spec_feedback_for_plurex.md`), not around them.
 - Second person, active voice, present tense. Lead with what the reader can do and why it matters.
 - Trading meaning first, then what a caller needs: which operation, what to check, how to retry and reconcile.
 - Be direct about limits. Where hosts differ, say so and point to the capability that says how.

@@ -3,3 +3,7 @@ title: "Deposit into a paper account"
 description: "Credits the paper account and returns the resulting wallet. Not safe to repeat: repeating deposits again. If the outcome is unclear, check ListTransactions before retrying."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/paper/command/Deposit"
 ---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "not-repeat-safe", "label": "Not safe to repeat", "description": "Repeating the call repeats its effect. If the outcome is unclear, check before retrying."}]} />

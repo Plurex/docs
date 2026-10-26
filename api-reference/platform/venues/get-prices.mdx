@@ -4,6 +4,10 @@ description: "The current price of one kind for each instrument. One result per 
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/GetPrices"
 ---
 
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "public", "label": "No API key", "description": "Public market data and discovery; no authentication needed."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "batch", "label": "Batch", "description": "Takes a list of identifiers or instruments and returns one result for each."}]} />
+
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 
 <CapabilityCheck source="venue" header={[{"path": "capabilities.prices.traded.getPrices", "when": {"field": "kind", "value": "Traded"}, "support": true}, {"path": "capabilities.prices.mark.getPrices", "when": {"field": "kind", "value": "Mark"}, "support": true}, {"path": "capabilities.prices.index.getPrices", "when": {"field": "kind", "value": "Index"}, "support": true}]} market={[{"path": "marketData.prices.<kind>.get", "note": "true for each price kind the market serves"}]} perMarket />

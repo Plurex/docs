@@ -4,6 +4,10 @@ description: "Cancels the orders you name and returns one CancelResult per ident
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/command/CancelOrders"
 ---
 
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "batch", "label": "Batch", "description": "Takes a list of identifiers or instruments and returns one result for each."}]} />
+
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 
 <CapabilityCheck source="host" header={[{"path": "capabilities.orders.cancelOrders.byIds", "when": {"field": "command.type", "value": "ByIds"}, "support": true}, {"path": "capabilities.orders.cancelOrders.byClientOrderIds", "when": {"field": "command.type", "value": "ByClientOrderIds"}, "support": true}, {"path": "capabilities.orders.cancelOrders.byClientOrderIdsForInstrument", "when": {"field": "command.type", "value": "ByClientOrderIdsForInstrument"}, "support": true}]} market={[]} />

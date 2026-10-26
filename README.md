@@ -27,7 +27,7 @@ python3 -m venv /tmp/plurex-docs-venv
 /tmp/plurex-docs-venv/bin/python scripts/sync-platform-api.py
 ```
 
-The script uses the spec's navigation tags, summaries and descriptions, while retaining established URLs for existing operations. It writes endpoint pages, stream pages and the whole API reference tab, placing each stream beside its HTTP operations, and adds a capability check (`snippets/capability-check.mdx`) to every host and venue page; keep explanatory prose in authored pages. When operations are removed, remove their obsolete pages and add appropriate redirects in `docs.json`.
+The script uses the spec's navigation tags, summaries and descriptions, while retaining established URLs for existing operations. It writes endpoint pages, stream pages and the whole API reference tab, placing each stream beside its HTTP operations, adds a capability check (`snippets/capability-check.mdx`) to every host and venue page, and shows each operation's badges (`snippets/operation-badges.mdx`) from the spec's badge tags; keep explanatory prose in authored pages. When operations are removed, remove their obsolete pages and add appropriate redirects in `docs.json`.
 
 Validate changes with an up-to-date Mintlify CLI:
 

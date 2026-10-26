@@ -9,10 +9,14 @@ Both post to the account as transactions you can read back and reconcile.
 
 ## Trading fees
 
-Paper fees are simulation terms you select, not a copy of your live exchange account. Each paper host offers a list of
-fee tiers that approximate its exchange's published schedules; they are not guaranteed to match the exchange's
-current rates. You pick the tier, and paper charges it on every fill: the maker rate
-when a resting order fills, the taker rate when an order takes liquidity.
+Paper fees are simulation terms you select, not a copy of your live exchange account. Each paper host offers fee
+tiers modelled on its exchange's published schedule, named and numbered like the exchange's own where it publishes
+them. A tier can charge different rates for different groups of instruments, such as perpetuals, stablecoin pairs or
+fiat-quoted spot, and some tiers pay a maker rebate. The tiers are not guaranteed to match the exchange's current
+rates.
+
+You pick the tier, and paper charges it on every fill: the maker rate when a resting order fills, the taker rate when
+an order takes liquidity.
 
 Paper does not move you between tiers by trading volume, and does not apply VIP or regional schedules, promotions or
 fee-token discounts.
@@ -41,18 +45,18 @@ fee-token discounts.
           {
             "id": 1,
             "name": "Tier A",
-            "defaults": { "makerFeePercent": "0.08", "takerFeePercent": "0.12", "fractionDigits": 8 },
+            "defaults": { "makerFeePercent": "0.08", "takerFeePercent": "0.12", "fractionDigits": null },
             "instrumentOverrides": [
               {
                 "instrumentPattern": ".*-.*-(PERP|PERPINV)",
-                "rates": { "makerFeePercent": "0.015", "takerFeePercent": "0.045", "fractionDigits": 8 }
+                "rates": { "makerFeePercent": "0.015", "takerFeePercent": "0.045", "fractionDigits": null }
               }
             ]
           },
           {
             "id": 2,
             "name": "Tier B",
-            "defaults": { "makerFeePercent": "-0.01", "takerFeePercent": "0.04", "fractionDigits": 8 },
+            "defaults": { "makerFeePercent": "-0.01", "takerFeePercent": "0.04", "fractionDigits": null },
             "instrumentOverrides": []
           }
         ],
@@ -103,8 +107,9 @@ afterwards.
 
 - Rates are **percentages** as decimal strings: `"0.04"` means 0.04% of the fill's value.
 - A **negative rate is a rebate**: the account receives it instead of paying it.
-- `fractionDigits` is the number of decimal places each fee is rounded to; `null` means fees are not rounded.
-  Paper rounds each fill's fee separately, so a very small fill can carry a fee of zero.
+- Paper rounds each fill's fee separately to the fee asset's precision. Get effective fee rates reports it as
+  `fractionDigits`, the number of decimal places; tier rates in Get fee settings leave it `null`, because the fee
+  asset depends on the instrument. A very small fill can carry a fee of zero, and posts no fee transaction.
 
 ### Which asset fees are charged in
 
@@ -123,7 +128,8 @@ new tier. Get effective fee rates always describes new orders.
 ## Perpetual funding
 
 Paper charges funding on linear and inverse perpetuals at each of the venue's **funding times**, using the venue's
-**finalised** funding rate for the period. Spot markets pay no funding. Funding is never charged from indicative or
+**finalised** funding rate for the period. Funding times follow the venue's own schedule, read from its published
+funding history, so each market is charged at whatever interval the venue uses. Spot markets pay no funding. Funding is never charged from indicative or
 predicted rates, such as those [Get indicative fundings](/api-reference/platform/venues/get-indicative-fundings)
 returns, and a finalised rate of zero pays nothing.
 
@@ -135,15 +141,16 @@ returns, and a finalised rate of zero pays nothing.
 
 ### Which position counts
 
-The position that counts is the one you held **immediately before** the funding time.
+The position that counts is the one you held **immediately before** the funding time. There is no pro-rating: that
+position pays for the whole period, however long it was held.
 
 - A position closed exactly at the funding time still pays for that funding time.
 - A position opened exactly at the funding time pays from the next one.
 
 ### How much
 
-The payment is the position's value at the funding time multiplied by the rate. The price is estimated from the venue's
-mark price at the funding time.
+The payment is the position's value at the funding time multiplied by the rate. The price is the close of the venue's
+one-minute mark-price candle that ends at the funding time.
 
 For a **linear** perpetual, paid in the settlement asset:
 
@@ -171,9 +178,6 @@ funding time it belongs to. Funding posts in full even if it takes a balance neg
 funding. It means payments may appear, not that every market pays at every funding time: paper charges nothing for a
 period when the inputs it needs are not available.
 
-If the paper host is not running at a funding time, that payment may post later, when your position in the market next
-changes, or not at all if the position stays unchanged.
-
 ## Settlement
 
 On perpetuals, realised profit and loss posts as a `Settlement` transaction when a fill reduces or closes a position:
@@ -184,14 +188,14 @@ positive for a gain, negative for a loss. Spot trades do not post settlements; t
 Every fee, funding payment, settlement, deposit and withdrawal is a transaction on the account. Read them with
 [List transactions](/api-reference/platform/hosts/list-transactions) or, where the host supports it, follow them live
 with the [transaction stream](/api-reference/platform/hosts/subscribe-to-account-transactions). Paper hosts offer
-transaction history and the transaction stream when their model host does, so check the paper host's
-`accountTransactions` capabilities:
+both transaction history and the transaction stream. Check the paper host's `accountTransactions` capabilities for the
+types it reports:
 
 ```json
 {
   "accountTransactions": {
     "listTransactions": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
-    "subscribeToAccountTransactions": { "type": "NotSupported" },
+    "subscribeToAccountTransactions": { "type": "Supported" },
     "supportedTransactionTypes": ["Deposit", "Withdrawal", "TradingFee", "Settlement", "FundingPayment"]
   }
 }

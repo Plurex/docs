@@ -17,6 +17,20 @@ When you are ready, you switch the same code to a connected account. See
   Plurex does not replay history or run backtests. Paper accounts trade forward, in real time, on live data.
 </Note>
 
+## What paper simulates
+
+Paper models the parts of a live account that change a strategy's results, not only the fills.
+
+| Area | What paper does |
+| --- | --- |
+| [Matching](#how-orders-fill) | Marketable orders walk the live visible book with real slippage. Resting orders queue behind the visible size at their price and fill as live trades work through the queue. |
+| [Trigger orders](#trigger-orders) | Stops and take-profits watch the live last trade, best bid or ask, mark or index price. |
+| [Wallets and collateral](#positions-collateral-and-balances) | Balances are held and locked as on the host. Perpetual collateral is a weighted, multi-asset pool modelled on the host's account. |
+| [Positions](#positions-collateral-and-balances) | Spot, linear and inverse perpetuals, in netting or hedging mode, with realised and unrealised profit and loss. |
+| [Fees](/paper/fees-and-funding#trading-fees) | Maker and taker rates from fee tiers modelled on the exchange's schedule, including rebates. |
+| [Funding](/paper/fees-and-funding#perpetual-funding) | Perpetuals pay and receive funding at the venue's real funding times, from its finalised rates. |
+| [The API](#the-same-api-as-a-real-account) | Every host operation and both account streams, the same as a real account, with leverage the one exception. |
+
 ## Paper hosts
 
 A paper host is a host like any other. You find it with [List hosts](/api-reference/platform/hosts/list), and these
@@ -35,9 +49,10 @@ perpetual and inverse perpetual markets, so its market list can be smaller than 
 paper host's own markets with [List host markets](/api-reference/platform/hosts/list-markets) rather than assuming
 they match.
 
-A paper host publishes its own [capabilities](/capabilities/host-capabilities). In some places it offers more than the
-model host (for example extra order queries, time in force options or fill details on the order stream) and in some
-places less (no leverage control, for one). Read the paper host's capabilities while you paper trade, and the model
+A paper host publishes its own [capabilities](/capabilities/host-capabilities). It supports every order query and
+cancel variant, fill lookup and account stream whatever its model host offers, so in places it offers more than the
+model host (for example `clientOrderId` lookups, time in force options or fill details on the order stream). Its one
+gap is leverage control. Read the paper host's capabilities while you paper trade, and the model
 host's before you go live.
 
 <Tip>
@@ -49,10 +64,10 @@ host's before you go live.
 
 Once created, a paper account is an ordinary account. It uses:
 
-- every `/hosts` operation: orders, fills, wallets, positions, margin states, market state, position mode and
-  transactions, as the paper host's capabilities allow;
+- every `/hosts` operation except leverage: orders, fills, wallets, positions, margin states, market state, position
+  mode and transactions;
 - both account streams, [order changes](/api-reference/platform/hosts/subscribe-to-account-orders) and
-  [transactions](/api-reference/platform/hosts/subscribe-to-account-transactions), where the host supports them;
+  [transactions](/api-reference/platform/hosts/subscribe-to-account-transactions);
 - the account operations [List](/api-reference/platform/accounts/list), [Get](/api-reference/platform/accounts/get),
   [Rename](/api-reference/platform/accounts/rename) and [Delete](/api-reference/platform/accounts/delete).
 
@@ -168,9 +183,14 @@ depth.
 ### Resting orders
 
 When a limit order rests, it joins the back of the queue: paper notes the size already visible at its price on its
-side of the book. Public trades at that price work through the queue ahead first; once that size has traded, further
-trades fill your order. A trade at a better price than yours, or opposite liquidity in the book at or through your
-price, fills the order directly.
+side of the book. Your place in the queue then moves as the market does:
+
+- Public trades at your price that hit your side of the book work through the queue ahead; once it has traded, further
+  trades fill your order.
+- When the visible size at your price shrinks, you move forward with it.
+- A trade at a better price than yours, or opposite liquidity in the book at or through your price, fills the order
+  directly.
+- Your own resting orders share liquidity in price and time priority: best price first, then oldest.
 
 A resting order always fills at its own limit price, as maker, and is charged the maker rate. It can fill over many
 trades; each fill arrives on the order stream with its details.
@@ -184,28 +204,35 @@ trades; each fill arrives on the order stream with its details.
 | Post-only order that would cross on arrival | Cancelled, not filled |
 | IOC limit order that does not cross | Cancelled immediately |
 | FOK limit order that does not cross | Cancelled immediately |
-| Reduce-only order larger than the position left to close | Rejected with `422 Rejected`, not trimmed |
+| Reduce-only order larger than the position left to close, in netting mode | Rejected with `422 Rejected`, not trimmed. Other open orders that would close the position count against what is left. |
+| `Close` order larger than the leg, in hedging mode | Trimmed to what is left of the leg |
 | Reduce-only order with no position, or on the wrong side | Rejected |
+| Order that partly fills and keeps resting | `LIVE`, with `sizeTraded` above zero |
 
 Which options each market accepts is in its order rules. Read them from
 [List host markets](/api-reference/platform/hosts/list-markets) and see [Order rules](/capabilities/order-rules).
 
 ### What is not modelled
 
-- **Latency.** Submissions, cancels and triggers act instantly against the latest data paper has observed.
+- **Configurable latency.** Paper adds no artificial delay, and you cannot set one. Your orders still see real
+  latency: they travel through Plurex and are matched against live market data as it arrives, just as a live order
+  travels to the exchange.
 - **Market impact beyond the visible book.** Paper does not deplete the book after your order takes from it, so
   orders in quick succession each see the same visible liquidity until the venue's book updates.
 - **Hidden liquidity and venue-specific queue rules.** Queue position is estimated from visible size and public
   trades.
 - **Fills per level.** A sweep across several levels is reported as one fill at the average price, where a live venue
   may report several.
-- **Amending orders.** Cancel and resubmit instead.
+- **Venue limits beyond the order rules.** Paper applies the market's published order rules, not an exchange's price
+  bands or maximum order sizes, and has no market-order price protection: a market order can take the whole visible
+  book.
+- **Self-trade prevention.** Your own orders never trade with each other.
 
 ## Trigger orders
 
 Paper supports trigger limit and trigger market orders on markets where the model host offers them. A trigger watches
-one reference price (last trade, best bid, best ask, mark or index) and fires when it crosses your trigger price in
-the direction of the condition, `RefPriceGTE` or `RefPriceLTE`.
+one reference price (last trade, best bid, best ask, mark or index) and fires when that price reaches or passes your
+trigger price in the direction of the condition, `RefPriceGTE` or `RefPriceLTE`.
 
 - Paper offers only the reference prices it can evaluate from the venue's live data, and evaluates exactly the kind
   the order uses. Read the `trigger` section of the paper market's `triggerLimit` and `triggerMarket` order rules to
@@ -221,63 +248,72 @@ Reduce-only trigger orders on perpetuals make stop-loss and take-profit orders.
 
 ## Positions, collateral and balances
 
+### Wallets
+
+Each asset has one wallet with a total and an available balance. Open orders hold funds and open positions lock them,
+as on the host; what is held or locked is not available to new orders or withdrawals. You can deposit any asset.
+
 **Spot.** A buy holds quote and a sell holds base while the order is open; a cancel releases the hold. Fills move the
-balances. Spot trades do not post `Settlement` transactions; their fees post as `TradingFee`.
+balances. An order the balance cannot cover returns `422 InsufficientFunds`. Spot trades do not post `Settlement`
+transactions; their fees post as `TradingFee`.
 
-**Perpetuals.** Paper trades perpetuals at 1×, without leverage:
+### Collateral on perpetuals
 
-- Opening risk needs collateral equal to the position's value. An order that needs more collateral than is available
-  is rejected with `422 Rejected`. (On spot, an order the balance cannot cover returns `422 InsufficientFunds`.)
-- Collateral can be several assets. Non-stable assets such as BTC count at a discount to their value. Unrealised
-  losses reduce what you can open; unrealised profit does not add to it. Read
-  [List margin states](/api-reference/platform/hosts/list-margin-states) and
-  [Get market state](/api-reference/platform/hosts/get-market-state) for the current total and available collateral.
-- There is no liquidation. Losses, fees and funding can take a balance negative. A negative balance blocks new risk but
-  never blocks reducing or closing a position: a closing order is never refused for lack of funds.
-- Realised profit and loss posts as `Settlement` transactions.
+Paper trades perpetuals at 1×, without leverage: opening risk needs collateral equal to the position's value. An order
+that needs more collateral than is available is rejected with `422 Rejected`.
 
-**Position mode.** New perpetual positions start in netting mode. Where a market offers hedging, switch with
+Collateral is a single cross pool shared by every perpetual on the account, modelled on the model host's account:
+
+- **Several assets count.** The pool uses the model host's main collateral assets. Stablecoins count at full value;
+  assets such as BTC and ETH count at a discount (a weight below 1) to their value.
+- **One valuation asset.** The pool is valued in one asset, reported as `baseCollateralAsset` in
+  [List margin states](/api-reference/platform/hosts/list-margin-states). Each collateral asset is converted at a live
+  reference price.
+- **What you can open** is the weighted available collateral, less what open orders hold and positions lock, less any
+  negative balances at full value. Unrealised profit does not add to it.
+- **Reading it.** List margin states and [Get market state](/api-reference/platform/hosts/get-market-state) report
+  the pool's total and available collateral. The total includes unrealised profit and loss at the mark price.
+
+Assets outside the pool add nothing as collateral. Deposit one of the model host's collateral assets, typically its
+stablecoins, to trade its perpetuals.
+
+### Positions and profit and loss
+
+- Linear and inverse perpetuals each use their own contract maths: see [Contract details](/capabilities/order-rules#contract-details-what-a-size-means).
+- Realised profit and loss posts to the settlement asset as a `Settlement` transaction on every fill that reduces or
+  closes a position.
+- There is no liquidation. Losses, fees and funding can take a balance negative. A negative balance blocks new risk.
+- A closing order is never refused for lack of funds. An order that reverses a netting position needs collateral for
+  its new side; if that cannot be covered, the whole order is rejected.
+
+### Position mode
+
+New perpetual positions start in netting mode. Where a market offers hedging, switch with
 [Set position mode](/api-reference/platform/hosts/set-position-mode) while the market is flat and has no open orders.
 In netting mode, an order larger than the position closes it and opens the other way. In hedging mode, long and short
-legs are independent, each with its own entry price, profit and loss, fees and funding.
+legs are independent, each with its own entry price, profit and loss, fees and funding, and each fully backed by
+collateral.
 
 In hedging mode every order must set `positionEffect`: `Open` adds to the leg on the order's side, and `Close` reduces
 the opposite leg. Paper rejects an order without it with `422 Rejected`.
 
+### Leverage
+
 [Get leverage](/api-reference/platform/hosts/get-leverage) and [Set leverage](/api-reference/platform/hosts/set-leverage)
 are not supported on paper hosts, every paper market's `settings.leverage` is `null`, and market state reports the
 leverage setting as `Disabled`.
-
-## Continuity
-
-Your paper account is kept safe across restarts. Balances, positions, fills, fees and funding already posted, open
-orders and waiting triggers all survive, with their original prices and fee terms. Resting orders and triggers resume
-from fresh live data.
-
-Paper never invents activity for periods without live data: no fills or trigger crossings are made up for a gap, and trades a venue re-sends after a reconnect are not counted twice.
-
-Two things to plan for:
-
-- While a paper host is starting, its operations return `503 Unavailable`. Retry after a short wait.
-- Paper does not pause when a venue's feed is interrupted, so it may accept orders during an interruption.
-
-If a command's outcome is unclear, reconcile as you would on a live venue: [Get an order](/api-reference/platform/hosts/get-order)
-or [List open orders](/api-reference/platform/hosts/list-orders) for orders,
-[List transactions](/api-reference/platform/hosts/list-transactions) (where supported) or
-[List wallets](/api-reference/platform/hosts/list-wallets) for deposits and withdrawals, and
-[List accounts](/api-reference/platform/accounts/list) for account creation.
 
 ## What paper does not simulate
 
 | Not simulated | What happens instead |
 | --- | --- |
 | Leverage | Perpetuals trade at 1× collateral |
-| Liquidation, maintenance margin, auto-deleveraging | Balances can go negative; closing is never blocked |
+| Liquidation, maintenance margin, auto-deleveraging | Balances can go negative; a closing order is never refused for lack of funds |
 | Borrowing, interest and isolated margin | Not available |
 | Dated futures and options | Not listed on paper hosts |
-| Transfers and resets | Create a new account to start fresh; use Withdraw to lower a balance |
+| Resets | Create a new account to start fresh; use Withdraw to lower a balance |
 | Volume-based fee tiers, promotions, fee-token discounts | You select a fee tier manually |
-| Latency and market impact | Orders act instantly against the visible book |
+| Configurable latency and market impact | Orders see the real latency of Plurex and live market data, against the visible book and trades |
 
 ## Next steps
 

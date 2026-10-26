@@ -296,6 +296,20 @@ def capability_block(props):
     )
 
 
+def badge_block(tags, operation):
+    """The operation's badge tags, labelled and described as the spec defines them."""
+    badges = [
+        {"name": name, "label": tags[name]["summary"], "description": tags[name]["description"]}
+        for name in operation["tags"] if tags[name].get("kind") == "badge"
+    ]
+    if not badges:
+        return ""
+    return (
+        'import { OperationBadges } from "/snippets/operation-badges.mdx";\n\n'
+        f"<OperationBadges badges={{{json.dumps(badges)}}} />\n"
+    )
+
+
 # Streams
 
 PAYLOAD_HEADING = "Event data"
@@ -508,8 +522,13 @@ def sync():
                 "description": operation.get("description", operation["summary"]),
                 "openapi": f"/{SOURCE.relative_to(ROOT)} {method.upper()} {path}",
             }
-            block = capability_block(capability_check(schemas, module, action, operation))
-            pages.append((ROOT / f"{page}.mdx", frontmatter(metadata) + ("\n" + block if block else "")))
+            blocks = [
+                block for block in (
+                    badge_block(tags, operation),
+                    capability_block(capability_check(schemas, module, action, operation)),
+                ) if block
+            ]
+            pages.append((ROOT / f"{page}.mdx", frontmatter(metadata) + "".join("\n" + block for block in blocks)))
 
     # One MDX page per channel, rendered from the AsyncAPI document: Mintlify's AsyncAPI view does not show nested
     # unions or nullable references. Frames are expanded inline; Mintlify renders the event payload after them from the
