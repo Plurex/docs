@@ -99,9 +99,10 @@ The account streams use the same headers. Send `X-API-KEY` and `X-API-SECRET` wi
 websocat \
   --header "X-API-KEY: $PLUREX_API_KEY" \
   --header "X-API-SECRET: $PLUREX_API_SECRET" \
-  "wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountOrders/$PLUREX_ACCOUNT_ID"
+  "wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountOrders"
 ```
 
-If authentication or access fails, the server answers the upgrade request with an ordinary HTTP error and the usual
-error body, instead of opening the stream. Browsers cannot set these headers on a WebSocket, so browser
+If authentication fails, the server answers the upgrade request with an ordinary HTTP error and the usual error body,
+instead of opening the stream. Access to each account is checked when you subscribe it: an account you cannot access is
+refused with a `Rejected` message, and the connection stays open. Browsers cannot set these headers on a WebSocket, so browser
 authentication for streams is not supported; connect from your server. See [Streams](/guides/streams).

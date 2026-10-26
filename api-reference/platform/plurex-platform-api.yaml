@@ -2925,23 +2925,13 @@ components:
     OperationSupportSupported:
       type: object
       properties:
-        implementation:
-          $ref: '#/components/schemas/ImplementationMode'
         type:
           type: string
           enum:
           - Supported
       required:
-      - implementation
       - type
-      description: Supported for every input, natively or emulated.
-    ImplementationMode:
-      type: string
-      enum:
-      - Native
-      - Emulated
-      description: Native means the host's own operation is used. Emulated means Plurex builds it from other host calls or
-        performs it itself, so latency and atomicity can differ from native. Partial failures are reported.
+      description: Supported for every input.
     OrderStreamChangeType:
       type: string
       enum:
@@ -3305,15 +3295,12 @@ components:
       properties:
         defaultOrdering:
           $ref: '#/components/schemas/CursorResultOrdering'
-        implementation:
-          $ref: '#/components/schemas/ImplementationMode'
         type:
           type: string
           enum:
           - Supported
       required:
       - defaultOrdering
-      - implementation
       - type
       description: Supported on every market; results come in defaultOrdering.
     CursorResultOrdering:
@@ -3429,16 +3416,13 @@ components:
     Supported:
       type: object
       properties:
-        implementation:
-          $ref: '#/components/schemas/ImplementationMode'
         type:
           type: string
           enum:
           - Supported
       required:
       - type
-      - implementation
-      description: Always supported, on every market; implementation says whether natively or emulated.
+      description: Always supported, on every market.
     GetOrdersCapabilities:
       type: object
       properties:
@@ -6299,18 +6283,196 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/PaperFeeRates'
-    StreamEnvelopeAccountOrderEvent:
+    AccountStreamTopic:
       type: object
-      required:
-      - timestamp
-      - data
       properties:
+        accountId:
+          type: string
+          description: The account to stream.
+      required:
+      - accountId
+      description: One account on an account stream. Requires access to the account.
+    AccountStreamControl:
+      oneOf:
+      - $ref: '#/components/schemas/AccountStreamSubscribe'
+      - $ref: '#/components/schemas/AccountStreamUnsubscribe'
+      discriminator:
+        propertyName: type
+        mapping:
+          Subscribe: '#/components/schemas/AccountStreamSubscribe'
+          Unsubscribe: '#/components/schemas/AccountStreamUnsubscribe'
+      description: A message the client sends on an account stream.
+    AccountStreamSubscribe:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Your ID for this request, echoed on its reply.
+        topics:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountStreamTopic'
+          minItems: 1
+          maxItems: 25
+          description: Accounts to stream; at most 25 per connection in total.
+        type:
+          type: string
+          enum:
+          - Subscribe
+      required:
+      - type
+      - id
+      - topics
+      description: Start streaming these accounts. The reply is a Rejected for each refused account, then one Subscribed listing
+        the accounts now streaming; their events follow it. An account already streaming is listed again without a second
+        stream.
+    AccountStreamUnsubscribe:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Your ID for this request, echoed on its reply.
+        topics:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountStreamTopic'
+          minItems: 1
+          description: Accounts to stop streaming.
+        type:
+          type: string
+          enum:
+          - Unsubscribe
+      required:
+      - type
+      - id
+      - topics
+      description: Stop streaming these accounts. The reply is one Unsubscribed, after which nothing more arrives for them.
+        Accounts that are not streaming are acknowledged too.
+    AccountStreamSubscribed:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The id of the request this replies to.
+        topics:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountStreamTopic'
+          description: The accounts now streaming.
+        type:
+          type: string
+          enum:
+          - Subscribed
+      required:
+      - type
+      - id
+      - topics
+      description: Reply to Subscribe. Events for these accounts follow this message.
+    AccountStreamUnsubscribed:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The id of the request this replies to.
+        topics:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountStreamTopic'
+          description: The accounts no longer streaming.
+        type:
+          type: string
+          enum:
+          - Unsubscribed
+      required:
+      - type
+      - id
+      - topics
+      description: Reply to Unsubscribe. Nothing more arrives for these accounts.
+    AccountStreamRejected:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The id of the request this replies to.
+        topic:
+          $ref: '#/components/schemas/AccountStreamTopic'
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        message:
+          type: string
+        type:
+          type: string
+          enum:
+          - Rejected
+      required:
+      - type
+      - id
+      - topic
+      - code
+      - message
+      description: One account in a Subscribe was refused, for example AccountNotFound, Forbidden, or NotSupported when the
+        host does not stream it. Sent before the request's Subscribed; the connection stays open.
+    AccountStreamEnded:
+      type: object
+      properties:
+        topic:
+          $ref: '#/components/schemas/AccountStreamTopic'
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        message:
+          type: string
+        type:
+          type: string
+          enum:
+          - Ended
+      required:
+      - type
+      - topic
+      - code
+      - message
+      description: 'The account stopped streaming, for example because the host''s own feed ended (UpstreamFailure). Nothing
+        more arrives for it: read current state through the REST API, then subscribe again.'
+    AccountOrderStreamEvent:
+      type: object
+      properties:
+        topic:
+          $ref: '#/components/schemas/AccountStreamTopic'
         timestamp:
           type: string
           format: date-time
           description: When Plurex sent the event.
         data:
           $ref: '#/components/schemas/AccountOrderEvent'
+        type:
+          type: string
+          enum:
+          - Event
+      required:
+      - type
+      - topic
+      - timestamp
+      - data
+      description: One order change on a streaming account.
+    AccountOrderStreamMessage:
+      oneOf:
+      - $ref: '#/components/schemas/AccountOrderStreamEvent'
+      - $ref: '#/components/schemas/AccountStreamEnded'
+      - $ref: '#/components/schemas/AccountStreamRejected'
+      - $ref: '#/components/schemas/AccountStreamSubscribed'
+      - $ref: '#/components/schemas/AccountStreamUnsubscribed'
+      discriminator:
+        propertyName: type
+        mapping:
+          Subscribed: '#/components/schemas/AccountStreamSubscribed'
+          Unsubscribed: '#/components/schemas/AccountStreamUnsubscribed'
+          Rejected: '#/components/schemas/AccountStreamRejected'
+          Ended: '#/components/schemas/AccountStreamEnded'
+          Event: '#/components/schemas/AccountOrderStreamEvent'
+      description: A message the server sends on the account orders stream.
     AccountTransaction:
       type: object
       properties:
@@ -6421,18 +6583,43 @@ components:
           description: nextCursor from the previous page; omit for the first page. Only valid for the same account.
       required:
       - accountId
-    StreamEnvelopeAccountTransaction:
+    AccountTransactionStreamEvent:
       type: object
-      required:
-      - timestamp
-      - data
       properties:
+        topic:
+          $ref: '#/components/schemas/AccountStreamTopic'
         timestamp:
           type: string
           format: date-time
           description: When Plurex sent the event.
         data:
           $ref: '#/components/schemas/AccountTransaction'
+        type:
+          type: string
+          enum:
+          - Event
+      required:
+      - type
+      - topic
+      - timestamp
+      - data
+      description: One new balance posting on a streaming account.
+    AccountTransactionStreamMessage:
+      oneOf:
+      - $ref: '#/components/schemas/AccountStreamEnded'
+      - $ref: '#/components/schemas/AccountStreamRejected'
+      - $ref: '#/components/schemas/AccountStreamSubscribed'
+      - $ref: '#/components/schemas/AccountStreamUnsubscribed'
+      - $ref: '#/components/schemas/AccountTransactionStreamEvent'
+      discriminator:
+        propertyName: type
+        mapping:
+          Subscribed: '#/components/schemas/AccountStreamSubscribed'
+          Unsubscribed: '#/components/schemas/AccountStreamUnsubscribed'
+          Rejected: '#/components/schemas/AccountStreamRejected'
+          Ended: '#/components/schemas/AccountStreamEnded'
+          Event: '#/components/schemas/AccountTransactionStreamEvent'
+      description: A message the server sends on the account transactions stream.
     ErrorCode:
       type: string
       enum:

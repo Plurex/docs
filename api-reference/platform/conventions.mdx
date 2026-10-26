@@ -86,7 +86,7 @@ Every error uses one envelope with a stable `code`. Commands document whether th
 
 ## Streams
 
-Account order and transaction changes also arrive over WebSocket streams, described by the AsyncAPI document: [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders) and [Stream account transactions](/api-reference/platform/hosts/subscribe-to-account-transactions). A stream has no snapshot and does not replay missed events, so pair it with a REST read; see [Stream account updates](/guides/streams).
+Account order and transaction changes also arrive over WebSocket streams, described by the AsyncAPI document: [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders) and [Stream account transactions](/api-reference/platform/hosts/subscribe-to-account-transactions). One connection carries one stream type for up to 25 accounts, which you subscribe and unsubscribe with messages. A stream has no snapshot and does not replay missed events, so pair it with a REST read; see [Stream account updates](/guides/streams).
 
 ## Compatibility
 

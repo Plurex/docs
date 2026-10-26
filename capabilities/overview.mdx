@@ -43,9 +43,9 @@ A header capability is a tree. Its first level is an **area** (`orders`, `fills`
 ```json
 "orders": {
   "getOrder": {
-    "byId": { "type": "Supported", "implementation": "Native" },
+    "byId": { "type": "Supported" },
     "byClientOrderId": { "type": "NotSupported" },
-    "byClientOrderIdForInstrument": { "type": "Supported", "implementation": "Native" }
+    "byClientOrderIdForInstrument": { "type": "Supported" }
   }
 }
 ```
@@ -68,7 +68,7 @@ Every support leaf is an `OperationSupport`, or a `CursorQueryCapability` for va
 
 | `type` | Meaning | What to do |
 | --- | --- | --- |
-| `Supported` | Supported on every market the host or venue lists, for every input. Carries `implementation`. | Call it. |
+| `Supported` | Supported on every market the host or venue lists, for every input. | Call it. |
 | `PerMarket` | Supported on some markets. Used only for operations that take an instrument. | Read the market summary for the instrument. |
 | `NotSupported` | Not supported. Calls return `422 NotSupported`. | Do not call it; use another variant or operation. |
 
@@ -78,25 +78,18 @@ Paged variants (open and closed orders, fills, transactions, candles) use `Curso
 
 ```json
 "listOpenOrders": {
-  "global": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Emulated" },
-  "byInstrument": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Native" }
+  "global": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
+  "byInstrument": { "type": "Supported", "defaultOrdering": "ReverseChronological" }
 }
 ```
 
-### Native and emulated
+### Partial results
 
-`implementation` tells you how a `Supported` operation is carried out:
-
-- `Native`: the host's own operation is used.
-- `Emulated`: Plurex builds the result from other host calls, or performs the operation itself.
-
-Both are fully supported, and both return the same shapes. The difference is in latency and atomicity. An emulated batch cancel, for example, may be several cancels rather than one atomic request, so some can succeed while others fail. Partial failures are always reported: [CancelOrders](/api-reference/platform/hosts/cancel-orders) returns one result per identifier, and [CancelAllOrders](/api-reference/platform/hosts/cancel-all-orders) returns `502 CancelAllFailed`, after which [ListOpenOrders](/api-reference/platform/hosts/list-orders) shows what is still open.
-
-`implementation` appears only on `Supported` entries. `PerMarket` entries and market descriptors do not say how a market's support is provided.
+Capabilities say whether you can call an operation, not how the host carries it out, so do not assume a batch operation is atomic. A batch can partly succeed, and the result tells you: [CancelOrders](/api-reference/platform/hosts/cancel-orders) returns one result per identifier, and [CancelAllOrders](/api-reference/platform/hosts/cancel-all-orders) returns `502 CancelAllFailed`, after which [ListOpenOrders](/api-reference/platform/hosts/list-orders) shows what is still open.
 
 ## Always supported
 
-A minimal trading loop works on every host and every venue. These entries are always `Supported`; they still appear in the capabilities, so the tree stays complete and tells you whether each is native or emulated.
+A minimal trading loop works on every host and every venue. These entries are always `Supported`; they still appear in the capabilities, so the tree stays complete.
 
 | Where | Always supported |
 | --- | --- |

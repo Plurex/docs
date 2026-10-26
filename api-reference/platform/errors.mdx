@@ -21,7 +21,7 @@ Every error, at every HTTP status, has the same shape. Use `code` in your progra
 | `message` | Human-readable detail. Its wording can change; do not parse it. |
 | `error` | Always `null`. |
 
-The envelope is used for unknown paths (`404 NotFound`), wrong methods (`405 MethodNotAllowed`) and stream connections refused before the WebSocket upgrade, as well as for every operation's own errors.
+The envelope is used for unknown paths (`404 NotFound`), wrong methods (`405 MethodNotAllowed`) and stream connections refused before the WebSocket upgrade, as well as for every operation's own errors. On an open stream, the same codes arrive in `Rejected` and `Ended` messages; see [Stream account updates](/guides/streams).
 
 ## Error codes
 
@@ -101,7 +101,7 @@ When an outcome is unclear, read the state back before acting again:
 - **Already closed is not cancelled.** `OrderAlreadyClosed` means the order finished, possibly by filling. Read it to find out.
 - **An acknowledgement is not a final state.** A cancel `Ack` or a `Cancelled` batch result means the host accepted the cancel. Confirm with `GetOrder` or the [order stream](/guides/streams).
 - **Read the right source for each question.** Final order state: `GetOrder` or the order stream. What is still working: `ListOpenOrders`. Executions: `ListFills`. Balance postings: `ListTransactions`. Accounts: `accounts/query/List`.
-- **After a stream disconnect**, reconnect and read the REST state again; streams do not replay missed events.
+- **After a stream disconnect or `Ended`**, subscribe again and read the REST state again; streams do not replay missed events.
 
 ## Related
 

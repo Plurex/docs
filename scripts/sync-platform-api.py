@@ -61,10 +61,17 @@ def sync():
             }
             pages.append((ROOT / f"{page}.mdx", frontmatter(metadata)))
 
-    # AsyncAPI operations carry the domain tag, then the OpenAPI nav leaf, so each stream sits beside its REST
-    # operations.
-    for key, operation in streams["operations"].items():
-        channel = streams["channels"][operation["channel"]["$ref"].rsplit("/", 1)[1]]
+    # One page per channel, which renders both directions. The page takes its title and description from the
+    # operation the server sends (the client's Control operation shares the channel). AsyncAPI operations carry the
+    # domain tag, then the OpenAPI nav leaf, so each stream sits beside its REST operations.
+    for key, channel in streams["channels"].items():
+        operations = [
+            operation for operation in streams["operations"].values()
+            if operation["channel"]["$ref"] == f"#/channels/{key}" and operation["action"] == "send"
+        ]
+        if len(operations) != 1:
+            raise ValueError(f"Expected one server operation for stream {key}")
+        operation = operations[0]
         parts = channel["address"].split("/")
         module, action = parts[3], parts[5]
         page = f"api-reference/platform/{module}/{slug_for(action)}"

@@ -21,7 +21,7 @@ The specifications are the contract. Use them to generate clients or validate pa
 | OpenAPI 3.2 (`plurex-platform-api.yaml`) | Every HTTP operation, schema and error |
 | AsyncAPI 3.0 (`plurex-platform-async-api.yaml`) | The account order and transaction streams |
 
-Download both documents from the API at `https://api.plurex.io/api/v1/spec/plurex-platform-api.yaml` and `https://api.plurex.io/api/v1/spec/plurex-platform-async-api.yaml`.
+Every operation and stream page in this reference is rendered from these two documents.
 
 <Note>
   The specifications use OpenAPI 3.2 union nullability (`type: [string, 'null']`). If you generate a client, check that your generator decodes explicit `null` values. Also treat `ErrorCode` and other enums as open: new values can appear without a new API version.
@@ -44,7 +44,7 @@ Queries read state and are always safe to repeat. Commands change state; each on
 | [`accounts`](/api-reference/platform/accounts/connect) | Connect, list and manage your accounts | API key |
 | [`paper`](/api-reference/platform/paper/create) | Create and fund paper accounts, and choose their fee tier | API key |
 
-Streams use the path `/api/v1/{domain}/stream/{Action}/{scope}`, for example `/api/v1/hosts/stream/SubscribeToAccountOrders/{accountId}`. They are listed beside their HTTP operations, under **Orders** and **Transactions**. See [Stream account updates](/guides/streams).
+Streams use the path `/api/v1/{domain}/stream/{Action}`, for example `/api/v1/hosts/stream/SubscribeToAccountOrders`. One connection carries one stream type, and you subscribe and unsubscribe accounts on it with messages. Streams are listed beside their HTTP operations, under **Orders** and **Transactions**. See [Stream account updates](/guides/streams).
 
 ## Authentication
 

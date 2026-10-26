@@ -1,5 +1,5 @@
 ---
 title: "Stream account orders"
-description: "Every change to the account's orders: created, filled, cancelled, rejected. Each event carries the change and the complete order, as GetOrder returns it. Reconcile with ListOpenOrders. Supported when the host's accountOrders.subscribeToAccountOrders is; accountOrders.changes lists the changes it sends."
+description: "Every change to the subscribed accounts' orders: created, filled, cancelled, rejected. Each Event carries the change and the complete order, as GetOrder returns it. Reconcile with ListOpenOrders. Supported when the host's accountOrders.subscribeToAccountOrders is, otherwise the account is Rejected with NotSupported; accountOrders.changes lists the changes it sends."
 asyncapi: "/api-reference/platform/plurex-platform-async-api.yaml hostsSubscribeToAccountOrders"
 ---

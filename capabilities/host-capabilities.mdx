@@ -150,50 +150,50 @@ An illustrative header for a real host. The structure is exact; the support valu
   "capabilities": {
     "orders": {
       "getOrder": {
-        "byId": { "type": "Supported", "implementation": "Native" },
-        "byClientOrderId": { "type": "Supported", "implementation": "Native" },
-        "byClientOrderIdForInstrument": { "type": "Supported", "implementation": "Native" }
+        "byId": { "type": "Supported" },
+        "byClientOrderId": { "type": "Supported" },
+        "byClientOrderIdForInstrument": { "type": "Supported" }
       },
       "getOrders": {
-        "byIds": { "type": "Supported", "implementation": "Emulated" },
-        "byClientOrderIds": { "type": "Supported", "implementation": "Emulated" },
-        "byClientOrderIdsForInstrument": { "type": "Supported", "implementation": "Emulated" }
+        "byIds": { "type": "Supported" },
+        "byClientOrderIds": { "type": "Supported" },
+        "byClientOrderIdsForInstrument": { "type": "Supported" }
       },
       "listOpenOrders": {
-        "global": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Emulated" },
-        "byInstrument": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Native" }
+        "global": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
+        "byInstrument": { "type": "Supported", "defaultOrdering": "ReverseChronological" }
       },
       "listClosedOrders": {
-        "global": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Emulated" },
-        "byInstrument": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Native" },
-        "globalBefore": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Emulated" },
-        "byInstrumentBefore": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Native" },
-        "globalAfter": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Emulated" },
-        "byInstrumentAfter": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Native" }
+        "global": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
+        "byInstrument": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
+        "globalBefore": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
+        "byInstrumentBefore": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
+        "globalAfter": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
+        "byInstrumentAfter": { "type": "Supported", "defaultOrdering": "ReverseChronological" }
       },
       "cancelOrder": {
-        "byId": { "type": "Supported", "implementation": "Native" },
-        "byClientOrderId": { "type": "Supported", "implementation": "Emulated" },
-        "byClientOrderIdForInstrument": { "type": "Supported", "implementation": "Native" }
+        "byId": { "type": "Supported" },
+        "byClientOrderId": { "type": "Supported" },
+        "byClientOrderIdForInstrument": { "type": "Supported" }
       },
       "cancelOrders": {
-        "byIds": { "type": "Supported", "implementation": "Native" },
-        "byClientOrderIds": { "type": "Supported", "implementation": "Emulated" },
-        "byClientOrderIdsForInstrument": { "type": "Supported", "implementation": "Native" }
+        "byIds": { "type": "Supported" },
+        "byClientOrderIds": { "type": "Supported" },
+        "byClientOrderIdsForInstrument": { "type": "Supported" }
       },
       "cancelAllOrders": {
-        "global": { "type": "Supported", "implementation": "Emulated" },
-        "byInstrument": { "type": "Supported", "implementation": "Emulated" }
+        "global": { "type": "Supported" },
+        "byInstrument": { "type": "Supported" }
       },
       "submitOrder": {
-        "clientOrderId": { "type": "Supported", "implementation": "Native" }
+        "clientOrderId": { "type": "Supported" }
       }
     },
     "fills": {
       "listFills": {
-        "byOrderId": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Native" },
-        "global": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Emulated" },
-        "byInstrument": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Native" }
+        "byOrderId": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
+        "global": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
+        "byInstrument": { "type": "Supported", "defaultOrdering": "ReverseChronological" }
       }
     },
     "marketSettings": {
@@ -203,12 +203,12 @@ An illustrative header for a real host. The structure is exact; the support valu
       "setMarketPositionMode": { "type": "PerMarket" }
     },
     "accountOrders": {
-      "subscribeToAccountOrders": { "type": "Supported", "implementation": "Native" },
+      "subscribeToAccountOrders": { "type": "Supported" },
       "changes": ["Created", "FillApplied", "Cancelled", "Rejected"],
       "includesFillDetails": false
     },
     "accountTransactions": {
-      "listTransactions": { "type": "Supported", "defaultOrdering": "ReverseChronological", "implementation": "Native" },
+      "listTransactions": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
       "subscribeToAccountTransactions": { "type": "NotSupported" },
       "supportedTransactionTypes": ["TradingFee", "FundingPayment", "Settlement", "Deposit", "Withdrawal", "Transfer", "Other"]
     }
@@ -216,7 +216,7 @@ An illustrative header for a real host. The structure is exact; the support valu
 }
 ```
 
-Reading it: you can look up orders by `clientOrderId` with or without the instrument; batch reads and cancel-all are emulated, so expect them to be slower than a single native call and check every result; leverage and position mode depend on the market; executions do not arrive on the order stream, so use ListFills; and transactions must be polled, because there is no transaction stream.
+Reading it: you can look up orders by `clientOrderId` with or without the instrument; batch reads and cancels are available, but a batch can partly succeed, so check every result; leverage and position mode depend on the market; executions do not arrive on the order stream, so use ListFills; and transactions must be polled, because there is no transaction stream.
 
 ## How hosts differ
 
@@ -226,7 +226,6 @@ The patterns below all occur among real and paper hosts. They are why your code 
 | --- | --- | --- |
 | `getOrder.byClientOrderId` | `NotSupported` on a host that supports `byClientOrderIdForInstrument` | Keep the instrument with every `clientOrderId`, and use the `ForInstrument` variant. |
 | `getOrders.*` | Some batch variants supported, others not, independently of the single variants | Fall back to single GetOrder calls per identifier. |
-| `implementation` | The same operation `Native` on one host and `Emulated` on another; one variant of an operation native and another emulated | Expect different latency; treat emulated batch and cancel-all results as possibly partial. |
 | `listFills.byOrderId` | `NotSupported` while `byInstrument` is supported | List by instrument and filter on `orderId`. |
 | `accountOrders.includesFillDetails` | `true` on some hosts, `false` on others | When `false`, read executions with ListFills. |
 | `subscribeToAccountTransactions` | `NotSupported` while `listTransactions` is supported | Poll ListTransactions. |
