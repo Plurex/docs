@@ -138,11 +138,12 @@ tags:
   kind: badge
 - name: batch
   summary: Batch
-  description: Takes a list of identifiers or instruments and returns one result for each.
+  description: Takes a list of identifiers or instruments and handles them in one call.
   kind: badge
 - name: not-repeat-safe
   summary: Not safe to repeat
-  description: Repeating the call repeats its effect. If the outcome is unclear, check before retrying.
+  description: Repeating the call repeats its effect. If the outcome is unclear, check before retrying. Commands without this
+    badge are safe to repeat.
   kind: badge
 security:
 - ApiKey: []
@@ -152,7 +153,7 @@ paths:
     post:
       operationId: venuesList
       summary: List venues
-      description: Lists every venue (exchange) with the market data it supports. No API key needed.
+      description: Lists every venue with the market data it supports.
       tags:
       - venue-markets
       - public
@@ -164,6 +165,11 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CursorPageQuery'
+            examples:
+              FirstPage:
+                summary: First page
+                value:
+                  cursor: null
       responses:
         '200':
           description: Successful result
@@ -171,6 +177,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageResponseVenueHeader'
+              examples:
+                Page:
+                  summary: A venue whose market data reads vary by market
+                  value:
+                    items:
+                    - id: bybit
+                      capabilities:
+                        orderBook:
+                          getOrderBook:
+                            type: Supported
+                        trades:
+                          getRecentTrades:
+                            type: Supported
+                        prices:
+                          traded:
+                            getPrices:
+                              type: PerMarket
+                          mark:
+                            getPrices:
+                              type: PerMarket
+                          index:
+                            getPrices:
+                              type: PerMarket
+                        bestQuote:
+                          getBestQuotes:
+                            type: PerMarket
+                        statistics:
+                          getMarketStatistics:
+                            type: PerMarket
+                        indicativeFunding:
+                          getIndicativeFundings:
+                            type: PerMarket
+                        openInterest:
+                          getOpenInterests:
+                            type: PerMarket
+                        candles:
+                          listCandles:
+                            byInstrument:
+                              type: PerMarket
+                            byInstrumentBefore:
+                              type: PerMarket
+                    nextCursor: null
         '400':
           $ref: '#/components/responses/BadRequest'
         '415':
@@ -183,8 +231,8 @@ paths:
     post:
       operationId: venuesListMarkets
       summary: List venue markets
-      description: Lists a venue's markets with their market-data support, optionally filtered. Option markets are not listed
-        yet. No API key needed.
+      description: Lists a venue's markets with the market data each one supports, optionally filtered. Option markets are
+        not listed.
       tags:
       - venue-markets
       - public
@@ -196,6 +244,18 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/VenueMarketQuery'
+            examples:
+              BtcMarkets:
+                summary: BTC/USDT spot and perpetual markets
+                value:
+                  venueId: bybit
+                  base: BTC
+                  quote: USDT
+                  types:
+                  - Spot
+                  - Perp
+                  search: null
+                  cursor: null
       responses:
         '200':
           description: Successful result
@@ -203,6 +263,135 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageResponseVenueMarketSummary'
+              examples:
+                Page:
+                  summary: A perpetual with mark, index and funding data, and a spot market with traded prices only
+                  value:
+                    items:
+                    - symbol: BTC-USDT-PERP
+                      instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      increments:
+                        price: '0.1'
+                        size: '0.001'
+                      contractDetails:
+                        contractType: Linear
+                        settlementAsset: USDT
+                        contractSize: '1'
+                        contractSizeAsset: BTC
+                      marketData:
+                        prices:
+                          traded:
+                            get: true
+                          mark:
+                            get: true
+                          index:
+                            get: true
+                        bestQuote:
+                          supportsSizes: true
+                          get: true
+                        statistics:
+                          window:
+                            type: Rolling
+                            length: PT24H
+                          supportedFields:
+                          - High
+                          - Low
+                          - PreviousClose
+                          - VolumeBase
+                          - VolumeQuote
+                          get: true
+                        indicativeFunding:
+                          get: true
+                        openInterest:
+                          unit: BaseAsset
+                          get: true
+                        candles:
+                          traded:
+                            supportedIntervals:
+                            - Minute1
+                            - Hour1
+                            - Day1
+                            maxHistoryAgeByInterval:
+                              Minute1: PT720H
+                              Hour1: PT8760H
+                              Day1: PT87600H
+                            list: true
+                            listBefore: true
+                          mark:
+                            supportedIntervals:
+                            - Minute1
+                            - Hour1
+                            - Day1
+                            maxHistoryAgeByInterval:
+                              Minute1: PT720H
+                              Hour1: PT8760H
+                              Day1: PT87600H
+                            list: true
+                            listBefore: true
+                          index:
+                            supportedIntervals:
+                            - Minute1
+                            - Hour1
+                            - Day1
+                            maxHistoryAgeByInterval:
+                              Minute1: PT720H
+                              Hour1: PT8760H
+                              Day1: PT87600H
+                            list: true
+                            listBefore: true
+                    - symbol: BTC-USDT-SPOT
+                      instrument:
+                        type: Spot
+                        base: BTC
+                        quote: USDT
+                      increments:
+                        price: '0.01'
+                        size: '0.000001'
+                      contractDetails:
+                        contractType: Spot
+                        settlementAsset: null
+                        contractSize: '1'
+                        contractSizeAsset: BTC
+                      marketData:
+                        prices:
+                          traded:
+                            get: true
+                          mark: null
+                          index: null
+                        bestQuote:
+                          supportsSizes: true
+                          get: true
+                        statistics:
+                          window:
+                            type: Rolling
+                            length: PT24H
+                          supportedFields:
+                          - High
+                          - Low
+                          - PreviousClose
+                          - VolumeBase
+                          - VolumeQuote
+                          get: true
+                        indicativeFunding: null
+                        openInterest: null
+                        candles:
+                          traded:
+                            supportedIntervals:
+                            - Minute1
+                            - Hour1
+                            - Day1
+                            maxHistoryAgeByInterval:
+                              Minute1: PT720H
+                              Hour1: PT8760H
+                              Day1: PT87600H
+                            list: true
+                            listBefore: true
+                          mark: null
+                          index: null
+                    nextCursor: null
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -217,9 +406,7 @@ paths:
     post:
       operationId: venuesGetOrderBook
       summary: Get order book
-      description: The current order book of one market, at the depth the venue feed provides. 422 NotSupported for an unknown
-        or unsupported market. Served from Plurex's live feed for the market when one is running, otherwise fetched from the
-        venue. No API key needed.
+      description: The current order book of one market, at the depth the venue provides. An unknown market returns 422 NotSupported.
       tags:
       - order-books
       - public
@@ -259,9 +446,8 @@ paths:
     post:
       operationId: venuesGetRecentTrades
       summary: Get recent trades
-      description: The venue's recent public trades for one market, oldest first. The venue bounds how many; this is not a
-        complete history. 422 NotSupported for an unknown or unsupported market. Served from Plurex's live feed for the market
-        when one is running, otherwise fetched from the venue. No API key needed.
+      description: The venue's recent public trades for one market, oldest first. The venue limits how many; this is not a
+        complete history. An unknown market returns 422 NotSupported.
       tags:
       - public-trades
       - public
@@ -301,10 +487,7 @@ paths:
     post:
       operationId: venuesGetPrices
       summary: Get prices
-      description: The current price of one kind for each instrument. One result per requested instrument, in request order.
-        An instrument without a value comes back as an Unavailable result with its error code, so one instrument cannot fail
-        the batch. Served from Plurex's live feed for the market when one is running, otherwise fetched from the venue. No
-        API key needed.
+      description: The current price of one kind (traded, mark or index) for each instrument.
       tags:
       - market-observations
       - public
@@ -317,6 +500,19 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/GetPricesQuery'
+            examples:
+              MarkPrices:
+                summary: Mark prices for a perpetual and a spot market
+                value:
+                  venueId: bybit
+                  kind: Mark
+                  instruments:
+                  - type: Perp
+                    base: BTC
+                    quote: USDT
+                  - type: Spot
+                    base: BTC
+                    quote: USDT
       responses:
         '200':
           description: Successful result
@@ -324,6 +520,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponseEnvelopePriceResultList'
+              examples:
+                Mixed:
+                  summary: The perpetual has a mark price; the spot market has none
+                  value:
+                    data:
+                    - type: Observed
+                      instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      value:
+                        price: '67251.84'
+                      observedAt: '2026-10-26T09:30:01Z'
+                      confirmedAt: null
+                      receivedAt: '2026-10-26T09:30:01.214Z'
+                    - type: Unavailable
+                      instrument:
+                        type: Spot
+                        base: BTC
+                        quote: USDT
+                      code: NotSupported
+                      message: The market does not support this read
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -344,9 +562,7 @@ paths:
     post:
       operationId: venuesGetBestQuotes
       summary: Get best quotes
-      description: The top of book for each instrument. One result per requested instrument, in request order. An instrument
-        without a value comes back as an Unavailable result with its error code, so one instrument cannot fail the batch.
-        Served from Plurex's live feed for the market when one is running, otherwise fetched from the venue. No API key needed.
+      description: The best bid and ask for each instrument.
       tags:
       - market-observations
       - public
@@ -386,10 +602,7 @@ paths:
     post:
       operationId: venuesGetMarketStatistics
       summary: Get market statistics
-      description: Venue-reported statistics for each instrument, over the window its market declares. One result per requested
-        instrument, in request order. An instrument without a value comes back as an Unavailable result with its error code,
-        so one instrument cannot fail the batch. Served from Plurex's live feed for the market when one is running, otherwise
-        fetched from the venue. No API key needed.
+      description: Venue-reported statistics for each instrument, over the window its market declares.
       tags:
       - market-observations
       - public
@@ -429,10 +642,7 @@ paths:
     post:
       operationId: venuesGetIndicativeFundings
       summary: Get indicative fundings
-      description: 'The current indicative funding rate for each perpetual: an estimate, so the rate that settles can differ.
-        One result per requested instrument, in request order. An instrument without a value comes back as an Unavailable
-        result with its error code, so one instrument cannot fail the batch. Served from Plurex''s live feed for the market
-        when one is running, otherwise fetched from the venue. No API key needed.'
+      description: 'The current indicative funding rate for each perpetual. It is an estimate: the rate that settles can differ.'
       tags:
       - market-observations
       - public
@@ -472,10 +682,7 @@ paths:
     post:
       operationId: venuesGetOpenInterests
       summary: Get open interests
-      description: The current open interest for each derivative. One result per requested instrument, in request order. An
-        instrument without a value comes back as an Unavailable result with its error code, so one instrument cannot fail
-        the batch. Served from Plurex's live feed for the market when one is running, otherwise fetched from the venue. No
-        API key needed.
+      description: The current open interest for each derivative, in the unit its market declares.
       tags:
       - market-observations
       - public
@@ -515,12 +722,10 @@ paths:
     post:
       operationId: venuesListCandles
       summary: List candles
-      description: 'Closed candles for one market, price kind and interval, newest first across every page. The candle still
-        forming is never included. A page has no gaps: one candle for every interval it spans. Follow nextCursor back in time
-        until it is null. ByInstrument starts from the latest closed candle; ByInstrumentBefore starts from the candles that
-        end at or before `before`. The market''s candles entry says which of these it supports (list, listBefore); paging
-        past the first page needs listBefore. 422 NotSupported for an unknown market, or a price kind, interval or variant
-        the market does not list. No API key needed.'
+      description: Closed candles for one market, price kind and interval, newest first. The forming candle is never included,
+        and a page has no gaps. ByInstrument starts from the latest closed candle, ByInstrumentBefore from the candles that
+        end at or before `before`; paging past the first page needs the market's listBefore. A price kind or interval the
+        market does not list returns 422 NotSupported.
       tags:
       - candles
       - public
@@ -533,6 +738,34 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ListCandlesQuery'
+            examples:
+              Latest:
+                summary: Latest hourly traded candles
+                value:
+                  venueId: bybit
+                  priceKind: Traded
+                  interval: Hour1
+                  query:
+                    type: ByInstrument
+                    instrument:
+                      type: Perp
+                      base: BTC
+                      quote: USDT
+                  cursor: null
+              Before:
+                summary: Hourly candles that ended before a time
+                value:
+                  venueId: bybit
+                  priceKind: Traded
+                  interval: Hour1
+                  query:
+                    type: ByInstrumentBefore
+                    instrument:
+                      type: Perp
+                      base: BTC
+                      quote: USDT
+                    before: '2026-10-01T00:00:00Z'
+                  cursor: null
       responses:
         '200':
           description: Successful result
@@ -540,6 +773,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageResponseCandle'
+              examples:
+                Page:
+                  summary: Finalized hourly candles, newest first
+                  value:
+                    items:
+                    - startAt: '2026-10-26T09:00:00Z'
+                      endAt: '2026-10-26T10:00:00Z'
+                      open: '67180.4'
+                      high: '67412.9'
+                      low: '67102.0'
+                      close: '67250.6'
+                      volume:
+                        asset: BTC
+                        value: '812.417'
+                      turnover:
+                        asset: USDT
+                        value: '54638211.73'
+                    - startAt: '2026-10-26T08:00:00Z'
+                      endAt: '2026-10-26T09:00:00Z'
+                      open: '66941.2'
+                      high: '67220.0'
+                      low: '66890.5'
+                      close: '67180.4'
+                      volume:
+                        asset: BTC
+                        value: '1034.882'
+                      turnover:
+                        asset: USDT
+                        value: '69417735.20'
+                    nextCursor: eyJjb250aW51YXRpb24iOiIyMDI2LTEwLTI2VDA4OjAwOjAwWiJ9
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -562,7 +825,7 @@ paths:
     post:
       operationId: hostsList
       summary: List hosts
-      description: Lists every host, real and paper, with the operations it supports. No API key needed.
+      description: Lists every host, real and paper, with the operations it supports.
       tags:
       - host-markets
       - public
@@ -574,6 +837,11 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CursorPageQuery'
+            examples:
+              FirstPage:
+                summary: First page
+                value:
+                  cursor: null
       responses:
         '200':
           description: Successful result
@@ -581,6 +849,230 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageResponseHostHeader'
+              examples:
+                Page:
+                  summary: A live host and its paper twin
+                  value:
+                    items:
+                    - id: bybit
+                      venueIds:
+                      - bybit
+                      modelHostId: null
+                      capabilities:
+                        orders:
+                          getOrder:
+                            byId:
+                              type: Supported
+                            byClientOrderId:
+                              type: Supported
+                            byClientOrderIdForInstrument:
+                              type: Supported
+                          getOrders:
+                            byIds:
+                              type: Supported
+                            byClientOrderIds:
+                              type: NotSupported
+                            byClientOrderIdsForInstrument:
+                              type: Supported
+                          listOpenOrders:
+                            global:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            byInstrument:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                          listClosedOrders:
+                            global:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            byInstrument:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            globalBefore:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            byInstrumentBefore:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            globalAfter:
+                              type: NotSupported
+                            byInstrumentAfter:
+                              type: NotSupported
+                          cancelOrder:
+                            byId:
+                              type: Supported
+                            byClientOrderId:
+                              type: Supported
+                            byClientOrderIdForInstrument:
+                              type: Supported
+                          cancelOrders:
+                            byIds:
+                              type: Supported
+                            byClientOrderIds:
+                              type: NotSupported
+                            byClientOrderIdsForInstrument:
+                              type: Supported
+                          cancelAllOrders:
+                            global:
+                              type: Supported
+                            byInstrument:
+                              type: Supported
+                          submitOrder:
+                            clientOrderId:
+                              type: Supported
+                        fills:
+                          listFills:
+                            byOrderId:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            global:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            byInstrument:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                        marketSettings:
+                          getMarketLeverage:
+                            type: PerMarket
+                          setMarketLeverage:
+                            type: PerMarket
+                          getMarketPositionMode:
+                            type: PerMarket
+                          setMarketPositionMode:
+                            type: PerMarket
+                        accountOrders:
+                          subscribeToAccountOrders:
+                            type: Supported
+                          changes:
+                          - Created
+                          - FillApplied
+                          - Cancelled
+                          - Rejected
+                          includesFillDetails: true
+                        accountTransactions:
+                          listTransactions:
+                            type: Supported
+                            defaultOrdering: ReverseChronological
+                          subscribeToAccountTransactions:
+                            type: Supported
+                          supportedTransactionTypes:
+                          - Deposit
+                          - Withdrawal
+                          - TradingFee
+                          - FundingPayment
+                      isPaper: false
+                      supportedCredentialTypes:
+                      - ApiKey
+                    - id: bybit-paper
+                      venueIds:
+                      - bybit
+                      modelHostId: bybit
+                      capabilities:
+                        orders:
+                          getOrder:
+                            byId:
+                              type: Supported
+                            byClientOrderId:
+                              type: Supported
+                            byClientOrderIdForInstrument:
+                              type: Supported
+                          getOrders:
+                            byIds:
+                              type: Supported
+                            byClientOrderIds:
+                              type: NotSupported
+                            byClientOrderIdsForInstrument:
+                              type: Supported
+                          listOpenOrders:
+                            global:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            byInstrument:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                          listClosedOrders:
+                            global:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            byInstrument:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            globalBefore:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            byInstrumentBefore:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            globalAfter:
+                              type: NotSupported
+                            byInstrumentAfter:
+                              type: NotSupported
+                          cancelOrder:
+                            byId:
+                              type: Supported
+                            byClientOrderId:
+                              type: Supported
+                            byClientOrderIdForInstrument:
+                              type: Supported
+                          cancelOrders:
+                            byIds:
+                              type: Supported
+                            byClientOrderIds:
+                              type: NotSupported
+                            byClientOrderIdsForInstrument:
+                              type: Supported
+                          cancelAllOrders:
+                            global:
+                              type: Supported
+                            byInstrument:
+                              type: Supported
+                          submitOrder:
+                            clientOrderId:
+                              type: Supported
+                        fills:
+                          listFills:
+                            byOrderId:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            global:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                            byInstrument:
+                              type: Supported
+                              defaultOrdering: ReverseChronological
+                        marketSettings:
+                          getMarketLeverage:
+                            type: NotSupported
+                          setMarketLeverage:
+                            type: NotSupported
+                          getMarketPositionMode:
+                            type: PerMarket
+                          setMarketPositionMode:
+                            type: PerMarket
+                        accountOrders:
+                          subscribeToAccountOrders:
+                            type: Supported
+                          changes:
+                          - Created
+                          - FillApplied
+                          - Cancelled
+                          - Rejected
+                          includesFillDetails: true
+                        accountTransactions:
+                          listTransactions:
+                            type: Supported
+                            defaultOrdering: ReverseChronological
+                          subscribeToAccountTransactions:
+                            type: Supported
+                          supportedTransactionTypes:
+                          - Deposit
+                          - Withdrawal
+                          - TradingFee
+                          - Settlement
+                      isPaper: true
+                      supportedCredentialTypes:
+                      - Paper
+                    nextCursor: null
         '400':
           $ref: '#/components/responses/BadRequest'
         '415':
@@ -593,8 +1085,8 @@ paths:
     post:
       operationId: hostsListMarkets
       summary: List host markets
-      description: Lists a host's tradable markets with each market's order types, order rules and settings, optionally filtered.
-        Option markets are not listed yet. No API key needed.
+      description: Lists a host's markets with each market's order types, order rules and settings, optionally filtered. Option
+        markets are not listed.
       tags:
       - host-markets
       - public
@@ -606,6 +1098,18 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/HostMarketQuery'
+            examples:
+              BtcMarkets:
+                summary: BTC/USDT spot and perpetual markets
+                value:
+                  hostId: bybit
+                  base: BTC
+                  quote: USDT
+                  types:
+                  - Spot
+                  - Perp
+                  search: null
+                  cursor: null
       responses:
         '200':
           description: Successful result
@@ -613,6 +1117,209 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageResponseHostMarketSummary'
+              examples:
+                Page:
+                  summary: A perpetual with leverage and position mode settings, and a spot market
+                  value:
+                    items:
+                    - venueId: bybit
+                      symbol: BTC-USDT-PERP
+                      instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      contractDetails:
+                        contractType: Linear
+                        settlementAsset: USDT
+                        contractSize: '1'
+                        contractSizeAsset: BTC
+                      orderTypes:
+                        limit:
+                          price:
+                            increment: '0.1'
+                          size:
+                            increment: '0.001'
+                            min: '0.001'
+                          value:
+                            min: '5'
+                          options:
+                            supportsReduceOnly: true
+                            supportedTimeInForce:
+                            - GTC
+                            - IOC
+                            - FOK
+                            supportsPostOnly: true
+                            supportsPositionEffect: false
+                        market:
+                          sizingSupport:
+                            buy:
+                            - Size
+                            sell:
+                            - Size
+                          size:
+                            increment: '0.001'
+                            min: '0.001'
+                          notional: null
+                          options:
+                            supportsReduceOnly: true
+                            supportedTimeInForce:
+                            - IOC
+                            supportsPositionEffect: false
+                        triggerLimit:
+                          price:
+                            increment: '0.1'
+                          size:
+                            increment: '0.001'
+                            min: '0.001'
+                          value:
+                            min: '5'
+                          options:
+                            supportsReduceOnly: true
+                            supportedTimeInForce:
+                            - GTC
+                            - IOC
+                            - FOK
+                            supportsPostOnly: true
+                            supportsPositionEffect: false
+                          trigger:
+                            price:
+                              increment: '0.1'
+                            referencePrice:
+                              type: UserSelectable
+                              prices:
+                              - LastTrade
+                              - Mark
+                              - Index
+                            sellConditions:
+                            - RefPriceGTE
+                            - RefPriceLTE
+                            buyConditions:
+                            - RefPriceGTE
+                            - RefPriceLTE
+                        triggerMarket:
+                          sizingSupport:
+                            buy:
+                            - Size
+                            sell:
+                            - Size
+                          size:
+                            increment: '0.001'
+                            min: '0.001'
+                          notional: null
+                          options:
+                            supportsReduceOnly: true
+                            supportedTimeInForce:
+                            - IOC
+                            supportsPositionEffect: false
+                          trigger:
+                            price:
+                              increment: '0.1'
+                            referencePrice:
+                              type: UserSelectable
+                              prices:
+                              - LastTrade
+                              - Mark
+                              - Index
+                            sellConditions:
+                            - RefPriceGTE
+                            - RefPriceLTE
+                            buyConditions:
+                            - RefPriceGTE
+                            - RefPriceLTE
+                      settings:
+                        leverage:
+                          min: '1'
+                          max: '100'
+                          step: '0.01'
+                          get: true
+                          setEffectScope:
+                            type: Market
+                        positionMode:
+                          values:
+                          - Netting
+                          - Hedging
+                          get: true
+                          setEffectScope:
+                            type: MarketGroup
+                    - venueId: bybit
+                      symbol: BTC-USDT-SPOT
+                      instrument:
+                        type: Spot
+                        base: BTC
+                        quote: USDT
+                      contractDetails:
+                        contractType: Spot
+                        settlementAsset: null
+                        contractSize: '1'
+                        contractSizeAsset: BTC
+                      orderTypes:
+                        limit:
+                          price:
+                            increment: '0.01'
+                          size:
+                            increment: '0.000001'
+                            min: '0.000048'
+                          value:
+                            min: '5'
+                          options:
+                            supportsReduceOnly: false
+                            supportedTimeInForce:
+                            - GTC
+                            - IOC
+                            - FOK
+                            supportsPostOnly: true
+                            supportsPositionEffect: false
+                        market:
+                          sizingSupport:
+                            buy:
+                            - Size
+                            - Notional
+                            sell:
+                            - Size
+                          size:
+                            increment: '0.000001'
+                            min: '0.000048'
+                          notional:
+                            increment: '0.00000001'
+                            min: '5'
+                          options:
+                            supportsReduceOnly: false
+                            supportedTimeInForce:
+                            - IOC
+                            supportsPositionEffect: false
+                        triggerLimit:
+                          price:
+                            increment: '0.01'
+                          size:
+                            increment: '0.000001'
+                            min: '0.000048'
+                          value:
+                            min: '5'
+                          options:
+                            supportsReduceOnly: false
+                            supportedTimeInForce:
+                            - GTC
+                            - IOC
+                            - FOK
+                            supportsPostOnly: true
+                            supportsPositionEffect: false
+                          trigger:
+                            price:
+                              increment: '0.1'
+                            referencePrice:
+                              type: HostSelected
+                              price: LastTrade
+                            sellConditions:
+                            - RefPriceGTE
+                            - RefPriceLTE
+                            buyConditions:
+                            - RefPriceGTE
+                            - RefPriceLTE
+                        triggerMarket: null
+                      settings:
+                        leverage: null
+                        positionMode: null
+                    nextCursor: null
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -627,8 +1334,7 @@ paths:
     post:
       operationId: hostsGetOrder
       summary: Get an order
-      description: Gets one order by ID or clientOrderId. A missing order returns 404 OrderNotFound; a missing account returns
-        404 AccountNotFound.
+      description: Gets one order by ID or clientOrderId.
       tags:
       - orders
       security:
@@ -640,6 +1346,21 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/GetOrderQuery'
+            examples:
+              ById:
+                summary: By the host order ID
+                value:
+                  accountId: acc_123
+                  query:
+                    type: ById
+                    orderId: '1843029415'
+              ByClientOrderId:
+                summary: By your clientOrderId
+                value:
+                  accountId: acc_123
+                  query:
+                    type: ByClientOrderId
+                    clientOrderId: grid-buy-0041
       responses:
         '200':
           description: Successful result
@@ -647,6 +1368,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponseEnvelopeOrder'
+              examples:
+                PartFilled:
+                  summary: 'A limit order part filled: 0.020 of 0.050 traded'
+                  value:
+                    data:
+                      type: Limit
+                      id: '1843029415'
+                      createdAt: '2026-10-26T08:12:45.003Z'
+                      side: Buy
+                      instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      state: Live
+                      sizeTraded: '0.020'
+                      averagePrice: '67100'
+                      realizedPnl: null
+                      totalFees:
+                      - asset: USDT
+                        value: '0.268400'
+                      clientOrderId: grid-buy-0041
+                      size: '0.050'
+                      price: '67100'
+                Unfilled:
+                  summary: A resting order with nothing traded; averagePrice is null
+                  value:
+                    data:
+                      type: Limit
+                      id: '1843029416'
+                      createdAt: '2026-10-26T08:20:03.517Z'
+                      side: Sell
+                      instrument:
+                        type: Perp
+                        base: ETH
+                        quote: USDT
+                      state: Live
+                      sizeTraded: '0'
+                      averagePrice: null
+                      realizedPnl: null
+                      totalFees: []
+                      clientOrderId: null
+                      size: '1.5'
+                      price: '2650.25'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -673,7 +1437,7 @@ paths:
     post:
       operationId: hostsGetOrders
       summary: Get orders
-      description: Gets the orders you name. Only orders that exist are returned; unknown identifiers are left out.
+      description: Gets the orders you name. Unknown identifiers are left out.
       tags:
       - orders
       - optional
@@ -734,6 +1498,25 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ListOpenOrdersQuery'
+            examples:
+              Global:
+                summary: Every open order on the account
+                value:
+                  accountId: acc_123
+                  query:
+                    type: Global
+                  cursor: null
+              ByInstrument:
+                summary: Open orders for one instrument
+                value:
+                  accountId: acc_123
+                  query:
+                    type: ByInstrument
+                    instrument:
+                      type: Perp
+                      base: BTC
+                      quote: USDT
+                  cursor: null
       responses:
         '200':
           description: Successful result
@@ -741,6 +1524,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageResponseOrder'
+              examples:
+                Page:
+                  summary: One part-filled and one untouched order, with more to follow
+                  value:
+                    items:
+                    - type: Limit
+                      id: '1843029416'
+                      createdAt: '2026-10-26T08:20:03.517Z'
+                      side: Sell
+                      instrument:
+                        type: Perp
+                        base: ETH
+                        quote: USDT
+                      state: Live
+                      sizeTraded: '0'
+                      averagePrice: null
+                      realizedPnl: null
+                      totalFees: []
+                      clientOrderId: null
+                      size: '1.5'
+                      price: '2650.25'
+                    - type: Limit
+                      id: '1843029415'
+                      createdAt: '2026-10-26T08:12:45.003Z'
+                      side: Buy
+                      instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      state: Live
+                      sizeTraded: '0.020'
+                      averagePrice: '67100'
+                      realizedPnl: null
+                      totalFees:
+                      - asset: USDT
+                        value: '0.268400'
+                      clientOrderId: grid-buy-0041
+                      size: '0.050'
+                      price: '67100'
+                    nextCursor: eyJjb250aW51YXRpb24iOiIxODQzMDI5NDE2In0
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -767,8 +1590,8 @@ paths:
     post:
       operationId: hostsListClosedOrders
       summary: List closed orders
-      description: Lists filled, cancelled and rejected orders, globally or for one instrument, optionally from a Before/After
-        boundary.
+      description: Lists filled, cancelled and rejected orders, globally or for one instrument, optionally from a before or
+        after time.
       tags:
       - orders
       - optional
@@ -829,6 +1652,22 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ListFillsQuery'
+            examples:
+              ByOrderId:
+                summary: Executions of one order
+                value:
+                  accountId: acc_123
+                  query:
+                    type: ByOrderId
+                    orderId: '1843029415'
+                  cursor: null
+              Global:
+                summary: Every execution on the account
+                value:
+                  accountId: acc_123
+                  query:
+                    type: Global
+                  cursor: null
       responses:
         '200':
           description: Successful result
@@ -836,6 +1675,59 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageResponseFill'
+              examples:
+                Page:
+                  summary: Two maker fills of a part-filled order and a taker fill without a host execution ID
+                  value:
+                    items:
+                    - orderId: '1843029415'
+                      instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      side: Buy
+                      executedAt: '2026-10-26T08:14:02.881Z'
+                      price: '67100'
+                      size: '0.012'
+                      fees:
+                      - asset: USDT
+                        value: '0.161040'
+                      realizedPnl: null
+                      id: e3f1b2a4-5c6d-4e7f-8a9b-0c1d2e3f4a5b
+                      role: Maker
+                    - orderId: '1843029415'
+                      instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      side: Buy
+                      executedAt: '2026-10-26T08:13:10.442Z'
+                      price: '67100'
+                      size: '0.008'
+                      fees:
+                      - asset: USDT
+                        value: '0.107360'
+                      realizedPnl: null
+                      id: a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d
+                      role: Maker
+                    - orderId: '1843029412'
+                      instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      side: Sell
+                      executedAt: '2026-10-26T09:30:00.180Z'
+                      price: '67248.1'
+                      size: '0.005'
+                      fees:
+                      - asset: USDT
+                        value: '0.184932'
+                      realizedPnl:
+                        asset: USDT
+                        value: '4.12'
+                      id: null
+                      role: Taker
+                    nextCursor: null
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -863,9 +1755,8 @@ paths:
       operationId: hostsListTransactions
       summary: List account transactions
       description: 'Lists the account''s balance postings: trading fees, funding payments, interest, deposits, withdrawals
-        and so on. Results come in the order the host''s accountTransactions.listTransactions capability states. Posting IDs
-        never change and match the transaction stream. Requires access to the account. Hosts without transaction history return
-        422 NotSupported.'
+        and more. They come in the order the host''s listTransactions capability states, and posting IDs match the transaction
+        stream.'
       tags:
       - transactions
       - optional
@@ -925,6 +1816,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ListWalletsQuery'
+            examples:
+              FirstPage:
+                summary: First page
+                value:
+                  accountId: acc_123
+                  cursor: null
       responses:
         '200':
           description: Successful result
@@ -932,6 +1829,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageResponseWallet'
+              examples:
+                Page:
+                  summary: A host with named wallets, and balances with some held by open orders
+                  value:
+                    items:
+                    - id: UNIFIED
+                      name: Unified Trading
+                      asset: USDT
+                      totalBalance: '12500.48'
+                      availableBalance: '10811.92'
+                    - id: UNIFIED
+                      name: Unified Trading
+                      asset: BTC
+                      totalBalance: '0.153717'
+                      availableBalance: '0.153717'
+                    nextCursor: null
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -971,6 +1884,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ListOpenPositionsQuery'
+            examples:
+              FirstPage:
+                summary: First page
+                value:
+                  accountId: acc_123
+                  cursor: null
       responses:
         '200':
           description: Successful result
@@ -978,6 +1897,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageResponseMarketPosition'
+              examples:
+                Page:
+                  summary: A long BTC perpetual and a short ETH perpetual in netting mode
+                  value:
+                    items:
+                    - instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      long:
+                        size: '0.250'
+                        entryPrice: '66420.7'
+                      short:
+                        size: '0'
+                        entryPrice: null
+                      mode: Netting
+                    - instrument:
+                        type: Perp
+                        base: ETH
+                        quote: USDT
+                      long:
+                        size: '0'
+                        entryPrice: null
+                      short:
+                        size: '3.20'
+                        entryPrice: '2688.15'
+                      mode: Netting
+                    nextCursor: null
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1062,6 +2009,23 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/GetAccountMarketStateQuery'
+            examples:
+              Perpetual:
+                summary: A perpetual market
+                value:
+                  accountId: acc_123
+                  instrument:
+                    type: Perp
+                    base: BTC
+                    quote: USDT
+              Spot:
+                summary: A spot market
+                value:
+                  accountId: acc_123
+                  instrument:
+                    type: Spot
+                    base: BTC
+                    quote: USDT
       responses:
         '200':
           description: Successful result
@@ -1069,6 +2033,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponseEnvelopeAccountMarketState'
+              examples:
+                Derivative:
+                  summary: Leverage, collateral and position on a perpetual
+                  value:
+                    data:
+                      type: Derivative
+                      instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      currentLeverageSetting:
+                        type: Leveraged
+                        leverage: '10'
+                      collateral:
+                        valueAsset: USDT
+                        total: '12500.48'
+                        available: '10811.92'
+                      position:
+                        instrument:
+                          type: Perp
+                          base: BTC
+                          quote: USDT
+                        long:
+                          size: '0.250'
+                          entryPrice: '66420.7'
+                        short:
+                          size: '0'
+                          entryPrice: null
+                        mode: Netting
+                Spot:
+                  summary: Available base and quote balances on a spot market
+                  value:
+                    data:
+                      type: Spot
+                      instrument:
+                        type: Spot
+                        base: BTC
+                        quote: USDT
+                      base:
+                        available: '0.153717'
+                      quote:
+                        available: '10811.92'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1187,9 +2193,9 @@ paths:
     post:
       operationId: hostsSubmitOrder
       summary: Submit an order
-      description: 'Submits one order and returns it as the host accepted it. Not safe to repeat: repeating may place a second
-        order. If the outcome is unclear (a timeout or 5xx), look the order up with GetOrder ByClientOrderId before resubmitting.
-        409 DuplicateClientOrderId means an order with that clientOrderId already exists.'
+      description: Submits one order and returns it as the host accepted it. If the outcome is unclear (a timeout or 5xx),
+        look the order up by clientOrderId before resubmitting. 409 DuplicateClientOrderId means an order with that clientOrderId
+        already exists.
       tags:
       - orders
       - not-repeat-safe
@@ -1202,6 +2208,98 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SubmitOrderCommand'
+            examples:
+              Limit:
+                summary: Post-only GTC limit buy on a perpetual
+                value:
+                  accountId: acc_123
+                  order:
+                    type: Limit
+                    instrument:
+                      type: Perp
+                      base: BTC
+                      quote: USDT
+                    side: Buy
+                    size: '0.010'
+                    price: '67250.5'
+                    reduceOnly: false
+                    tif: GTC
+                    postOnly: true
+                    clientOrderId: grid-buy-0042
+              MarketBySize:
+                summary: Reduce-only market sell of 0.005 contracts
+                value:
+                  accountId: acc_123
+                  order:
+                    type: Market
+                    instrument:
+                      type: Perp
+                      base: BTC
+                      quote: USDT
+                    side: Sell
+                    sizing:
+                      type: Size
+                      size: '0.005'
+                    reduceOnly: true
+                    tif: IOC
+                    clientOrderId: tp-0007
+              MarketByNotional:
+                summary: Market buy of 250 USDT worth of spot BTC
+                value:
+                  accountId: acc_123
+                  order:
+                    type: Market
+                    instrument:
+                      type: Spot
+                      base: BTC
+                      quote: USDT
+                    side: Buy
+                    sizing:
+                      type: Notional
+                      notional: '250'
+                    reduceOnly: false
+                    clientOrderId: null
+              TriggerLimit:
+                summary: 'Stop-limit: sell when the mark price falls to 65000'
+                value:
+                  accountId: acc_123
+                  order:
+                    type: TriggerLimit
+                    instrument:
+                      type: Perp
+                      base: BTC
+                      quote: USDT
+                    side: Sell
+                    size: '0.010'
+                    price: '64900'
+                    reduceOnly: true
+                    tif: GTC
+                    clientOrderId: sl-0042
+                    trigger:
+                      price: '65000'
+                      condition: RefPriceLTE
+                      reference: Mark
+              TriggerMarket:
+                summary: 'Breakout: market buy when the last trade reaches 70000'
+                value:
+                  accountId: acc_123
+                  order:
+                    type: TriggerMarket
+                    instrument:
+                      type: Perp
+                      base: BTC
+                      quote: USDT
+                    side: Buy
+                    sizing:
+                      type: Size
+                      size: '0.020'
+                    reduceOnly: false
+                    tif: IOC
+                    clientOrderId: breakout-0003
+                    trigger:
+                      price: '70000'
+                      condition: RefPriceGTE
+                      reference: LastTrade
       responses:
         '200':
           description: Successful result
@@ -1209,6 +2307,124 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponseEnvelopeOrder'
+              examples:
+                Limit:
+                  summary: Accepted and resting on the book
+                  value:
+                    data:
+                      type: Limit
+                      id: '1843029411'
+                      createdAt: '2026-10-26T09:30:00.120Z'
+                      side: Buy
+                      instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      state: Live
+                      sizeTraded: '0'
+                      averagePrice: null
+                      realizedPnl: null
+                      totalFees: []
+                      clientOrderId: grid-buy-0042
+                      size: '0.010'
+                      price: '67250.5'
+                MarketBySize:
+                  summary: Filled immediately; fees and realized PnL reported
+                  value:
+                    data:
+                      type: Market
+                      id: '1843029412'
+                      createdAt: '2026-10-26T09:30:00.120Z'
+                      side: Sell
+                      instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      state: Filled
+                      sizeTraded: '0.005'
+                      averagePrice: '67248.1'
+                      realizedPnl:
+                        asset: USDT
+                        value: '4.12'
+                      totalFees:
+                      - asset: USDT
+                        value: '0.184932'
+                      clientOrderId: tp-0007
+                      sizing:
+                        type: Size
+                        size: '0.005'
+                MarketByNotional:
+                  summary: Filled; the host reports the notional it accepted
+                  value:
+                    data:
+                      type: Market
+                      id: BTCUSDT|7716254901
+                      createdAt: '2026-10-26T09:30:00.120Z'
+                      side: Buy
+                      instrument:
+                        type: Spot
+                        base: BTC
+                        quote: USDT
+                      state: Filled
+                      sizeTraded: '0.003717'
+                      averagePrice: '67257.3'
+                      realizedPnl: null
+                      totalFees:
+                      - asset: BTC
+                        value: '0.000003717'
+                      clientOrderId: null
+                      sizing:
+                        type: Notional
+                        notional: '250'
+                TriggerLimit:
+                  summary: Accepted and waiting for its trigger
+                  value:
+                    data:
+                      type: TriggerLimit
+                      id: '1843029413'
+                      createdAt: '2026-10-26T09:30:00.120Z'
+                      side: Sell
+                      instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      state: Live
+                      sizeTraded: '0'
+                      averagePrice: null
+                      realizedPnl: null
+                      totalFees: []
+                      clientOrderId: sl-0042
+                      size: '0.010'
+                      price: '64900'
+                      trigger:
+                        price: '65000'
+                        condition: RefPriceLTE
+                        reference: Mark
+                TriggerMarket:
+                  summary: Accepted and waiting for its trigger
+                  value:
+                    data:
+                      type: TriggerMarket
+                      id: '1843029414'
+                      createdAt: '2026-10-26T09:30:00.120Z'
+                      side: Buy
+                      instrument:
+                        type: Perp
+                        base: BTC
+                        quote: USDT
+                      state: Live
+                      sizeTraded: '0'
+                      averagePrice: null
+                      realizedPnl: null
+                      totalFees: []
+                      clientOrderId: breakout-0003
+                      sizing:
+                        type: Size
+                        size: '0.020'
+                      trigger:
+                        price: '70000'
+                        condition: RefPriceGTE
+                        reference: LastTrade
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1237,13 +2453,11 @@ paths:
     post:
       operationId: hostsCancelOrder
       summary: Cancel an order
-      description: 'Ack means the host accepted the cancel. Some hosts cancel asynchronously, so the order may still be open
-        briefly; confirm the final state with the order stream or GetOrder. 404 OrderNotFound means the host does not know
-        the identifier as an open order: it never existed, it closed and the host has forgotten it, or it is not visible yet.
-        Check with GetOrder or ListOpenOrders rather than assume it is gone. 409 OrderAlreadyClosed means the order already
-        finished and may have filled; do not retry. Safe to repeat. ById works on every host. The clientOrderId variants,
-        where the host supports them (cancelOrder capabilities), cancel an order whose ID you do not know yet, for example
-        after a SubmitOrder timeout.'
+      description: 'Cancels one open order. Ack means the host accepted the cancel; some hosts cancel asynchronously, so confirm
+        the final state with the order stream or GetOrder. 404 OrderNotFound means the host does not know the identifier as
+        an open order: it never existed, it closed and was forgotten, or it is not visible yet, so check rather than assume
+        it is gone. 409 OrderAlreadyClosed means the order already finished and may have filled; do not retry. The clientOrderId
+        variants cancel an order whose ID you do not have, such as after a SubmitOrder timeout.'
       tags:
       - orders
       security:
@@ -1290,10 +2504,9 @@ paths:
     post:
       operationId: hostsCancelOrders
       summary: Cancel orders
-      description: Cancels the orders you name and returns one CancelResult per identifier, so one call can partly succeed.
-        A Failed result carries the error code CancelOrder would return for that identifier, with the same meaning. Errors
-        that stop the whole batch, such as authentication or a missing account, are returned as an ordinary error instead.
-        Safe to repeat.
+      description: Cancels the orders you name and returns one CancelResult per identifier, so a call can partly succeed.
+        A Failed result carries the code CancelOrder would return for that identifier. An error that stops the whole call,
+        such as a missing account, is returned as an ordinary error.
       tags:
       - orders
       - optional
@@ -1340,9 +2553,9 @@ paths:
     post:
       operationId: hostsCancelAllOrders
       summary: Cancel all orders
-      description: Cancels every open order on the account, or on one instrument. Success means none remain open. Every order
-        is attempted; orders that are already gone or closed count as cancelled. Any other failure returns 502 CancelAllFailed,
-        after which ListOpenOrders shows what is still open. Safe to repeat.
+      description: 'Cancels every open order on the account, or on one instrument. Success means none remain open; orders
+        already closed count as cancelled. Any other failure returns 502 CancelAllFailed: check ListOpenOrders for what is
+        still open.'
       tags:
       - orders
       - optional
@@ -1388,8 +2601,7 @@ paths:
     post:
       operationId: hostsSetMarketLeverage
       summary: Set market leverage
-      description: Sets the account's leverage for one market and returns the resulting setting. Safe to repeat with the same
-        values.
+      description: Sets the account's leverage for one market and returns the resulting setting.
       tags:
       - market-settings
       - optional
@@ -1435,8 +2647,7 @@ paths:
     post:
       operationId: hostsSetMarketPositionMode
       summary: Set market position mode
-      description: Sets the account's position mode for one market and returns the resulting mode. Safe to repeat with the
-        same values.
+      description: Sets the account's position mode for one market and returns the resulting mode.
       tags:
       - market-settings
       - optional
@@ -1482,8 +2693,8 @@ paths:
     post:
       operationId: accountsConnect
       summary: Connect an exchange or broker account
-      description: 'Connects an exchange or broker account using its API credentials. Not safe to repeat: repeating connects
-        another account. If the outcome is unclear, check accounts/query/List before retrying.'
+      description: Connects an exchange or broker account with its API credentials. If the outcome is unclear, check List
+        accounts before retrying.
       tags:
       - accounts
       - not-repeat-safe
@@ -1529,7 +2740,7 @@ paths:
     post:
       operationId: accountsUpdateConnection
       summary: Update account credentials
-      description: Replaces the account's exchange or broker credentials. Safe to repeat with the same values.
+      description: Replaces the account's exchange or broker credentials.
       tags:
       - accounts
       security:
@@ -1574,7 +2785,7 @@ paths:
     post:
       operationId: accountsRename
       summary: Rename an account
-      description: Safe to repeat with the same values.
+      description: Renames an account.
       tags:
       - accounts
       security:
@@ -1615,7 +2826,7 @@ paths:
     post:
       operationId: accountsDelete
       summary: Delete an account
-      description: Repeating after success returns 404 AccountNotFound.
+      description: Deletes an account. Repeating after success returns 404 AccountNotFound.
       tags:
       - accounts
       security:
@@ -1652,7 +2863,7 @@ paths:
     post:
       operationId: accountsList
       summary: List accounts
-      description: Lists a tenant's accounts, optionally filtered.
+      description: Lists your accounts, optionally filtered.
       tags:
       - accounts
       - paged
@@ -1688,7 +2899,7 @@ paths:
     post:
       operationId: accountsGet
       summary: Get an account
-      description: Gets one account. A missing account returns 404 AccountNotFound.
+      description: Gets one account.
       tags:
       - accounts
       security:
@@ -1725,9 +2936,8 @@ paths:
     post:
       operationId: paperCreateAccount
       summary: Create a paper account
-      description: 'Creates a paper account on a paper host. It trades against the live order book of the venue the paper
-        host models, through the same hosts operations as a real account. Not safe to repeat: repeating creates another account.
-        If the outcome is unclear, check accounts/query/List before retrying.'
+      description: Creates a paper account on a paper host. It trades the live market of the venue the paper host models,
+        through the same host operations as a real account. If the outcome is unclear, check List accounts before retrying.
       tags:
       - paper-accounts
       - not-repeat-safe
@@ -1769,8 +2979,8 @@ paths:
     post:
       operationId: paperDeposit
       summary: Deposit into a paper account
-      description: 'Credits the paper account and returns the resulting wallet. Not safe to repeat: repeating deposits again.
-        If the outcome is unclear, check ListTransactions before retrying.'
+      description: Credits the paper account and returns the resulting wallet. If the outcome is unclear, check ListTransactions
+        before retrying.
       tags:
       - paper-accounts
       - not-repeat-safe
@@ -1810,12 +3020,10 @@ paths:
     post:
       operationId: paperWithdraw
       summary: Withdraw from a paper account
-      description: 'Debits the paper account and returns the resulting wallet. Nothing leaves Plurex: use it to set up paper
-        scenarios such as a low or empty balance, or a wallet too small for the next order. Only the available balance can
-        be withdrawn; funds held by open orders or locked as position margin cannot, so cancel or close first. A withdrawal
-        above the available balance, including from an asset the account does not hold, fails with InsufficientFunds and changes
-        nothing. It is recorded as a Withdrawal transaction with a negative amount and streams like any other posting. Not
-        safe to repeat: repeating withdraws again. If the outcome is unclear, check ListTransactions before retrying.'
+      description: Debits the paper account's available balance and returns the resulting wallet, to set up scenarios such
+        as a low balance. Funds held by open orders or position margin cannot be withdrawn; above the available balance, it
+        fails with 422 InsufficientFunds and changes nothing. It posts a Withdrawal transaction. If the outcome is unclear,
+        check ListTransactions before retrying.
       tags:
       - paper-accounts
       - not-repeat-safe
@@ -1855,8 +3063,8 @@ paths:
     post:
       operationId: paperSetFeeTier
       summary: Set paper fee tier
-      description: Selects the paper account's fee tier and returns the resulting fee settings. Selecting the current tier
-        is a no-op. Existing orders retain their fee terms. Safe to repeat with the same values.
+      description: Selects the paper account's fee tier and returns the resulting fee settings. Existing orders keep their
+        fee terms.
       tags:
       - paper-fees
       security:
@@ -1986,72 +3194,189 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            InvalidRequest:
+              summary: The body is malformed, has unknown fields or wrong types, or a value is invalid
+              value:
+                code: InvalidRequest
+                message: Invalid cursor
     Unauthenticated:
       description: 401 Unauthenticated; code is Unauthenticated.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            Unauthenticated:
+              summary: The API key headers are missing or invalid
+              value:
+                code: Unauthenticated
+                message: Unauthorized
     Forbidden:
       description: 403 Forbidden; code is Forbidden.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            Forbidden:
+              summary: The key cannot access this account or operation
+              value:
+                code: Forbidden
+                message: Forbidden
     NotFound:
       description: 404 NotFound; code is AccountNotFound, OrderNotFound or NotFound.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            AccountNotFound:
+              summary: The accountId does not exist
+              value:
+                code: AccountNotFound
+                message: 'Account not found: acc_123'
+            OrderNotFound:
+              summary: The account exists, but the order identifier does not
+              value:
+                code: OrderNotFound
+                message: 'Order not found: ord_456'
+            NotFound:
+              summary: Unknown path, host or venue
+              value:
+                code: NotFound
+                message: Not Found
     Conflict:
       description: 409 Conflict; code is DuplicateClientOrderId, OrderAlreadyClosed or Conflict.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            DuplicateClientOrderId:
+              summary: An order with this clientOrderId already exists
+              value:
+                code: DuplicateClientOrderId
+                message: Client order ID already exists
+            OrderAlreadyClosed:
+              summary: The order is already filled, cancelled or rejected
+              value:
+                code: OrderAlreadyClosed
+                message: Order is already closed
+            Conflict:
+              summary: A unique value, such as an account name, is already used
+              value:
+                code: Conflict
+                message: Conflict
     Rejected:
       description: 422 Rejected; code is InsufficientFunds, InvalidProviderCredentials, AccountLimit, NotSupported or Rejected.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            InsufficientFunds:
+              summary: The account cannot fund the order or withdrawal
+              value:
+                code: InsufficientFunds
+                message: Insufficient Funds
+            InvalidProviderCredentials:
+              summary: The provider rejected the account credentials
+              value:
+                code: InvalidProviderCredentials
+                message: Unprocessable Entity
+            AccountLimit:
+              summary: An account or subscription limit was reached
+              value:
+                code: AccountLimit
+                message: Subscription limit reached
+            NotSupported:
+              summary: The host does not support this operation, variant or instrument
+              value:
+                code: NotSupported
+                message: Unprocessable Entity
+            Rejected:
+              summary: The host or validation rejected the command
+              value:
+                code: Rejected
+                message: Order price is not a multiple of the price increment
     RateLimited:
       description: 429 RateLimited; code is RateLimited.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            RateLimited:
+              summary: The provider rate limited the request
+              value:
+                code: RateLimited
+                message: Provider rate limited
     UnexpectedError:
       description: 500 UnexpectedError; code is UnexpectedError.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            UnexpectedError:
+              summary: Unexpected server failure
+              value:
+                code: UnexpectedError
+                message: Internal Server Error
     UpstreamFailure:
       description: 502 UpstreamFailure; code is UpstreamFailure or CancelAllFailed.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            UpstreamFailure:
+              summary: The host or venue failed or returned something unreadable
+              value:
+                code: UpstreamFailure
+                message: Bad Gateway
+            CancelAllFailed:
+              summary: At least one sub-cancel failed; reconcile with ListOpenOrders
+              value:
+                code: CancelAllFailed
+                message: Bad Gateway
     Unavailable:
       description: 503 Unavailable; code is Unavailable.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            Unavailable:
+              summary: The service or provider is temporarily unavailable
+              value:
+                code: Unavailable
+                message: Service Unavailable
     UpstreamTimeout:
       description: 504 UpstreamTimeout; code is UpstreamTimeout.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            UpstreamTimeout:
+              summary: The provider did not respond in time
+              value:
+                code: UpstreamTimeout
+                message: Gateway Timeout
     UnsupportedMediaType:
       description: 415 UnsupportedMediaType; code is UnsupportedMediaType.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            UnsupportedMediaType:
+              summary: The request is not Content-Type application/json
+              value:
+                code: UnsupportedMediaType
+                message: Content type text/plain is not supported
   schemas:
     AccountCredentialPublic:
       type: object
@@ -2066,11 +3391,15 @@ components:
       required:
       - publicValue
       - credentialType
+      description: 'The non-secret view of an account''s credential: its type and, for API keys, the public key. Secrets are
+        never returned.'
     HostCredentialType:
       type: string
       enum:
       - ApiKey
       - Paper
+      description: 'How an account authenticates with its host: ApiKey for a connected exchange or broker account, Paper for
+        a paper account.'
     AccountHeader:
       type: object
       properties:
@@ -2094,6 +3423,7 @@ components:
       - isPaper
       - name
       - credential
+      description: 'A trading account: the host it trades on, its name, whether it is paper, and the public part of its credential.'
     AccountMarginState:
       type: object
       properties:
@@ -2116,6 +3446,7 @@ components:
       - totalInitialMargin
       - totalMaintenanceMargin
       - accountMarginRatio
+      description: The account's margin totals for one margin group, valued in its base collateral asset.
     AccountMarketState:
       oneOf:
       - $ref: '#/components/schemas/AccountMarketStateDerivative'
@@ -2127,7 +3458,10 @@ components:
           Derivative: '#/components/schemas/AccountMarketStateDerivative'
           Spot: '#/components/schemas/AccountMarketStateSpot'
           SpotMargin: '#/components/schemas/AccountMarketStateSpotMargin'
+      description: The account's state in one market (balances, collateral, position and leverage), shaped by the kind of
+        market.
     AccountMarketStateDerivative:
+      title: Derivative
       type: object
       properties:
         instrument:
@@ -2148,6 +3482,8 @@ components:
       - currentLeverageSetting
       - collateral
       - position
+      description: 'The account''s state in a derivative market (perpetual, future or option): collateral, position and current
+        leverage.'
     CanonicalInstrumentSymbol:
       type: string
       readOnly: true
@@ -2179,6 +3515,7 @@ components:
         and right where they apply. type takes the InstrumentType values; unknown types are rejected. Market summaries also
         give its canonical symbol.'
     InstrumentFuture:
+      title: Future
       type: object
       properties:
         base:
@@ -2200,7 +3537,9 @@ components:
       - base
       - quote
       - expiry
+      description: A linear dated future, quoted and settled in the quote asset, that expires on expiry.
     InstrumentFutureInv:
+      title: FutureInv
       type: object
       properties:
         base:
@@ -2222,7 +3561,9 @@ components:
       - base
       - quote
       - expiry
+      description: An inverse dated future, quoted in the quote asset and settled in the base asset, that expires on expiry.
     InstrumentOption:
+      title: Option
       type: object
       properties:
         base:
@@ -2253,14 +3594,16 @@ components:
       - expiry
       - strike
       - right
-      description: Option contract. Option markets are not listed or tradable yet; options appear only where a host reports
-        account activity on them.
+      description: Option contract. Option markets are not listed or tradable; options appear only where a host reports account
+        activity on them.
     OptionRight:
       type: string
       enum:
       - Call
       - Put
+      description: Whether an option gives the right to buy (Call) or to sell (Put) the underlying at the strike.
     InstrumentPerp:
+      title: Perp
       type: object
       properties:
         base:
@@ -2277,7 +3620,9 @@ components:
       - type
       - base
       - quote
+      description: A linear perpetual swap, with no expiry, quoted and settled in the quote asset.
     InstrumentPerpInv:
+      title: PerpInv
       type: object
       properties:
         base:
@@ -2294,7 +3639,9 @@ components:
       - type
       - base
       - quote
+      description: An inverse perpetual swap, with no expiry, quoted in the quote asset and settled in the base asset.
     InstrumentSpot:
+      title: Spot
       type: object
       properties:
         base:
@@ -2311,6 +3658,7 @@ components:
       - type
       - base
       - quote
+      description: 'A spot pair: buying or selling the base asset for the quote asset.'
     MarketLeverageSetting:
       description: The account's current market-level leverage for a market whose settings.leverage is non-null. Leveraged
         carries the configured multiple; Disabled means the market-level control exists and leverage is off for this account,
@@ -2326,6 +3674,7 @@ components:
           Leveraged: '#/components/schemas/MarketLeverageSettingLeveraged'
           Unknown: '#/components/schemas/MarketLeverageSettingUnknown'
     MarketLeverageSettingDisabled:
+      title: Disabled
       type: object
       properties:
         type:
@@ -2334,7 +3683,9 @@ components:
           - Disabled
       required:
       - type
+      description: The market has a leverage control and leverage is turned off.
     MarketLeverageSettingLeveraged:
+      title: Leveraged
       type: object
       properties:
         leverage:
@@ -2346,7 +3697,9 @@ components:
       required:
       - type
       - leverage
+      description: Leverage is on for this market at the given leverage.
     MarketLeverageSettingUnknown:
+      title: Unknown
       type: object
       properties:
         message:
@@ -2358,6 +3711,7 @@ components:
       required:
       - type
       - message
+      description: The host did not report a usable leverage setting; message says why.
     MarketCollateral:
       type: object
       properties:
@@ -2371,6 +3725,7 @@ components:
       - valueAsset
       - total
       - available
+      description: Collateral backing the account's activity in one market, valued in valueAsset.
     MarketPosition:
       type: object
       properties:
@@ -2390,6 +3745,7 @@ components:
       - long
       - short
       - mode
+      description: The account's position in one market, with long and short sides reported separately.
     Position:
       type: object
       properties:
@@ -2404,12 +3760,15 @@ components:
       required:
       - size
       - entryPrice
+      description: 'One side of a position: its size and, when the host reports it, its entry price.'
     PositionMode:
       type: string
       enum:
       - Hedging
       - Netting
+      description: 'How a market holds positions: Hedging keeps separate long and short positions, Netting keeps one net position.'
     AccountMarketStateSpot:
+      title: Spot
       type: object
       properties:
         instrument:
@@ -2427,6 +3786,7 @@ components:
       - instrument
       - base
       - quote
+      description: 'The account''s state in a spot market: the available balances of the base and quote assets.'
     AssetBalance:
       type: object
       properties:
@@ -2434,7 +3794,9 @@ components:
           $ref: '#/components/schemas/Decimal'
       required:
       - available
+      description: The balance of one asset available to trade.
     AccountMarketStateSpotMargin:
+      title: SpotMargin
       type: object
       properties:
         instrument:
@@ -2470,6 +3832,8 @@ components:
       required:
       - change
       - order
+      description: One change to one of the account's orders, with the complete order as it stands after the change. Use change
+        to see what happened and order for the current state.
     OrderChange:
       oneOf:
       - $ref: '#/components/schemas/OrderChangeCancelled'
@@ -2485,7 +3849,10 @@ components:
           FillApplied: '#/components/schemas/OrderChangeFillApplied'
           Rejected: '#/components/schemas/OrderChangeRejected'
           Unknown: '#/components/schemas/OrderChangeUnknown'
+      description: 'What happened to the order in this event: created, filled further, cancelled, rejected, or a host change
+        with no standard meaning.'
     OrderChangeCancelled:
+      title: Cancelled
       type: object
       properties:
         type:
@@ -2494,7 +3861,9 @@ components:
           - Cancelled
       required:
       - type
+      description: The order was cancelled; the order's state is Cancelled.
     OrderChangeCreated:
+      title: Created
       type: object
       properties:
         type:
@@ -2503,7 +3872,9 @@ components:
           - Created
       required:
       - type
+      description: The host accepted a new order; it is now live.
     OrderChangeFillApplied:
+      title: FillApplied
       type: object
       properties:
         fill:
@@ -2571,6 +3942,7 @@ components:
       - realizedPnl
       - id
       - role
+      description: 'One execution of an account''s order: the price, size and fees of a single trade.'
     AssetValue:
       type: object
       properties:
@@ -2581,12 +3953,15 @@ components:
       required:
       - asset
       - value
+      description: An amount of one asset.
     TradeRole:
       type: string
       enum:
       - Maker
       - Taker
+      description: Whether the account's side of a trade added liquidity (Maker) or took it (Taker).
     OrderChangeRejected:
+      title: Rejected
       type: object
       properties:
         reason:
@@ -2607,7 +3982,10 @@ components:
       - reason
       - code
       - type
+      description: The host rejected the order; the order's state is Rejected. reason and code are the host's own when it
+        gives them.
     OrderChangeUnknown:
+      title: Unknown
       type: object
       properties:
         nativeType:
@@ -2633,7 +4011,10 @@ components:
           Market: '#/components/schemas/OrderMarket'
           TriggerLimit: '#/components/schemas/OrderTriggerLimit'
           TriggerMarket: '#/components/schemas/OrderTriggerMarket'
+      description: 'An order on the account as the host reports it: type, side, instrument, state, traded size and fees. The
+        type selects the order''s own fields, such as price for limit orders.'
     OrderLimit:
+      title: Limit
       type: object
       properties:
         id:
@@ -2697,6 +4078,7 @@ components:
       enum:
       - Buy
       - Sell
+      description: 'The direction of an order: Buy or Sell.'
     OrderState:
       type: string
       enum:
@@ -2704,7 +4086,9 @@ components:
       - Filled
       - Cancelled
       - Rejected
+      description: 'Where an order is in its life: Live (working on the host), or the final states Filled, Cancelled and Rejected.'
     OrderMarket:
+      title: Market
       type: object
       properties:
         id:
@@ -2764,6 +4148,7 @@ components:
       - sizing
       description: Host-reported order state. Submitted options (tif, postOnly, reduceOnly, positionEffect) are not echoed.
     OrderTriggerLimit:
+      title: TriggerLimit
       type: object
       properties:
         id:
@@ -2841,11 +4226,15 @@ components:
       required:
       - price
       - condition
+      description: 'The condition that activates a trigger order: when the reference price crosses price in the given direction,
+        the order is placed.'
     TriggerCondition:
       type: string
       enum:
       - RefPriceGTE
       - RefPriceLTE
+      description: 'The direction that activates a trigger: RefPriceGTE when the reference price rises to or above the trigger
+        price, RefPriceLTE when it falls to or below.'
     TriggerReferencePrice:
       type: string
       enum:
@@ -2854,7 +4243,9 @@ components:
       - LastTrade
       - BestBid
       - BestAsk
+      description: The market price a trigger watches, such as the mark price, index price, last trade or best bid or ask.
     OrderTriggerMarket:
+      title: TriggerMarket
       type: object
       properties:
         id:
@@ -2948,6 +4339,7 @@ components:
       description: Whether an operation or variant is supported. Supported means on every market; PerMarket means each market
         summary says whether that market supports it.
     OperationSupportNotSupported:
+      title: NotSupported
       type: object
       properties:
         type:
@@ -2958,6 +4350,7 @@ components:
       - type
       description: Not supported; calls return 422 NotSupported.
     OperationSupportPerMarket:
+      title: PerMarket
       type: object
       properties:
         type:
@@ -2968,6 +4361,7 @@ components:
       - type
       description: Supported on some markets; each market summary says which. Used only for operations that take an instrument.
     OperationSupportSupported:
+      title: Supported
       type: object
       properties:
         type:
@@ -2984,6 +4378,7 @@ components:
       - FillApplied
       - Cancelled
       - Rejected
+      description: The kinds of order change the account orders stream can send; each matches an OrderChange type.
     Ack:
       type: object
       properties: {}
@@ -2997,7 +4392,9 @@ components:
         mapping:
           ByInstrument: '#/components/schemas/CancelAllOrdersByInstrument'
           Global: '#/components/schemas/CancelAllOrdersGlobal'
+      description: 'Which open orders to cancel: all of them, or only those on one instrument.'
     CancelAllOrdersByInstrument:
+      title: ByInstrument
       type: object
       properties:
         instrument:
@@ -3009,7 +4406,9 @@ components:
       required:
       - type
       - instrument
+      description: Cancels every open order on one instrument.
     CancelAllOrdersGlobal:
+      title: Global
       type: object
       properties:
         type:
@@ -3018,6 +4417,7 @@ components:
           - Global
       required:
       - type
+      description: Cancels every open order on the account.
     CancelAllOrdersCapabilities:
       type: object
       properties:
@@ -3039,6 +4439,7 @@ components:
       required:
       - accountId
       - command
+      description: Cancels every open order on the account, or on one instrument.
     CancelOrderCommand:
       type: object
       properties:
@@ -3049,6 +4450,7 @@ components:
       required:
       - accountId
       - command
+      description: Cancels one order, identified by order ID or clientOrderId.
     CancelOrder:
       oneOf:
       - $ref: '#/components/schemas/CancelOrderByClientOrderId'
@@ -3060,7 +4462,9 @@ components:
           ByClientOrderId: '#/components/schemas/CancelOrderByClientOrderId'
           ByClientOrderIdForInstrument: '#/components/schemas/CancelOrderByClientOrderIdForInstrument'
           ById: '#/components/schemas/CancelOrderById'
+      description: 'How to identify the order to cancel: by order ID or by clientOrderId, optionally scoped to an instrument.'
     CancelOrderByClientOrderId:
+      title: ByClientOrderId
       type: object
       properties:
         clientOrderId:
@@ -3072,7 +4476,9 @@ components:
       required:
       - type
       - clientOrderId
+      description: Selects the order by the clientOrderId it was submitted with.
     CancelOrderByClientOrderIdForInstrument:
+      title: ByClientOrderIdForInstrument
       type: object
       properties:
         instrument:
@@ -3087,7 +4493,9 @@ components:
       - type
       - instrument
       - clientOrderId
+      description: Selects the order by clientOrderId on one instrument, for hosts that need the instrument to find it.
     CancelOrderById:
+      title: ById
       type: object
       properties:
         orderId:
@@ -3099,6 +4507,7 @@ components:
       required:
       - type
       - orderId
+      description: Selects the order by its order ID, as returned on Order.id.
     CancelOrderCapabilities:
       type: object
       properties:
@@ -3124,7 +4533,9 @@ components:
           ByClientOrderIds: '#/components/schemas/CancelOrdersByClientOrderIds'
           ByClientOrderIdsForInstrument: '#/components/schemas/CancelOrdersByClientOrderIdsForInstrument'
           ByIds: '#/components/schemas/CancelOrdersByIds'
+      description: 'How to identify the orders to cancel: by order IDs or by clientOrderIds, optionally scoped to an instrument.'
     CancelOrdersByClientOrderIds:
+      title: ByClientOrderIds
       type: object
       properties:
         clientOrderIds:
@@ -3138,7 +4549,9 @@ components:
       required:
       - type
       - clientOrderIds
+      description: Selects the orders by the clientOrderIds they were submitted with.
     CancelOrdersByClientOrderIdsForInstrument:
+      title: ByClientOrderIdsForInstrument
       type: object
       properties:
         instrument:
@@ -3155,7 +4568,9 @@ components:
       - type
       - instrument
       - clientOrderIds
+      description: Selects the orders by clientOrderId on one instrument, for hosts that need the instrument to find them.
     CancelOrdersByIds:
+      title: ByIds
       type: object
       properties:
         orderIds:
@@ -3169,6 +4584,7 @@ components:
       required:
       - type
       - orderIds
+      description: Selects the orders by their order IDs, as returned on Order.id.
     CancelOrdersCapabilities:
       type: object
       properties:
@@ -3193,6 +4609,7 @@ components:
       required:
       - accountId
       - command
+      description: Cancels several orders in one request, with one result per identifier.
     CancelResult:
       oneOf:
       - $ref: '#/components/schemas/CancelResultCancelled'
@@ -3221,6 +4638,7 @@ components:
       - name
       - hostId
       - credential
+      description: Connects an existing exchange or broker account to Plurex using its API credentials.
     ExecutionAccountCredentialNew:
       oneOf:
       - $ref: '#/components/schemas/ExecutionAccountCredentialNewApiKey'
@@ -3228,7 +4646,9 @@ components:
         propertyName: type
         mapping:
           ApiKey: '#/components/schemas/ExecutionAccountCredentialNewApiKey'
+      description: The credential used to connect an exchange or broker account.
     ExecutionAccountCredentialNewApiKey:
+      title: ApiKey
       type: object
       properties:
         publicKey:
@@ -3243,6 +4663,7 @@ components:
       - type
       - publicKey
       - secretKey
+      description: An API key pair issued by the exchange or broker. The secret key is never returned.
     ContractDetails:
       type: object
       properties:
@@ -3272,6 +4693,8 @@ components:
       - Linear
       - Inverse
       - Quanto
+      description: 'How a contract is margined and settled: Spot (no contract), Linear (settled in the quote asset), Inverse
+        (settled in the base asset) or Quanto (settled in an asset other than base or quote).'
     CreateAccountCommand:
       type: object
       properties:
@@ -3292,6 +4715,7 @@ components:
       - tenantId
       - name
       - hostId
+      description: Creates a paper account that simulates trading on a paper host.
     CursorPageQuery:
       type: object
       properties:
@@ -3302,6 +4726,7 @@ components:
           description: 'nextCursor from the previous page; omit for the first page. Only valid with the same query: same variant,
             account and filters.'
       required: []
+      description: A request for one page of a listing; pass the previous page's nextCursor to continue.
     CursorQueryCapability:
       oneOf:
       - $ref: '#/components/schemas/CursorQueryCapabilityNotSupported'
@@ -3315,6 +4740,7 @@ components:
           Supported: '#/components/schemas/CursorQueryCapabilitySupported'
       description: Support for a paged query variant, and the order its results come in.
     CursorQueryCapabilityNotSupported:
+      title: NotSupported
       type: object
       properties:
         type:
@@ -3325,6 +4751,7 @@ components:
       - type
       description: Not supported; calls return 422 NotSupported.
     CursorQueryCapabilityPerMarket:
+      title: PerMarket
       type: object
       properties:
         type:
@@ -3336,6 +4763,7 @@ components:
       description: Supported on some markets; each market summary says which, and in what order results come unless the operation
         fixes it. Used only for queries that take an instrument.
     CursorQueryCapabilitySupported:
+      title: Supported
       type: object
       properties:
         defaultOrdering:
@@ -3362,6 +4790,7 @@ components:
           type: string
       required:
       - accountId
+      description: Removes the account from Plurex.
     DepositCommand:
       type: object
       properties:
@@ -3375,6 +4804,7 @@ components:
       - accountId
       - amount
       - asset
+      description: Adds an amount of an asset to a paper account's balance.
     WithdrawCommand:
       type: object
       properties:
@@ -3389,6 +4819,7 @@ components:
       - accountId
       - amount
       - asset
+      description: Removes an amount of an asset from a paper account's available balance.
     ErrorEnvelope:
       type: object
       properties:
@@ -3396,15 +4827,9 @@ components:
           $ref: '#/components/schemas/ErrorCode'
         message:
           type: string
-        error:
-          type:
-          - string
-          - 'null'
-          description: Reserved for structured detail; currently always null.
       required:
       - code
       - message
-      - error
       description: Every error has this shape, at every HTTP status, including unknown paths (404 NotFound) and wrong methods
         (405 MethodNotAllowed). code is the specific reason. Each operation describes when to retry and how to check the outcome;
         an error alone does not prove a command had no effect.
@@ -3589,6 +5014,7 @@ components:
       required:
       - accountId
       - instrument
+      description: Gets the account's balances, position, collateral and leverage for one market.
     GetAccountQuery:
       type: object
       properties:
@@ -3596,6 +5022,7 @@ components:
           type: string
       required:
       - accountId
+      description: Gets one account by ID.
     GetEffectiveFeeRatesQuery:
       type: object
       properties:
@@ -3606,6 +5033,7 @@ components:
       required:
       - accountId
       - instrument
+      description: Gets the paper maker and taker fee rates that apply to new orders on one instrument.
     GetFeeSettingsQuery:
       type: object
       properties:
@@ -3613,6 +5041,7 @@ components:
           type: string
       required:
       - accountId
+      description: Gets a paper account's fee tiers and the selected tier.
     GetMarketLeverageQuery:
       type: object
       properties:
@@ -3623,6 +5052,7 @@ components:
       required:
       - accountId
       - instrument
+      description: Gets the account's current leverage setting for one market.
     GetMarketPositionModeQuery:
       type: object
       properties:
@@ -3633,6 +5063,7 @@ components:
       required:
       - accountId
       - instrument
+      description: Gets the account's current position mode for one market.
     GetOrder:
       oneOf:
       - $ref: '#/components/schemas/GetOrderByClientOrderId'
@@ -3644,7 +5075,9 @@ components:
           ByClientOrderId: '#/components/schemas/GetOrderByClientOrderId'
           ByClientOrderIdForInstrument: '#/components/schemas/GetOrderByClientOrderIdForInstrument'
           ById: '#/components/schemas/GetOrderById'
+      description: 'How to identify the order to get: by order ID or by clientOrderId, optionally scoped to an instrument.'
     GetOrderByClientOrderId:
+      title: ByClientOrderId
       type: object
       properties:
         clientOrderId:
@@ -3656,7 +5089,9 @@ components:
       required:
       - type
       - clientOrderId
+      description: Selects the order by the clientOrderId it was submitted with.
     GetOrderByClientOrderIdForInstrument:
+      title: ByClientOrderIdForInstrument
       type: object
       properties:
         instrument:
@@ -3671,7 +5106,9 @@ components:
       - type
       - instrument
       - clientOrderId
+      description: Selects the order by clientOrderId on one instrument, for hosts that need the instrument to find it.
     GetOrderById:
+      title: ById
       type: object
       properties:
         orderId:
@@ -3683,6 +5120,7 @@ components:
       required:
       - type
       - orderId
+      description: Selects the order by its order ID, as returned on Order.id.
     GetOrderQuery:
       type: object
       properties:
@@ -3693,6 +5131,7 @@ components:
       required:
       - accountId
       - query
+      description: Gets one order on the account.
     GetOrders:
       oneOf:
       - $ref: '#/components/schemas/GetOrdersByClientOrderIds'
@@ -3704,7 +5143,9 @@ components:
           ByClientOrderIds: '#/components/schemas/GetOrdersByClientOrderIds'
           ByClientOrderIdsForInstrument: '#/components/schemas/GetOrdersByClientOrderIdsForInstrument'
           ByIds: '#/components/schemas/GetOrdersByIds'
+      description: 'How to identify the orders to get: by order IDs or by clientOrderIds, optionally scoped to an instrument.'
     GetOrdersByClientOrderIds:
+      title: ByClientOrderIds
       type: object
       properties:
         clientOrderIds:
@@ -3718,7 +5159,9 @@ components:
       required:
       - type
       - clientOrderIds
+      description: Selects the orders by the clientOrderIds they were submitted with.
     GetOrdersByClientOrderIdsForInstrument:
+      title: ByClientOrderIdsForInstrument
       type: object
       properties:
         instrument:
@@ -3735,7 +5178,9 @@ components:
       - type
       - instrument
       - clientOrderIds
+      description: Selects the orders by clientOrderId on one instrument, for hosts that need the instrument to find them.
     GetOrdersByIds:
+      title: ByIds
       type: object
       properties:
         orderIds:
@@ -3749,6 +5194,7 @@ components:
       required:
       - type
       - orderIds
+      description: Selects the orders by their order IDs, as returned on Order.id.
     GetOrdersQuery:
       type: object
       properties:
@@ -3759,6 +5205,7 @@ components:
       required:
       - accountId
       - query
+      description: Gets several orders on the account in one request.
     HostHeader:
       type: object
       properties:
@@ -3790,6 +5237,8 @@ components:
       - capabilities
       - isPaper
       - supportedCredentialTypes
+      description: 'A host (an exchange, broker or paper simulation) that accounts trade on: the venues it reaches, the credentials
+        it accepts and what it supports. Check capabilities before using optional operations.'
     HostMarketQuery:
       type: object
       properties:
@@ -3827,6 +5276,7 @@ components:
             account and filters.'
       required:
       - hostId
+      description: Lists the markets a host can trade, optionally filtered by asset, instrument type or symbol search.
     InstrumentType:
       type: string
       enum:
@@ -3836,6 +5286,7 @@ components:
       - Future
       - FutureInv
       - Option
+      description: The kind of instrument, matching Instrument's type, used to filter market listings.
     HostMarketSummary:
       type: object
       properties:
@@ -3858,6 +5309,8 @@ components:
       - contractDetails
       - orderTypes
       - settings
+      description: 'A market a host can trade: its instrument and symbol, contract details, the order types it accepts with
+        their rules, and its account settings.'
     OrderTypes:
       type: object
       properties:
@@ -3928,6 +5381,8 @@ components:
       - GTC
       - FOK
       - IOC
+      description: 'How long a limit order stays working: GTC (until cancelled), IOC (fill what it can now, cancel the rest)
+        or FOK (fill entirely now or cancel).'
     MarketOrderSpec:
       type: object
       properties:
@@ -4048,11 +5503,14 @@ components:
       enum:
       - Size
       - Notional
+      description: 'How a market order''s amount is given: Size in native contracts, or Notional as a quote-asset amount.'
     MarketOrderTif:
       type: string
       enum:
       - IOC
       - FOK
+      description: 'How a market order handles what it cannot fill now: IOC cancels the rest, FOK cancels the whole order
+        unless it fills entirely.'
     TriggerLimitOrderSpec:
       type: object
       properties:
@@ -4109,6 +5567,7 @@ components:
       description: UserSelectable requires an explicit reference in the advertised non-empty set. HostSelected fixes the reference;
         null means the host does not disclose it. Never infer a reference the host did not report.
     TriggerReferencePricePolicyHostSelected:
+      title: HostSelected
       type: object
       properties:
         price:
@@ -4123,7 +5582,9 @@ components:
       required:
       - price
       - type
+      description: The host fixes the reference price triggers watch on this market.
     TriggerReferencePricePolicyUserSelectable:
+      title: UserSelectable
       type: object
       properties:
         prices:
@@ -4139,6 +5600,7 @@ components:
       required:
       - type
       - prices
+      description: Each trigger order must choose its reference price from prices.
     TriggerMarketOrderSpec:
       type: object
       properties:
@@ -4220,7 +5682,10 @@ components:
           Account: '#/components/schemas/MarketSettingEffectScopeAccount'
           Market: '#/components/schemas/MarketSettingEffectScopeMarket'
           MarketGroup: '#/components/schemas/MarketSettingEffectScopeMarketGroup'
+      description: 'What changing a market setting affects: only this market, a host-defined group of markets, or the whole
+        account.'
     MarketSettingEffectScopeAccount:
+      title: Account
       type: object
       properties:
         type:
@@ -4229,7 +5694,9 @@ components:
           - Account
       required:
       - type
+      description: A change applies to every market on the account.
     MarketSettingEffectScopeMarket:
+      title: Market
       type: object
       properties:
         type:
@@ -4238,7 +5705,9 @@ components:
           - Market
       required:
       - type
+      description: A change applies only to this market.
     MarketSettingEffectScopeMarketGroup:
+      title: MarketGroup
       type: object
       properties:
         type:
@@ -4247,6 +5716,7 @@ components:
           - MarketGroup
       required:
       - type
+      description: A change applies to a host-defined group of markets that includes this one.
     MarketPositionModeSpec:
       type: object
       properties:
@@ -4269,11 +5739,14 @@ components:
       - values
       - get
       - setEffectScope
+      description: The position modes this market offers, and whether the account's mode can be read and set here.
     PositionEffect:
       type: string
       enum:
       - Open
       - Close
+      description: Whether an order opens or adds to a position (Open) or reduces or closes one (Close), for hosts that need
+        it in hedging mode.
     ListAccountMarginStatesQuery:
       type: object
       properties:
@@ -4287,6 +5760,7 @@ components:
             account and filters.'
       required:
       - accountId
+      description: Lists the account's margin state per margin group.
     ListAccountsQuery:
       type: object
       properties:
@@ -4315,6 +5789,7 @@ components:
             account and filters.'
       required:
       - tenantId
+      description: Lists the tenant's accounts, optionally filtered by host or by paper.
     ListClosedOrders:
       oneOf:
       - $ref: '#/components/schemas/ListClosedOrdersByInstrument'
@@ -4332,7 +5807,9 @@ components:
           Global: '#/components/schemas/ListClosedOrdersGlobal'
           GlobalAfter: '#/components/schemas/ListClosedOrdersGlobalAfter'
           GlobalBefore: '#/components/schemas/ListClosedOrdersGlobalBefore'
+      description: 'Which closed orders to list: all or one instrument, optionally only those before or after a time.'
     ListClosedOrdersByInstrument:
+      title: ByInstrument
       type: object
       properties:
         instrument:
@@ -4344,7 +5821,9 @@ components:
       required:
       - type
       - instrument
+      description: Lists closed orders on one instrument.
     ListClosedOrdersByInstrumentAfter:
+      title: ByInstrumentAfter
       type: object
       properties:
         instrument:
@@ -4360,7 +5839,9 @@ components:
       - type
       - instrument
       - after
+      description: Lists closed orders on one instrument after a time.
     ListClosedOrdersByInstrumentBefore:
+      title: ByInstrumentBefore
       type: object
       properties:
         instrument:
@@ -4376,7 +5857,9 @@ components:
       - type
       - instrument
       - before
+      description: Lists closed orders on one instrument before a time.
     ListClosedOrdersGlobal:
+      title: Global
       type: object
       properties:
         type:
@@ -4385,7 +5868,9 @@ components:
           - Global
       required:
       - type
+      description: Lists closed orders on every instrument.
     ListClosedOrdersGlobalAfter:
+      title: GlobalAfter
       type: object
       properties:
         after:
@@ -4398,7 +5883,9 @@ components:
       required:
       - type
       - after
+      description: Lists closed orders on every instrument after a time.
     ListClosedOrdersGlobalBefore:
+      title: GlobalBefore
       type: object
       properties:
         before:
@@ -4411,6 +5898,7 @@ components:
       required:
       - type
       - before
+      description: Lists closed orders on every instrument before a time.
     ListClosedOrdersQuery:
       type: object
       properties:
@@ -4427,6 +5915,7 @@ components:
       required:
       - accountId
       - query
+      description: Lists the account's filled, cancelled and rejected orders.
     ListFills:
       oneOf:
       - $ref: '#/components/schemas/ListFillsByInstrument'
@@ -4438,7 +5927,9 @@ components:
           ByInstrument: '#/components/schemas/ListFillsByInstrument'
           ByOrderId: '#/components/schemas/ListFillsByOrderId'
           Global: '#/components/schemas/ListFillsGlobal'
+      description: 'Which fills to list: all, one instrument, or one order.'
     ListFillsByInstrument:
+      title: ByInstrument
       type: object
       properties:
         instrument:
@@ -4450,7 +5941,9 @@ components:
       required:
       - type
       - instrument
+      description: Lists fills on one instrument.
     ListFillsByOrderId:
+      title: ByOrderId
       type: object
       properties:
         orderId:
@@ -4462,7 +5955,9 @@ components:
       required:
       - type
       - orderId
+      description: Lists the fills of one order.
     ListFillsGlobal:
+      title: Global
       type: object
       properties:
         type:
@@ -4471,6 +5966,7 @@ components:
           - Global
       required:
       - type
+      description: Lists fills on every instrument.
     ListFillsQuery:
       type: object
       properties:
@@ -4487,6 +5983,7 @@ components:
       required:
       - accountId
       - query
+      description: Lists the account's fills.
     ListOpenOrders:
       oneOf:
       - $ref: '#/components/schemas/ListOpenOrdersByInstrument'
@@ -4496,7 +5993,9 @@ components:
         mapping:
           ByInstrument: '#/components/schemas/ListOpenOrdersByInstrument'
           Global: '#/components/schemas/ListOpenOrdersGlobal'
+      description: 'Which open orders to list: all, or one instrument.'
     ListOpenOrdersByInstrument:
+      title: ByInstrument
       type: object
       properties:
         instrument:
@@ -4508,7 +6007,9 @@ components:
       required:
       - type
       - instrument
+      description: Lists open orders on one instrument.
     ListOpenOrdersGlobal:
+      title: Global
       type: object
       properties:
         type:
@@ -4517,6 +6018,7 @@ components:
           - Global
       required:
       - type
+      description: Lists open orders on every instrument.
     ListOpenOrdersQuery:
       type: object
       properties:
@@ -4533,6 +6035,7 @@ components:
       required:
       - accountId
       - query
+      description: Lists the account's live orders.
     ListOpenPositionsQuery:
       type: object
       properties:
@@ -4546,6 +6049,7 @@ components:
             account and filters.'
       required:
       - accountId
+      description: Lists the account's open derivative positions.
     ListWalletsQuery:
       type: object
       properties:
@@ -4559,6 +6063,7 @@ components:
             account and filters.'
       required:
       - accountId
+      description: Lists the account's wallet balances.
     MarketSizing:
       oneOf:
       - $ref: '#/components/schemas/MarketSizingNotional'
@@ -4568,7 +6073,9 @@ components:
         mapping:
           Notional: '#/components/schemas/MarketSizingNotional'
           Size: '#/components/schemas/MarketSizingSize'
+      description: 'The amount of a market order: a size in native contracts, or a notional amount of the quote asset.'
     MarketSizingNotional:
+      title: Notional
       type: object
       properties:
         notional:
@@ -4581,7 +6088,9 @@ components:
       required:
       - type
       - notional
+      description: Sizes the order by an amount of the quote asset to spend or receive.
     MarketSizingSize:
+      title: Size
       type: object
       properties:
         size:
@@ -4594,6 +6103,7 @@ components:
       required:
       - type
       - size
+      description: Sizes the order in native contracts.
     OrderNew:
       oneOf:
       - $ref: '#/components/schemas/OrderNewLimit'
@@ -4607,7 +6117,9 @@ components:
           Market: '#/components/schemas/OrderNewMarket'
           TriggerLimit: '#/components/schemas/OrderNewTriggerLimit'
           TriggerMarket: '#/components/schemas/OrderNewTriggerMarket'
+      description: A new order to submit. The type selects the order kind and its fields; check the market's orderTypes first.
     OrderNewLimit:
+      title: Limit
       type: object
       properties:
         instrument:
@@ -4651,7 +6163,9 @@ components:
       - price
       - reduceOnly
       - tif
+      description: 'A limit order: buy or sell size at price or better.'
     OrderNewMarket:
+      title: Market
       type: object
       properties:
         instrument:
@@ -4688,7 +6202,9 @@ components:
       - side
       - sizing
       - reduceOnly
+      description: 'A market order: buy or sell immediately at the best available prices.'
     OrderNewTriggerLimit:
+      title: TriggerLimit
       type: object
       properties:
         instrument:
@@ -4735,7 +6251,9 @@ components:
       - reduceOnly
       - tif
       - trigger
+      description: A limit order that is placed when its trigger condition is met.
     OrderNewTriggerMarket:
+      title: TriggerMarket
       type: object
       properties:
         instrument:
@@ -4775,6 +6293,7 @@ components:
       - sizing
       - reduceOnly
       - trigger
+      description: A market order that is placed when its trigger condition is met.
     PaperFeeRates:
       type: object
       properties:
@@ -4791,6 +6310,7 @@ components:
       - makerFeePercent
       - takerFeePercent
       - fractionDigits
+      description: Maker and taker fee rates, as percentages of traded value, for paper fills.
     PaperFeeSettings:
       type: object
       properties:
@@ -4803,6 +6323,7 @@ components:
       required:
       - tiers
       - selectedTier
+      description: A paper account's available fee tiers and the tier it uses.
     PaperFeeTier:
       type: object
       properties:
@@ -4821,6 +6342,7 @@ components:
       - name
       - defaults
       - instrumentOverrides
+      description: 'A named paper fee tier: default rates, with overrides for matching instruments.'
     PaperInstrumentFeeRates:
       type: object
       properties:
@@ -4831,6 +6353,8 @@ components:
       required:
       - instrumentPattern
       - rates
+      description: Fee rates that replace a tier's defaults for instruments whose canonical symbol matches instrumentPattern,
+        a regular expression.
     RenameAccountCommand:
       type: object
       properties:
@@ -4841,6 +6365,7 @@ components:
       required:
       - accountId
       - name
+      description: Renames an account.
     SetFeeTierCommand:
       type: object
       properties:
@@ -4851,6 +6376,7 @@ components:
       required:
       - accountId
       - tier
+      description: Selects a paper account's fee tier.
     SetMarketLeverageCommand:
       type: object
       properties:
@@ -4864,6 +6390,7 @@ components:
       - accountId
       - instrument
       - leverage
+      description: Sets the account's leverage for a market.
     SetMarketPositionModeCommand:
       type: object
       properties:
@@ -4877,6 +6404,7 @@ components:
       - accountId
       - instrument
       - mode
+      description: Sets the account's position mode for a market.
     SubmitOrderCommand:
       type: object
       properties:
@@ -4887,6 +6415,7 @@ components:
       required:
       - accountId
       - order
+      description: Submits a new order on the account.
     UpdateAccountConnectionCommand:
       type: object
       properties:
@@ -4897,6 +6426,7 @@ components:
       required:
       - accountId
       - credential
+      description: Replaces the API credentials of a connected exchange or broker account.
     VenueHeader:
       type: object
       properties:
@@ -4907,6 +6437,8 @@ components:
       required:
       - id
       - capabilities
+      description: A venue (an exchange or other liquidity source) and the market data it provides. Check capabilities before
+        using optional reads.
     VenueMarketQuery:
       type: object
       properties:
@@ -4944,6 +6476,7 @@ components:
             account and filters.'
       required:
       - venueId
+      description: Lists a venue's markets, optionally filtered by asset, instrument type or symbol search.
     VenueMarketSummary:
       type: object
       properties:
@@ -5046,6 +6579,7 @@ components:
           $ref: '#/components/schemas/OperationSupport'
       required:
       - getPrices
+      description: Whether the venue serves GetPrices for this price kind.
     BestQuoteCapabilities:
       type: object
       properties:
@@ -5053,6 +6587,7 @@ components:
           $ref: '#/components/schemas/OperationSupport'
       required:
       - getBestQuotes
+      description: Whether the venue serves GetBestQuotes.
     MarketStatisticsCapabilities:
       type: object
       properties:
@@ -5060,6 +6595,7 @@ components:
           $ref: '#/components/schemas/OperationSupport'
       required:
       - getMarketStatistics
+      description: Whether the venue serves GetMarketStatistics.
     IndicativeFundingCapabilities:
       type: object
       properties:
@@ -5067,6 +6603,7 @@ components:
           $ref: '#/components/schemas/OperationSupport'
       required:
       - getIndicativeFundings
+      description: Whether the venue serves GetIndicativeFundings.
     OpenInterestCapabilities:
       type: object
       properties:
@@ -5074,6 +6611,7 @@ components:
           $ref: '#/components/schemas/OperationSupport'
       required:
       - getOpenInterests
+      description: Whether the venue serves GetOpenInterests.
     CandlesCapabilities:
       type: object
       properties:
@@ -5081,6 +6619,7 @@ components:
           $ref: '#/components/schemas/ListCandlesCapabilities'
       required:
       - listCandles
+      description: Whether the venue serves ListCandles, and which variants.
     ListCandlesCapabilities:
       type: object
       properties:
@@ -5158,6 +6697,7 @@ components:
           description: GetPrices for this kind on this market.
       required:
       - get
+      description: How this market supports one price kind.
     BestQuoteSpec:
       type: object
       properties:
@@ -5170,6 +6710,7 @@ components:
       required:
       - supportsSizes
       - get
+      description: How this market supports best bid and ask reads.
     StatisticsSpec:
       type: object
       properties:
@@ -5189,6 +6730,7 @@ components:
       - window
       - supportedFields
       - get
+      description: 'How this market supports statistics reads: the window and the fields the venue reports.'
     IndicativeFundingSpec:
       type: object
       properties:
@@ -5197,6 +6739,7 @@ components:
           description: GetIndicativeFundings on this market.
       required:
       - get
+      description: How this market supports indicative funding reads.
     OpenInterestSpec:
       type: object
       properties:
@@ -5208,6 +6751,7 @@ components:
       required:
       - unit
       - get
+      description: How this market supports open interest reads, and the unit they are reported in.
     CandlesSpec:
       type: object
       properties:
@@ -5295,6 +6839,7 @@ components:
           CalendarDay: '#/components/schemas/StatisticsWindowCalendarDay'
       description: The window the venue computes statistics over. Two venues' windows need not mean the same.
     StatisticsWindowRolling:
+      title: Rolling
       type: object
       properties:
         type:
@@ -5310,6 +6855,7 @@ components:
       - length
       description: A window of this length ending now.
     StatisticsWindowCalendarDay:
+      title: CalendarDay
       type: object
       properties:
         type:
@@ -5332,12 +6878,14 @@ components:
       - PreviousClose
       - VolumeBase
       - VolumeQuote
+      description: A market statistic the venue can report, such as open, high, low, previous close and traded volume.
     OpenInterestUnit:
       type: string
       enum:
       - Contracts
       - BaseAsset
       - QuoteAsset
+      description: 'The unit open interest is reported in: native contracts, the base asset or the quote asset.'
     GetOrderBookQuery:
       type: object
       properties:
@@ -5348,6 +6896,7 @@ components:
       required:
       - venueId
       - instrument
+      description: Gets the order book of one market on a venue.
     OrderBook:
       type: object
       properties:
@@ -5373,6 +6922,7 @@ components:
       - bids
       - asks
       - asOf
+      description: The bids and asks of one market at asOf, best price first.
     OrderBookLevel:
       type: object
       properties:
@@ -5384,6 +6934,7 @@ components:
       required:
       - price
       - size
+      description: 'One price level of an order book: a price and the total size resting there.'
     GetRecentTradesQuery:
       type: object
       properties:
@@ -5394,6 +6945,7 @@ components:
       required:
       - venueId
       - instrument
+      description: Gets the most recent public trades of one market on a venue.
     RecentTrades:
       type: object
       properties:
@@ -5412,6 +6964,7 @@ components:
       - instrument
       - trades
       - asOf
+      description: The most recent public trades of one market, oldest first.
     PublicTrade:
       type: object
       properties:
@@ -5459,6 +7012,7 @@ components:
       - venueId
       - kind
       - instruments
+      description: Gets one kind of price for up to 50 instruments on a venue.
     GetBestQuotesQuery:
       type: object
       properties:
@@ -5475,6 +7029,7 @@ components:
       required:
       - venueId
       - instruments
+      description: Gets the best bid and ask for up to 50 instruments on a venue.
     GetMarketStatisticsQuery:
       type: object
       properties:
@@ -5491,6 +7046,7 @@ components:
       required:
       - venueId
       - instruments
+      description: Gets market statistics for up to 50 instruments on a venue.
     GetIndicativeFundingsQuery:
       type: object
       properties:
@@ -5507,6 +7063,7 @@ components:
       required:
       - venueId
       - instruments
+      description: Gets the indicative funding rate for up to 50 instruments on a venue.
     GetOpenInterestsQuery:
       type: object
       properties:
@@ -5523,7 +7080,9 @@ components:
       required:
       - venueId
       - instruments
+      description: Gets open interest for up to 50 instruments on a venue.
     ObservationUnavailable:
+      title: Unavailable
       type: object
       properties:
         type:
@@ -5553,7 +7112,10 @@ components:
         mapping:
           Observed: '#/components/schemas/PriceObserved'
           Unavailable: '#/components/schemas/ObservationUnavailable'
+      description: The price for one requested instrument, or why it is unavailable. There is one result per requested instrument,
+        in request order; an instrument without a value is Unavailable rather than failing the call.
     PriceObserved:
+      title: Observed
       type: object
       properties:
         type:
@@ -5588,6 +7150,7 @@ components:
       - observedAt
       - confirmedAt
       - receivedAt
+      description: A price observed for the instrument, with when the venue reported it and when Plurex received it.
     BestQuoteResult:
       oneOf:
       - $ref: '#/components/schemas/BestQuoteObserved'
@@ -5597,7 +7160,10 @@ components:
         mapping:
           Observed: '#/components/schemas/BestQuoteObserved'
           Unavailable: '#/components/schemas/ObservationUnavailable'
+      description: The best bid and ask for one requested instrument, or why they are unavailable. There is one result per
+        requested instrument, in request order; an instrument without a value is Unavailable rather than failing the call.
     BestQuoteObserved:
+      title: Observed
       type: object
       properties:
         type:
@@ -5632,6 +7198,8 @@ components:
       - observedAt
       - confirmedAt
       - receivedAt
+      description: A best bid and ask observed for the instrument, with when the venue reported it and when Plurex received
+        it.
     MarketStatisticsResult:
       oneOf:
       - $ref: '#/components/schemas/MarketStatisticsObserved'
@@ -5641,7 +7209,10 @@ components:
         mapping:
           Observed: '#/components/schemas/MarketStatisticsObserved'
           Unavailable: '#/components/schemas/ObservationUnavailable'
+      description: The statistics for one requested instrument, or why they are unavailable. There is one result per requested
+        instrument, in request order; an instrument without a value is Unavailable rather than failing the call.
     MarketStatisticsObserved:
+      title: Observed
       type: object
       properties:
         type:
@@ -5676,6 +7247,7 @@ components:
       - observedAt
       - confirmedAt
       - receivedAt
+      description: Statistics observed for the instrument, with when the venue reported them and when Plurex received them.
     IndicativeFundingResult:
       oneOf:
       - $ref: '#/components/schemas/IndicativeFundingObserved'
@@ -5685,7 +7257,10 @@ components:
         mapping:
           Observed: '#/components/schemas/IndicativeFundingObserved'
           Unavailable: '#/components/schemas/ObservationUnavailable'
+      description: The indicative funding for one requested instrument, or why it is unavailable. There is one result per
+        requested instrument, in request order; an instrument without a value is Unavailable rather than failing the call.
     IndicativeFundingObserved:
+      title: Observed
       type: object
       properties:
         type:
@@ -5720,6 +7295,8 @@ components:
       - observedAt
       - confirmedAt
       - receivedAt
+      description: An indicative funding value observed for the instrument, with when the venue reported it and when Plurex
+        received it.
     OpenInterestResult:
       oneOf:
       - $ref: '#/components/schemas/OpenInterestObserved'
@@ -5729,7 +7306,10 @@ components:
         mapping:
           Observed: '#/components/schemas/OpenInterestObserved'
           Unavailable: '#/components/schemas/ObservationUnavailable'
+      description: The open interest for one requested instrument, or why it is unavailable. There is one result per requested
+        instrument, in request order; an instrument without a value is Unavailable rather than failing the call.
     OpenInterestObserved:
+      title: Observed
       type: object
       properties:
         type:
@@ -5764,6 +7344,7 @@ components:
       - observedAt
       - confirmedAt
       - receivedAt
+      description: Open interest observed for the instrument, with when the venue reported it and when Plurex received it.
     Price:
       type: object
       properties:
@@ -5774,6 +7355,7 @@ components:
           description: Null when the venue stops reporting this kind for the instrument.
       required:
       - price
+      description: A price of the requested kind.
     BestQuote:
       type: object
       properties:
@@ -5790,6 +7372,7 @@ components:
       required:
       - bid
       - ask
+      description: The best bid and best ask of a market.
     QuoteLevel:
       type: object
       properties:
@@ -5803,6 +7386,7 @@ components:
       required:
       - price
       - size
+      description: The price and, when reported, the size at the top of one side of the book.
     MarketStatistics:
       type: object
       properties:
@@ -5864,6 +7448,7 @@ components:
       required:
       - rate
       - nextFundingTime
+      description: The funding rate the venue currently indicates for the next funding, and when that funding happens.
     OpenInterest:
       type: object
       properties:
@@ -5877,6 +7462,7 @@ components:
       required:
       - amount
       - unit
+      description: The total size of open positions in a market, in unit.
     ListCandlesQuery:
       type: object
       properties:
@@ -5899,6 +7485,7 @@ components:
       - priceKind
       - interval
       - query
+      description: Lists finalized candles of one market on a venue, newest first.
     ListCandles:
       oneOf:
       - $ref: '#/components/schemas/ListCandlesByInstrument'
@@ -5908,7 +7495,9 @@ components:
         mapping:
           ByInstrument: '#/components/schemas/ListCandlesByInstrument'
           ByInstrumentBefore: '#/components/schemas/ListCandlesByInstrumentBefore'
+      description: 'Which candles to list: the latest, or those that end before a time.'
     ListCandlesByInstrument:
+      title: ByInstrument
       type: object
       properties:
         instrument:
@@ -5920,7 +7509,9 @@ components:
       required:
       - type
       - instrument
+      description: Lists the market's candles from the most recent finalized one backwards.
     ListCandlesByInstrumentBefore:
+      title: ByInstrumentBefore
       type: object
       properties:
         instrument:
@@ -5937,6 +7528,7 @@ components:
       - type
       - instrument
       - before
+      description: Lists the market's candles that end at or before a time, backwards.
     Candle:
       type: object
       properties:
@@ -6001,6 +7593,7 @@ components:
       - asset
       - totalBalance
       - availableBalance
+      description: The account's balance of one asset in one host wallet.
     Decimal:
       type: string
       pattern: ^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$
@@ -6041,6 +7634,7 @@ components:
           description: Pass as cursor to get the next page; null on the last page.
     ResponseEnvelopeOrderBook:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6048,6 +7642,7 @@ components:
           $ref: '#/components/schemas/OrderBook'
     ResponseEnvelopeRecentTrades:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6055,6 +7650,7 @@ components:
           $ref: '#/components/schemas/RecentTrades'
     ResponseEnvelopePriceResultList:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6064,6 +7660,7 @@ components:
             $ref: '#/components/schemas/PriceResult'
     ResponseEnvelopeBestQuoteResultList:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6073,6 +7670,7 @@ components:
             $ref: '#/components/schemas/BestQuoteResult'
     ResponseEnvelopeMarketStatisticsResultList:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6082,6 +7680,7 @@ components:
             $ref: '#/components/schemas/MarketStatisticsResult'
     ResponseEnvelopeIndicativeFundingResultList:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6091,6 +7690,7 @@ components:
             $ref: '#/components/schemas/IndicativeFundingResult'
     ResponseEnvelopeOpenInterestResultList:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6151,6 +7751,7 @@ components:
           description: Pass as cursor to get the next page; null on the last page.
     ResponseEnvelopeOrder:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6158,6 +7759,7 @@ components:
           $ref: '#/components/schemas/Order'
     ResponseEnvelopeOrderList:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6269,6 +7871,7 @@ components:
           description: Pass as cursor to get the next page; null on the last page.
     ResponseEnvelopeAccountMarketState:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6276,6 +7879,7 @@ components:
           $ref: '#/components/schemas/AccountMarketState'
     ResponseEnvelopeMarketLeverageSetting:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6283,6 +7887,7 @@ components:
           $ref: '#/components/schemas/MarketLeverageSetting'
     ResponseEnvelopeMarketPositionModeSetting:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6290,6 +7895,7 @@ components:
           $ref: '#/components/schemas/MarketPositionModeSetting'
     ResponseEnvelopeCancelResultList:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6299,6 +7905,7 @@ components:
             $ref: '#/components/schemas/CancelResult'
     ResponseEnvelopeAccountHeader:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6323,6 +7930,7 @@ components:
           description: Pass as cursor to get the next page; null on the last page.
     ResponseEnvelopeWallet:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6330,6 +7938,7 @@ components:
           $ref: '#/components/schemas/Wallet'
     ResponseEnvelopePaperFeeSettings:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6337,6 +7946,7 @@ components:
           $ref: '#/components/schemas/PaperFeeSettings'
     ResponseEnvelopePaperFeeRates:
       type: object
+      description: Success response; data holds the result.
       required:
       - data
       properties:
@@ -6362,6 +7972,7 @@ components:
           Unsubscribe: '#/components/schemas/AccountStreamUnsubscribe'
       description: A message the client sends on an account stream.
     AccountStreamSubscribe:
+      title: Subscribe
       type: object
       properties:
         id:
@@ -6390,6 +8001,7 @@ components:
         the accounts now streaming; their events follow it. An account already streaming is listed again without a second
         stream.
     AccountStreamUnsubscribe:
+      title: Unsubscribe
       type: object
       properties:
         id:
@@ -6415,6 +8027,7 @@ components:
       description: Stop streaming these accounts. The reply is one Unsubscribed, after which nothing more arrives for them.
         Accounts that are not streaming are acknowledged too.
     AccountStreamSubscribed:
+      title: Subscribed
       type: object
       properties:
         id:
@@ -6436,6 +8049,7 @@ components:
       - topics
       description: Reply to Subscribe. Events for these accounts follow this message.
     AccountStreamUnsubscribed:
+      title: Unsubscribed
       type: object
       properties:
         id:
@@ -6457,6 +8071,7 @@ components:
       - topics
       description: Reply to Unsubscribe. Nothing more arrives for these accounts.
     AccountStreamRejected:
+      title: Rejected
       type: object
       properties:
         id:
@@ -6486,6 +8101,7 @@ components:
       description: One account in a Subscribe was refused, for example AccountNotFound, Forbidden, or NotSupported when the
         host does not stream it. Sent before the request's Subscribed; the connection stays open.
     AccountStreamEnded:
+      title: Ended
       type: object
       properties:
         topic:
@@ -6510,6 +8126,7 @@ components:
       description: 'The account stopped streaming, for example because the host''s own feed ended (UpstreamFailure). Nothing
         more arrives for it: read current state through the REST API, then subscribe again.'
     AccountOrderStreamEvent:
+      title: Event
       type: object
       properties:
         topic:
@@ -6630,6 +8247,8 @@ components:
       - Conversion
       - Adjustment
       - Other
+      description: The kind of balance posting, such as a trading fee, funding payment, deposit or withdrawal. Other covers
+        postings with no standard type; see nativeType.
     AccountTransactionsCapabilities:
       type: object
       properties:
@@ -6647,6 +8266,7 @@ components:
       - listTransactions
       - subscribeToAccountTransactions
       - supportedTransactionTypes
+      description: Whether the host serves transaction history and the transaction stream, and which posting types it reports.
     ListTransactionsQuery:
       type: object
       properties:
@@ -6659,7 +8279,9 @@ components:
           description: nextCursor from the previous page; omit for the first page. Only valid for the same account.
       required:
       - accountId
+      description: Lists the account's balance postings.
     AccountTransactionStreamEvent:
+      title: Event
       type: object
       properties:
         topic:
@@ -6748,6 +8370,7 @@ components:
       - mode
       description: The account's position mode for one market.
     CancelResultCancelled:
+      title: Cancelled
       type: object
       properties:
         identifier:
@@ -6762,6 +8385,7 @@ components:
       - identifier
       description: The host accepted the cancel; the order may not be terminal yet. Confirm with the order stream or GetOrder.
     CancelResultFailed:
+      title: Failed
       type: object
       properties:
         identifier:
@@ -6784,3 +8408,4 @@ components:
       - identifier
       - code
       - message
+      description: The cancel of this identifier failed; code is what CancelOrder would return for it.

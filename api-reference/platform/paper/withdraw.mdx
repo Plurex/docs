@@ -1,9 +1,9 @@
 ---
 title: "Withdraw from a paper account"
-description: "Debits the paper account and returns the resulting wallet. Nothing leaves Plurex: use it to set up paper scenarios such as a low or empty balance, or a wallet too small for the next order. Only the available balance can be withdrawn; funds held by open orders or locked as position margin cannot, so cancel or close first. A withdrawal above the available balance, including from an asset the account does not hold, fails with InsufficientFunds and changes nothing. It is recorded as a Withdrawal transaction with a negative amount and streams like any other posting. Not safe to repeat: repeating withdraws again. If the outcome is unclear, check ListTransactions before retrying."
+description: "Debits the paper account's available balance and returns the resulting wallet, to set up scenarios such as a low balance. Funds held by open orders or position margin cannot be withdrawn; above the available balance, it fails with 422 InsufficientFunds and changes nothing. It posts a Withdrawal transaction. If the outcome is unclear, check ListTransactions before retrying."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/paper/command/Withdraw"
 ---
 
 import { OperationBadges } from "/snippets/operation-badges.mdx";
 
-<OperationBadges badges={[{"name": "not-repeat-safe", "label": "Not safe to repeat", "description": "Repeating the call repeats its effect. If the outcome is unclear, check before retrying."}]} />
+<OperationBadges badges={[{"name": "not-repeat-safe", "label": "Not safe to repeat", "description": "Repeating the call repeats its effect. If the outcome is unclear, check before retrying. Commands without this badge are safe to repeat."}]} />

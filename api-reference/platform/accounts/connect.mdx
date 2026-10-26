@@ -1,9 +1,9 @@
 ---
 title: "Connect an exchange or broker account"
-description: "Connects an exchange or broker account using its API credentials. Not safe to repeat: repeating connects another account. If the outcome is unclear, check accounts/query/List before retrying."
+description: "Connects an exchange or broker account with its API credentials. If the outcome is unclear, check List accounts before retrying."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/accounts/command/Connect"
 ---
 
 import { OperationBadges } from "/snippets/operation-badges.mdx";
 
-<OperationBadges badges={[{"name": "not-repeat-safe", "label": "Not safe to repeat", "description": "Repeating the call repeats its effect. If the outcome is unclear, check before retrying."}]} />
+<OperationBadges badges={[{"name": "not-repeat-safe", "label": "Not safe to repeat", "description": "Repeating the call repeats its effect. If the outcome is unclear, check before retrying. Commands without this badge are safe to repeat."}]} />

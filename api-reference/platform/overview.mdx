@@ -70,7 +70,7 @@ Each operation page shows its badges below the request line. Hover a badge for i
 | No API key | Public. No authentication needed. |
 | Check capabilities | Not every host or venue supports this operation. Check its [capabilities](/capabilities/overview) first, or expect `422 NotSupported`. |
 | Paged | Returns pages. Follow `nextCursor` until it is `null`. |
-| Batch | Takes a list of identifiers or instruments and returns one result for each. |
+| Batch | Takes a list of identifiers or instruments and handles them in one call. Each operation says what it returns for each item. |
 | Not safe to repeat | Repeating the call repeats its effect. If the outcome is unclear, check before retrying. Commands without this badge are safe to repeat. |
 
 ## Read next

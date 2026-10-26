@@ -1,12 +1,12 @@
 ---
 title: "Get orders"
-description: "Gets the orders you name. Only orders that exist are returned; unknown identifiers are left out."
+description: "Gets the orders you name. Unknown identifiers are left out."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/query/GetOrders"
 ---
 
 import { OperationBadges } from "/snippets/operation-badges.mdx";
 
-<OperationBadges badges={[{"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "batch", "label": "Batch", "description": "Takes a list of identifiers or instruments and returns one result for each."}]} />
+<OperationBadges badges={[{"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "batch", "label": "Batch", "description": "Takes a list of identifiers or instruments and handles them in one call."}]} />
 
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 

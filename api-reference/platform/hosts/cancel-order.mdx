@@ -1,6 +1,6 @@
 ---
 title: "Cancel an order"
-description: "Ack means the host accepted the cancel. Some hosts cancel asynchronously, so the order may still be open briefly; confirm the final state with the order stream or GetOrder. 404 OrderNotFound means the host does not know the identifier as an open order: it never existed, it closed and the host has forgotten it, or it is not visible yet. Check with GetOrder or ListOpenOrders rather than assume it is gone. 409 OrderAlreadyClosed means the order already finished and may have filled; do not retry. Safe to repeat. ById works on every host. The clientOrderId variants, where the host supports them (cancelOrder capabilities), cancel an order whose ID you do not know yet, for example after a SubmitOrder timeout."
+description: "Cancels one open order. Ack means the host accepted the cancel; some hosts cancel asynchronously, so confirm the final state with the order stream or GetOrder. 404 OrderNotFound means the host does not know the identifier as an open order: it never existed, it closed and was forgotten, or it is not visible yet, so check rather than assume it is gone. 409 OrderAlreadyClosed means the order already finished and may have filled; do not retry. The clientOrderId variants cancel an order whose ID you do not have, such as after a SubmitOrder timeout."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/command/CancelOrder"
 ---
 

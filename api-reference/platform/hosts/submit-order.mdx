@@ -1,12 +1,12 @@
 ---
 title: "Submit an order"
-description: "Submits one order and returns it as the host accepted it. Not safe to repeat: repeating may place a second order. If the outcome is unclear (a timeout or 5xx), look the order up with GetOrder ByClientOrderId before resubmitting. 409 DuplicateClientOrderId means an order with that clientOrderId already exists."
+description: "Submits one order and returns it as the host accepted it. If the outcome is unclear (a timeout or 5xx), look the order up by clientOrderId before resubmitting. 409 DuplicateClientOrderId means an order with that clientOrderId already exists."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/command/SubmitOrder"
 ---
 
 import { OperationBadges } from "/snippets/operation-badges.mdx";
 
-<OperationBadges badges={[{"name": "not-repeat-safe", "label": "Not safe to repeat", "description": "Repeating the call repeats its effect. If the outcome is unclear, check before retrying."}]} />
+<OperationBadges badges={[{"name": "not-repeat-safe", "label": "Not safe to repeat", "description": "Repeating the call repeats its effect. If the outcome is unclear, check before retrying. Commands without this badge are safe to repeat."}]} />
 
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 

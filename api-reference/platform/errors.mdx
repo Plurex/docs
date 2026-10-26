@@ -10,8 +10,7 @@ Every error, at every HTTP status, has the same shape. Use `code` in your progra
 ```json
 {
   "code": "OrderNotFound",
-  "message": "Order not found: ord_789",
-  "error": null
+  "message": "Order not found: ord_789"
 }
 ```
 
@@ -19,7 +18,6 @@ Every error, at every HTTP status, has the same shape. Use `code` in your progra
 | --- | --- |
 | `code` | The specific reason, from the catalogue below. Each code always comes with the same HTTP status. |
 | `message` | Human-readable detail. Its wording can change; do not parse it. |
-| `error` | Always `null`. |
 
 The envelope is used for unknown paths (`404 NotFound`), wrong methods (`405 MethodNotAllowed`) and stream connections refused before the WebSocket upgrade, as well as for every operation's own errors. On an open stream, the same codes arrive in `Rejected` and `Ended` messages; see [Stream account updates](/guides/streams).
 

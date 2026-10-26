@@ -1,6 +1,6 @@
 ---
 title: "Get order book"
-description: "The current order book of one market, at the depth the venue feed provides. 422 NotSupported for an unknown or unsupported market. Served from Plurex's live feed for the market when one is running, otherwise fetched from the venue. No API key needed."
+description: "The current order book of one market, at the depth the venue provides. An unknown market returns 422 NotSupported."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/GetOrderBook"
 ---
 

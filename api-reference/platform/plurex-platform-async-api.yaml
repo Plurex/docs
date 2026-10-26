@@ -10,7 +10,7 @@ info:
 
 
     **Connecting.** Send the X-API-KEY and X-API-SECRET headers with the upgrade request. Authentication failures are ordinary
-    HTTP errors with the ErrorEnvelope body, before the upgrade. Browser authentication is not supported yet. WebSocket ping/pong
+    HTTP errors with the ErrorEnvelope body, before the upgrade. Browser authentication is not supported. WebSocket ping/pong
     frames keep the connection alive.
 
 
@@ -345,6 +345,7 @@ components:
         and right where they apply. type takes the InstrumentType values; unknown types are rejected. Market summaries also
         give its canonical symbol.'
     InstrumentFuture:
+      title: Future
       type: object
       properties:
         base:
@@ -366,7 +367,9 @@ components:
       - base
       - quote
       - expiry
+      description: A linear dated future, quoted and settled in the quote asset, that expires on expiry.
     InstrumentFutureInv:
+      title: FutureInv
       type: object
       properties:
         base:
@@ -388,7 +391,9 @@ components:
       - base
       - quote
       - expiry
+      description: An inverse dated future, quoted in the quote asset and settled in the base asset, that expires on expiry.
     InstrumentOption:
+      title: Option
       type: object
       properties:
         base:
@@ -419,14 +424,16 @@ components:
       - expiry
       - strike
       - right
-      description: Option contract. Option markets are not listed or tradable yet; options appear only where a host reports
-        account activity on them.
+      description: Option contract. Option markets are not listed or tradable; options appear only where a host reports account
+        activity on them.
     OptionRight:
       type: string
       enum:
       - Call
       - Put
+      description: Whether an option gives the right to buy (Call) or to sell (Put) the underlying at the strike.
     InstrumentPerp:
+      title: Perp
       type: object
       properties:
         base:
@@ -443,7 +450,9 @@ components:
       - type
       - base
       - quote
+      description: A linear perpetual swap, with no expiry, quoted and settled in the quote asset.
     InstrumentPerpInv:
+      title: PerpInv
       type: object
       properties:
         base:
@@ -460,7 +469,9 @@ components:
       - type
       - base
       - quote
+      description: An inverse perpetual swap, with no expiry, quoted in the quote asset and settled in the base asset.
     InstrumentSpot:
+      title: Spot
       type: object
       properties:
         base:
@@ -477,6 +488,7 @@ components:
       - type
       - base
       - quote
+      description: 'A spot pair: buying or selling the base asset for the quote asset.'
     AccountOrderEvent:
       type: object
       properties:
@@ -487,6 +499,8 @@ components:
       required:
       - change
       - order
+      description: One change to one of the account's orders, with the complete order as it stands after the change. Use change
+        to see what happened and order for the current state.
     OrderChange:
       oneOf:
       - $ref: '#/components/schemas/OrderChangeCancelled'
@@ -494,7 +508,10 @@ components:
       - $ref: '#/components/schemas/OrderChangeFillApplied'
       - $ref: '#/components/schemas/OrderChangeRejected'
       - $ref: '#/components/schemas/OrderChangeUnknown'
+      description: 'What happened to the order in this event: created, filled further, cancelled, rejected, or a host change
+        with no standard meaning.'
     OrderChangeCancelled:
+      title: Cancelled
       type: object
       properties:
         type:
@@ -503,7 +520,9 @@ components:
           - Cancelled
       required:
       - type
+      description: The order was cancelled; the order's state is Cancelled.
     OrderChangeCreated:
+      title: Created
       type: object
       properties:
         type:
@@ -512,7 +531,9 @@ components:
           - Created
       required:
       - type
+      description: The host accepted a new order; it is now live.
     OrderChangeFillApplied:
+      title: FillApplied
       type: object
       properties:
         fill:
@@ -580,6 +601,7 @@ components:
       - realizedPnl
       - id
       - role
+      description: 'One execution of an account''s order: the price, size and fees of a single trade.'
     AssetValue:
       type: object
       properties:
@@ -590,12 +612,15 @@ components:
       required:
       - asset
       - value
+      description: An amount of one asset.
     TradeRole:
       type: string
       enum:
       - Maker
       - Taker
+      description: Whether the account's side of a trade added liquidity (Maker) or took it (Taker).
     OrderChangeRejected:
+      title: Rejected
       type: object
       properties:
         reason:
@@ -616,7 +641,10 @@ components:
       - reason
       - code
       - type
+      description: The host rejected the order; the order's state is Rejected. reason and code are the host's own when it
+        gives them.
     OrderChangeUnknown:
+      title: Unknown
       type: object
       properties:
         nativeType:
@@ -635,7 +663,10 @@ components:
       - $ref: '#/components/schemas/OrderMarket'
       - $ref: '#/components/schemas/OrderTriggerLimit'
       - $ref: '#/components/schemas/OrderTriggerMarket'
+      description: 'An order on the account as the host reports it: type, side, instrument, state, traded size and fees. The
+        type selects the order''s own fields, such as price for limit orders.'
     OrderLimit:
+      title: Limit
       type: object
       properties:
         id:
@@ -699,6 +730,7 @@ components:
       enum:
       - Buy
       - Sell
+      description: 'The direction of an order: Buy or Sell.'
     OrderState:
       type: string
       enum:
@@ -706,7 +738,9 @@ components:
       - Filled
       - Cancelled
       - Rejected
+      description: 'Where an order is in its life: Live (working on the host), or the final states Filled, Cancelled and Rejected.'
     OrderMarket:
+      title: Market
       type: object
       properties:
         id:
@@ -766,6 +800,7 @@ components:
       - sizing
       description: Host-reported order state. Submitted options (tif, postOnly, reduceOnly, positionEffect) are not echoed.
     OrderTriggerLimit:
+      title: TriggerLimit
       type: object
       properties:
         id:
@@ -843,11 +878,15 @@ components:
       required:
       - price
       - condition
+      description: 'The condition that activates a trigger order: when the reference price crosses price in the given direction,
+        the order is placed.'
     TriggerCondition:
       type: string
       enum:
       - RefPriceGTE
       - RefPriceLTE
+      description: 'The direction that activates a trigger: RefPriceGTE when the reference price rises to or above the trigger
+        price, RefPriceLTE when it falls to or below.'
     TriggerReferencePrice:
       type: string
       enum:
@@ -856,7 +895,9 @@ components:
       - LastTrade
       - BestBid
       - BestAsk
+      description: The market price a trigger watches, such as the mark price, index price, last trade or best bid or ask.
     OrderTriggerMarket:
+      title: TriggerMarket
       type: object
       properties:
         id:
@@ -922,7 +963,9 @@ components:
       oneOf:
       - $ref: '#/components/schemas/MarketSizingNotional'
       - $ref: '#/components/schemas/MarketSizingSize'
+      description: 'The amount of a market order: a size in native contracts, or a notional amount of the quote asset.'
     MarketSizingNotional:
+      title: Notional
       type: object
       properties:
         notional:
@@ -935,7 +978,9 @@ components:
       required:
       - type
       - notional
+      description: Sizes the order by an amount of the quote asset to spend or receive.
     MarketSizingSize:
+      title: Size
       type: object
       properties:
         size:
@@ -948,6 +993,7 @@ components:
       required:
       - type
       - size
+      description: Sizes the order in native contracts.
     Decimal:
       type: string
       pattern: ^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$
@@ -962,6 +1008,7 @@ components:
       - accountId
       description: One account on an account stream. Requires access to the account.
     AccountStreamSubscribe:
+      title: Subscribe
       type: object
       properties:
         id:
@@ -990,6 +1037,7 @@ components:
         the accounts now streaming; their events follow it. An account already streaming is listed again without a second
         stream.
     AccountStreamUnsubscribe:
+      title: Unsubscribe
       type: object
       properties:
         id:
@@ -1015,6 +1063,7 @@ components:
       description: Stop streaming these accounts. The reply is one Unsubscribed, after which nothing more arrives for them.
         Accounts that are not streaming are acknowledged too.
     AccountStreamSubscribed:
+      title: Subscribed
       type: object
       properties:
         id:
@@ -1036,6 +1085,7 @@ components:
       - topics
       description: Reply to Subscribe. Events for these accounts follow this message.
     AccountStreamUnsubscribed:
+      title: Unsubscribed
       type: object
       properties:
         id:
@@ -1057,6 +1107,7 @@ components:
       - topics
       description: Reply to Unsubscribe. Nothing more arrives for these accounts.
     AccountStreamRejected:
+      title: Rejected
       type: object
       properties:
         id:
@@ -1086,6 +1137,7 @@ components:
       description: One account in a Subscribe was refused, for example AccountNotFound, Forbidden, or NotSupported when the
         host does not stream it. Sent before the request's Subscribed; the connection stays open.
     AccountStreamEnded:
+      title: Ended
       type: object
       properties:
         topic:
@@ -1110,6 +1162,7 @@ components:
       description: 'The account stopped streaming, for example because the host''s own feed ended (UpstreamFailure). Nothing
         more arrives for it: read current state through the REST API, then subscribe again.'
     AccountOrderStreamEvent:
+      title: Event
       type: object
       properties:
         topic:
@@ -1214,7 +1267,10 @@ components:
       - Conversion
       - Adjustment
       - Other
+      description: The kind of balance posting, such as a trading fee, funding payment, deposit or withdrawal. Other covers
+        postings with no standard type; see nativeType.
     AccountTransactionStreamEvent:
+      title: Event
       type: object
       properties:
         topic:

@@ -1,8 +1,12 @@
 # Spec feedback for plurex (`platform-public-api/`)
 
-**Status (2026-10-26): pending.** Nothing here is in plurex yet: checked against the locked commit `ddf3a5e` and
-`origin/main`, which is the same commit. Earlier feedback, `asyncapi_spec_guidelines_for_plurex.md`, was adopted in
-`7e4a8d407` (see `refresh-log/2026-10-26-66422bd-ddf3a5e.md`).
+**Status (2026-10-26): adopted** in plurex `db1121cdf` (merged as `02f04962b`), checked in the docs refresh
+`refresh-log/2026-10-26-ddf3a5e-02f0496.md`. Every part landed: titled union variants and a description on every
+schema in both files; stream payloads as one `$ref` (`Event.data`); named error examples per code and success
+examples for every operation in C.2, validated by `check_contract.py`; `ErrorEnvelope.error` removed; and operation
+descriptions without badge phrases, enforced by the checker. Kept as the record of what was asked. Earlier feedback,
+`asyncapi_spec_guidelines_for_plurex.md`, was adopted in `7e4a8d407`. Paper engine findings are separate:
+`paper_trading_gap_findings.md`.
 
 Five parts, none of which change the JSON on the wire except part D:
 

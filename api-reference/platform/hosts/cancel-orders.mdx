@@ -1,12 +1,12 @@
 ---
 title: "Cancel orders"
-description: "Cancels the orders you name and returns one CancelResult per identifier, so one call can partly succeed. A Failed result carries the error code CancelOrder would return for that identifier, with the same meaning. Errors that stop the whole batch, such as authentication or a missing account, are returned as an ordinary error instead. Safe to repeat."
+description: "Cancels the orders you name and returns one CancelResult per identifier, so a call can partly succeed. A Failed result carries the code CancelOrder would return for that identifier. An error that stops the whole call, such as a missing account, is returned as an ordinary error."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/command/CancelOrders"
 ---
 
 import { OperationBadges } from "/snippets/operation-badges.mdx";
 
-<OperationBadges badges={[{"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "batch", "label": "Batch", "description": "Takes a list of identifiers or instruments and returns one result for each."}]} />
+<OperationBadges badges={[{"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "batch", "label": "Batch", "description": "Takes a list of identifiers or instruments and handles them in one call."}]} />
 
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 

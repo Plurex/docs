@@ -1,12 +1,12 @@
 ---
 title: "Get market statistics"
-description: "Venue-reported statistics for each instrument, over the window its market declares. One result per requested instrument, in request order. An instrument without a value comes back as an Unavailable result with its error code, so one instrument cannot fail the batch. Served from Plurex's live feed for the market when one is running, otherwise fetched from the venue. No API key needed."
+description: "Venue-reported statistics for each instrument, over the window its market declares."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/GetMarketStatistics"
 ---
 
 import { OperationBadges } from "/snippets/operation-badges.mdx";
 
-<OperationBadges badges={[{"name": "public", "label": "No API key", "description": "Public market data and discovery; no authentication needed."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "batch", "label": "Batch", "description": "Takes a list of identifiers or instruments and returns one result for each."}]} />
+<OperationBadges badges={[{"name": "public", "label": "No API key", "description": "Public market data and discovery; no authentication needed."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "batch", "label": "Batch", "description": "Takes a list of identifiers or instruments and handles them in one call."}]} />
 
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 
