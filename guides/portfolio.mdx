@@ -187,7 +187,7 @@ The response is the resulting setting. Setting the same value again is safe.
 
 ## Position mode
 
-Position mode decides whether a market holds long and short exposure separately (`Hedging`) or as one net position (`Netting`). The market's `settings.positionMode` lists the modes it accepts in `values`, whether you can read the mode (`get`), and the blast radius of a change (`setEffectScope`, `null` when it cannot be set). The host's `marketSettings.getMarketPositionMode` and `setMarketPositionMode` capabilities must also allow it.
+Position mode decides whether a market holds long and short exposure separately (`Hedging`) or as one net position (`Netting`). The market's `settings.positionMode` lists the modes it accepts in `values`, whether you can read the mode (`get`), and how far a change reaches (`setEffectScope`, `null` when it cannot be set). The host's `marketSettings.getMarketPositionMode` and `setMarketPositionMode` capabilities must also allow it.
 
 ```json
 {

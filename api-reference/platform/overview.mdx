@@ -27,15 +27,19 @@ Every operation and stream page in this reference is rendered from these two doc
   The specifications use OpenAPI 3.2 union nullability (`type: [string, 'null']`). If you generate a client, check that your generator decodes explicit `null` values. Also treat `ErrorCode` and other enums as open: new values can appear without a new API version.
 </Note>
 
-## Operations
+## Commands, queries and streams
 
-Every HTTP operation is a `POST` with a JSON body to a path of this form:
+Every operation is one of three kinds, and its path says which:
 
-```text
-/api/v1/{domain}/{query|command}/{Action}
-```
+| Kind | What it does | Request | Safe to repeat |
+| --- | --- | --- | --- |
+| Query | Reads state | `POST /api/v1/{domain}/query/{Action}` | Always |
+| Command | Changes state | `POST /api/v1/{domain}/command/{Action}` | Stated per command |
+| Stream | Pushes changes on your accounts | WebSocket to `/api/v1/{domain}/stream/{Action}` | Not applicable |
 
-Queries read state and are always safe to repeat. Commands change state; each one documents whether it is safe to repeat. IDs go in the body, never in the path.
+Queries and commands take a JSON body, and IDs go in the body, never in the path. There are no `GET`, `PUT` or `DELETE` resources. [Commands, queries and streams](/how-plurex-works#commands-queries-and-streams) explains why.
+
+## Domains
 
 | Domain | Operations | Authentication |
 | --- | --- | --- |
@@ -44,7 +48,7 @@ Queries read state and are always safe to repeat. Commands change state; each on
 | [`accounts`](/api-reference/platform/accounts/connect) | Connect, list and manage your accounts | API key |
 | [`paper`](/api-reference/platform/paper/create) | Create, fund and draw down paper accounts, and choose their fee tier | API key |
 
-Streams use the path `/api/v1/{domain}/stream/{Action}`, for example `/api/v1/hosts/stream/SubscribeToAccountOrders`. One connection carries one stream type, and you subscribe and unsubscribe accounts on it with messages. Streams are listed beside their HTTP operations, under **Orders** and **Transactions**. See [Stream account updates](/guides/streams).
+A stream path looks like `/api/v1/hosts/stream/SubscribeToAccountOrders`. One connection carries one stream type, and you subscribe and unsubscribe accounts on it with messages. Streams are listed beside their HTTP operations, under **Orders** and **Transactions**. See [Stream account updates](/guides/streams).
 
 ## Authentication
 

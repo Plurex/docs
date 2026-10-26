@@ -26,7 +26,7 @@ Capabilities come in two levels: the **header** of each host or venue, and the *
 | Venue header | `VenueHeader.capabilities` | [List venues](/api-reference/platform/venues/list) | Order book, trades, prices, best quotes, statistics, funding, open interest and candles |
 | Venue market | `VenueMarketSummary.marketData` | [List venue markets](/api-reference/platform/venues/list-markets) | Which market-data reads the market supports, and on what terms |
 
-A venue market tells you what is trading. The matching host market tells you what you may order there. A host market names its venue in `venueId`, so you can join it to the venue market with the same `instrument`.
+A venue market tells you what is trading. The matching host market tells you how you can trade it: the order types it accepts and their order rules. A host market names its venue in `venueId`, so you can join it to the venue market with the same `instrument`.
 
 ```mermaid
 flowchart TD

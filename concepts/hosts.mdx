@@ -36,7 +36,7 @@ Where hosts differ in what they *support*, rather than what they report, the dif
 
 ## Host markets
 
-[List host markets](/api-reference/platform/hosts/list-markets) is public and returns what you may trade on a host. Each `HostMarketSummary` has:
+[List host markets](/api-reference/platform/hosts/list-markets) is public and returns the markets you can trade on a host. Each `HostMarketSummary` has:
 
 - `venueId`, `symbol` and `instrument`, which join it to the [venue market](/concepts/venues-and-hosts#joining-a-venue-market-to-a-host-market);
 - `contractDetails`, which says what one contract is (see [Instruments and sizing](/concepts/instruments));
@@ -147,7 +147,7 @@ A `MarketPosition` always has both a `long` and a `short` leg, each with a `size
 
 ### Per-market account state
 
-[Get market account state](/api-reference/platform/hosts/get-market-state) answers "what can I do on this market right now?" in one call. The result is one of three shapes, by `type`:
+[Get market account state](/api-reference/platform/hosts/get-market-state) returns your account's state on one market in a single call: your position, collateral and leverage setting on a derivative, or your available balances on a spot market. The result is one of three shapes, by `type`:
 
 | `type` | Returned for | Contains |
 | --- | --- | --- |

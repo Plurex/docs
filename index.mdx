@@ -3,9 +3,12 @@ title: "Welcome to Plurex"
 description: "One execution layer for trading across venues and hosts, from risk-free forward testing to live execution."
 ---
 
-Plurex is an execution layer for systematic trading. It gives your strategies one API across exchanges and the hosts that hold your accounts. It adds a high-fidelity paper trading engine that runs against live markets, and a path from your own backtests to forward testing to real execution with the same API calls, the same models, and the order rules of the host it simulates.
+Plurex is an execution layer for systematic trading. It gives your strategies one API across exchanges and the hosts that hold your accounts, and it does two things most trading APIs do not:
 
-Plurex doesn't care how you build your strategy. Any language, framework, data stack or research tooling works. It is a general-purpose utility: send it orders, and it tells you exactly what each venue and host can do.
+- It is **fully self-describing and unambiguous**, so one integration copes with every host and venue without exchange-specific code.
+- It has **high-fidelity paper trading** against live markets, so you can forward test many strategy variants side by side, without risk, and take the winners live with the same calls.
+
+Plurex is agnostic to how you build your strategy: any language, framework, data stack or research tooling works. Your strategy reads what each venue and host supports, then places and manages its orders through one API.
 
 ```mermaid
 flowchart LR
@@ -14,28 +17,29 @@ flowchart LR
     B -.-|same API, same models| C
 ```
 
-## What Plurex gives you
+## Write your strategy once, not once per exchange
 
-<CardGroup cols={3}>
-  <Card title="An aggregated API" icon="layer-group" href="/how-plurex-works#one-api-across-venues-and-hosts">
-    One model for markets, orders, fills, balances, positions and transactions, on every venue and host Plurex supports.
-  </Card>
-  <Card title="High-fidelity paper trading" icon="flask" href="/paper/overview">
-    Orders fill against the live order book with depth and queue modelling. Fees and perpetual funding are simulated too.
-  </Card>
-  <Card title="A seamless path to live" icon="route" href="/paper/going-live">
-    Forward test on paper, then change the account to a real one on the host it simulates and re-read that host's capabilities. You use the same calls and models.
-  </Card>
-</CardGroup>
+Exchanges differ: in the order types they accept, how you find an order, what their streams report, and which settings you can change. Most cross-exchange APIs hide those differences, and the hiding is never complete. You find the gaps in production, and you end up with exchange-specific code in your own integration to work around them.
 
-## Built for programs
+Plurex takes the opposite approach. It is fully self-describing and unambiguous, so differences become data your program reads, not surprises it discovers:
 
-Plurex is designed to be used by software, not just read by people.
-
-- **Self-describing.** Every host and venue publishes its [capabilities](/capabilities/overview): each operation it supports, each order type and option, and each market's order rules. Your program can decide what to call before calling it.
-- **No leaky abstractions.** Exchanges differ, and Plurex never hides it. Where hosts behave differently, the difference is declared in their capabilities, not smoothed over or approximated.
+- **Self-describing.** Every host and venue publishes its [capabilities](/capabilities/overview): each operation and variant it supports, each order type and option, and each market's [order rules](/capabilities/order-rules). Your program can decide what to call before calling it.
+- **No leaky abstractions.** Where hosts behave differently, the difference is declared in their capabilities, not smoothed over or approximated.
 - **Unambiguous data.** Every value is either reported by the host or venue, or explicitly `null`. Plurex never estimates, backfills or relabels data. A mark price is never presented as a traded price, and an average price is never calculated from fills.
 - **Exact numbers.** Prices, sizes and balances are exact decimal strings. Sizes are always in the market's native contracts, and Plurex validates exactly the rules it publishes, without rounding for you.
+
+So instead of branching on which exchange you are talking to, your strategy branches on what the host says it can do: whether to send a `clientOrderId`, how to find an order after a timeout, whether to read fills from the order stream or poll for them. One integration handles every host and venue, including ones you add later.
+
+## High-fidelity paper trading, at scale
+
+A backtest gives you an instant answer about the past. A forward test gives you an answer about the market as it is now, but only as fast as the market moves: a month of evidence takes a month. You cannot speed that up, so the way to choose between strategies, parameters or sizing before going live is to forward test them side by side.
+
+Plurex paper trading is built for that:
+
+- **Fills that behave like the market.** Orders match against the venue's live order book. Marketable orders walk the visible depth; resting orders join the queue behind the size already at their price and fill as public trades work through it. Trading fees, perpetual funding and trigger orders are simulated too. See [How orders fill](/paper/overview#how-orders-fill).
+- **The real host's order rules.** A paper market has the same instruments, increments, minimums and value floors as the real host it simulates, so your strategy builds orders on paper exactly as it will live.
+- **As many accounts as you need.** Run each variant on its own paper account, side by side, with no capital at risk.
+- **The same code, live.** A paper account is an ordinary account. When a variant earns it, switch to a real account on the host it simulates and re-read that host's capabilities. See [From paper to live](/paper/going-live).
 
 ## Start here
 

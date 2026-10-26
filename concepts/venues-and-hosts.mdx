@@ -6,9 +6,9 @@ description: "The core model behind Plurex: venues are where markets trade and p
 Plurex is one API across many exchanges. To make that work without hiding how they differ, it splits every trading venue into two concerns that most exchange APIs mix together:
 
 - A **venue** is where markets trade and prices form. Venue operations are public market data: what is trading and at what price.
-- A **host** is the institution that holds trading accounts and executes orders on a venue's markets. Host operations cover what you may order, and everything about your account: orders, fills, balances, positions, margin, market settings and transactions.
+- A **host** is the institution that holds trading accounts and executes orders on a venue's markets. Host operations cover executing trades, and everything about your account: orders, fills, balances, positions, margin, market settings and transactions.
 
-Read market data from the venue. Trade through the host. A venue market tells you what is trading; the matching host market tells you what you may order there.
+Read market data from the venue. Trade through the host. A venue market tells you what is trading; the matching host market tells you how you can trade it.
 
 ## How the pieces fit
 
@@ -73,11 +73,11 @@ To read its mark price, send the same `venueId` and `instrument` to [Get prices]
 
 The `symbol` is identical on both summaries, so it works as a display name and a map key. You never send it as input: every operation takes the structured `instrument`. See [Instruments and sizing](/concepts/instruments).
 
-## What you get from each
+## Venues and hosts compared
 
 | | Venue | Host |
 | --- | --- | --- |
-| Answers | What is trading, and at what price? | What may I order here, and what does my account hold? |
+| Answers | What is trading, and at what price? | How do I trade here, and what are my positions and balances? |
 | Discover | [List venues](/api-reference/platform/venues/list) | [List hosts](/api-reference/platform/hosts/list) |
 | Markets | [Venue markets](/api-reference/platform/venues/list-markets): instrument, contract details, increments and which market data each market reports | [Host markets](/api-reference/platform/hosts/list-markets): instrument, contract details, order types, order rules and settings such as leverage and position mode |
 | Data and actions | Order books, recent trades, prices by kind, best quotes, statistics, indicative funding, open interest, candles | Orders, fills, wallets, positions, margin, per-market account state, leverage, position mode, transactions, account streams |
@@ -88,7 +88,7 @@ Each venue and host declares what it supports. When hosts differ, the difference
 
 ## What exists today
 
-Plurex currently offers venues and hosts for **Bybit** and **VALR**, and a paper host for each, with IDs such as `bybit`, `valr`, `bybit-paper` and `valr-paper`. The current venues list spot and perpetual markets.
+Plurex currently supports **Bybit** and **VALR** as venues and hosts, with a paper host for each, with IDs such as `bybit`, `valr`, `bybit-paper` and `valr-paper`. The current venues list spot and perpetual markets.
 
 Do not hard-code these lists. Discover venues and hosts at runtime, and filter to what your strategy needs:
 

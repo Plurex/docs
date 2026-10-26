@@ -5,7 +5,7 @@ description: "Understand request and response formats, paging, unions, batches, 
 
 ## Requests
 
-Every operation is a `POST` with a JSON body and `Content-Type: application/json`, to a path of the form `/api/v1/{domain}/{query|command}/{Action}`. IDs such as `accountId`, `hostId` and `venueId` go in the body, never in the path.
+Every operation is a `POST` with a JSON body and `Content-Type: application/json`, to a path of the form `/api/v1/{domain}/{query|command}/{Action}`. IDs such as `accountId`, `hostId` and `venueId` go in the body, never in the path. See [Commands, queries and streams](/api-reference/platform/overview#commands-queries-and-streams) for the three kinds of operation.
 
 Every operation needs a body, even a list with no filters: send `{}` for the first page. Request bodies are strict: unknown fields, unknown enum values and wrong types return `400 InvalidRequest`. Send only the fields the specification defines.
 
