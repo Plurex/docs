@@ -36,8 +36,8 @@ A backtest gives you an instant answer about the past. A forward test gives you 
 
 Plurex paper trading is built for that:
 
-- **Fills that behave like the market.** Orders match against the venue's live order book. Marketable orders walk the visible depth; resting orders join the queue behind the size already at their price and fill as public trades work through it. Trigger orders watch the live last trade, best bid or ask, mark or index price. See [How orders fill](/paper/overview#how-orders-fill).
-- **The real host's account model.** Fee tiers follow the exchange's schedule, perpetual collateral is a weighted, multi-asset pool like the host's, and funding is paid at the venue's real funding times from its finalised rates.
+- **Fills that behave like the market.** Orders match against the venue's live order book. Marketable orders walk the visible depth, one fill per price level, and use up the depth they take; resting orders join the queue behind the size already at their price and fill as public trades work through it. Trigger orders watch the live last trade, best bid or ask, mark or index price. See [How orders fill](/paper/overview#how-orders-fill).
+- **The real host's account model.** Fee tiers follow the exchange's published schedule, VIP tiers included, perpetual collateral is a weighted, multi-asset pool like the host's, and funding is paid at the venue's real funding times from its finalised rates.
 - **The real host's order rules.** A paper market has the same instruments, increments, minimums and value floors as the real host it simulates, so your strategy builds orders on paper exactly as it will live.
 - **As many accounts as you need.** Run each variant on its own paper account, side by side, with no capital at risk.
 - **The same code, live.** A paper account is an ordinary account. When a variant earns it, switch to a real account on the host it simulates and re-read that host's capabilities. See [From paper to live](/paper/going-live).

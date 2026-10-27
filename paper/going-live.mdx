@@ -98,21 +98,23 @@ See [Fees and funding](/paper/fees-and-funding).
 
 ### Execution realism
 
-Paper adds no latency of its own beyond the real path through Plurex and its live market data, has no market impact beyond the visible book, and estimates queue position from visible size.
-Expect live fills, especially passive fills and large sweeps, to differ. A live sweep across several price levels may
-report several fills where paper reports one at the average price.
+Paper adds no latency of its own beyond the real path through Plurex and its live market data. It models market
+impact only as the depth your own orders take, and estimates queue position from visible size. Expect live fills,
+especially passive fills and large sweeps, to differ. Paper's market order protection is its own: the exchange may cap
+a market order at a different price, or not at all.
 
 ### Funds held by trigger orders
 
-Paper reserves funds for a trigger order from the moment you place it. Some exchanges reserve nothing until the trigger
-fires, so live, a waiting trigger may not reduce your available balance, and an order paper refused for lack of funds
-may be accepted.
+Paper holds nothing for a trigger order while it waits, and checks funds, collateral and position only when it fires.
+A trigger that cannot be accepted then ends `Rejected` on the order stream, not in the submit response. Some exchanges
+reserve funds when you place a trigger order, so live, a waiting trigger may reduce your available balance, or be
+refused at placement where paper accepted it.
 
 ### Reduce-only orders
 
-In netting mode, paper rejects a reduce-only order that is larger than the position left to close, counting other open
-orders that would close it. In hedging mode, it trims a `Close` order to what is left of the leg. Exchanges have their
-own rules, and some trim where paper rejects. Size reduce-only orders from the current position on both.
+Paper trims a reduce-only or `Close` order that is larger than the position left to close, counting other open orders
+that would close it, and rejects one only when nothing is left. Exchanges have their own rules, and some reject where
+paper trims. Size reduce-only orders from the current position on both.
 
 ### Collateral
 
@@ -120,10 +122,11 @@ Paper models the model host's collateral: the same kind of cross pool, its main 
 A live account can have more: collateral tiers, assets you switch on or off, isolated margin, and maintenance margin
 that leads to liquidation. Read the live host's margin states before sizing your first live positions.
 
-### Insufficient collateral on perpetuals
+### Insufficient funds and collateral
 
-Paper rejects a perpetual order that its collateral cannot cover with `422 Rejected`. A live host may report the same
-situation as `422 InsufficientFunds`. Handle both codes as "not enough funds or collateral".
+Paper rejects any order that its balance or collateral cannot cover with `422 InsufficientFunds`. A live host returns
+`InsufficientFunds` where it recognises the exchange's error, and may report other shortfalls as `422 Rejected`.
+Handle both codes as "not enough funds or collateral".
 
 ### Transactions
 

@@ -23,11 +23,11 @@ Paper models the parts of a live account that change a strategy's results, not o
 
 | Area | What paper does |
 | --- | --- |
-| [Matching](#how-orders-fill) | Marketable orders walk the live visible book with real slippage. Resting orders queue behind the visible size at their price and fill as live trades work through the queue. |
+| [Matching](#how-orders-fill) | Marketable orders walk the live visible book, one fill per price level, with real slippage and market-order protection. Depth you take is used up. Resting orders queue behind the visible size at their price and fill as live trades work through the queue. |
 | [Trigger orders](#trigger-orders) | Stops and take-profits watch the live last trade, best bid or ask, mark or index price. |
 | [Wallets and collateral](#positions-collateral-and-balances) | Balances are held and locked as on the host. Perpetual collateral is a weighted, multi-asset pool modelled on the host's account. |
-| [Positions](#positions-collateral-and-balances) | Spot, linear and inverse perpetuals, in netting or hedging mode, with realised and unrealised profit and loss. |
-| [Fees](/paper/fees-and-funding#trading-fees) | Maker and taker rates from fee tiers modelled on the exchange's schedule, including rebates. |
+| [Positions](#positions-collateral-and-balances) | Spot, linear and inverse perpetuals, in netting or hedging mode, with realised profit and loss, and unrealised profit and loss at the mark price. |
+| [Fees](/paper/fees-and-funding#trading-fees) | Maker and taker rates from the exchange's published fee tiers, including VIP tiers and rebates. Funds held for an order cover its fee. |
 | [Funding](/paper/fees-and-funding#perpetual-funding) | Perpetuals pay and receive funding at the venue's real funding times, from its finalised rates. |
 | [The API](#the-same-api-as-a-real-account) | Every host operation and both account streams, the same as a real account, with leverage the one exception. |
 
@@ -47,10 +47,11 @@ Paper markets take their order rules from the model host: the same instruments, 
 value floors, and the same order types and order options where paper can simulate them. Paper simulates spot, linear
 perpetual and inverse perpetual markets, so its market list can be smaller than the model host's. Always read the
 paper host's own markets with [List host markets](/api-reference/platform/hosts/list-markets) rather than assuming
-they match.
+they match. Paper re-reads the model host's markets regularly, so new listings and changed order rules reach the paper
+host without any action from you, and markets the model host stops listing stop accepting new orders.
 
 A paper host publishes its own [capabilities](/capabilities/host-capabilities). It supports every order query and
-cancel variant, fill lookup and account stream whatever its model host offers, so in places it offers more than the
+cancel variant, fill lookup, transaction history and account stream whatever its model host offers, so in places it offers more than the
 model host (for example `clientOrderId` lookups, time in force options or fill details on the order stream). Its one
 gap is leverage control. Read the paper host's capabilities while you paper trade, and the model
 host's before you go live.
@@ -65,7 +66,7 @@ host's before you go live.
 Once created, a paper account is an ordinary account. It uses:
 
 - every `/hosts` operation except leverage: orders, fills, wallets, positions, margin states, market state, position
-  mode and transactions;
+  mode (set it where a market offers both modes) and transactions;
 - both account streams, [order changes](/api-reference/platform/hosts/subscribe-to-account-orders) and
   [transactions](/api-reference/platform/hosts/subscribe-to-account-transactions);
 - the account operations [List](/api-reference/platform/accounts/list), [Get](/api-reference/platform/accounts/get),
@@ -110,8 +111,7 @@ The only operations specific to paper are [Create a paper account](/api-referenc
     ```
 
     Each deposit posts a `Deposit` transaction. Deposits are not safe to repeat. If the outcome is unclear, check
-    [List transactions](/api-reference/platform/hosts/list-transactions) where the paper host's
-    `accountTransactions.listTransactions` is supported, or compare the balance from
+    [List transactions](/api-reference/platform/hosts/list-transactions), or compare the balance from
     [List wallets](/api-reference/platform/hosts/list-wallets), before retrying.
   </Step>
 </Steps>
@@ -153,7 +153,7 @@ flowchart TD
     A[SubmitOrder] --> P{Post-only and crosses?}
     P -- Yes --> X[Cancelled, nothing filled]
     P -- No --> B{Crosses the live book?}
-    B -- "Yes: market order or marketable limit" --> C[Walks visible depth level by level<br/>One fill at the average price, as taker]
+    B -- "Yes: market order or marketable limit" --> C[Walks visible depth level by level<br/>One fill per level, as taker,<br/>within a price bound for market orders]
     C --> D{Size left over?}
     D -- "GTC limit" --> E[Remainder rests at its limit price]
     D -- "IOC" --> F[Remainder cancelled]
@@ -170,11 +170,20 @@ flowchart TD
 ### Taking liquidity
 
 A market order, or a limit order that crosses the book when it arrives, takes liquidity immediately. It walks the
-opposite side of the live book level by level, as far as the visible depth allows, and is reported as one fill at the
-volume-weighted average price of the levels it took. Large orders therefore see realistic slippage across the visible
-depth.
+opposite side of the live book level by level, as far as the visible depth allows, and gets one fill per price level,
+at that level's price and with its own taker fee. Large orders therefore see realistic slippage, and your code handles
+several fills per order, as it will live.
 
-- **IOC**: whatever the visible depth cannot fill is cancelled. A partly filled order ends `Cancelled` with
+- **Market order protection.** When paper accepts a market order, it fixes the worst price the order may trade at: a
+  little beyond the deepest level its size needs in the book at that moment. Size that cannot fill within that price
+  is cancelled. A market order is rejected with `422 Rejected` when the opposite side of the book is empty.
+- **Depth you take is used up.** Your orders never reach the venue, so its book still shows liquidity you took. For a
+  short time after a fill, paper matches your later orders against the book less the depth your account took, so a
+  remainder or a quick second order cannot take the same liquidity twice.
+
+Then, by time in force:
+
+- **IOC**: whatever the visible depth, or a market order's protected price, cannot fill is cancelled. A partly filled order ends `Cancelled` with
   `sizeTraded` above zero.
 - **FOK**: all or nothing. If visible depth cannot fill the whole size (at or better than the limit price, for a
   limit order), the order is cancelled with nothing filled.
@@ -204,9 +213,10 @@ trades; each fill arrives on the order stream with its details.
 | Post-only order that would cross on arrival | Cancelled, not filled |
 | IOC limit order that does not cross | Cancelled immediately |
 | FOK limit order that does not cross | Cancelled immediately |
-| Reduce-only order larger than the position left to close, in netting mode | Rejected with `422 Rejected`, not trimmed. Other open orders that would close the position count against what is left. |
-| `Close` order larger than the leg, in hedging mode | Trimmed to what is left of the leg |
-| Reduce-only order with no position, or on the wrong side | Rejected |
+| Reduce-only or `Close` order larger than the position left to close | Trimmed to what is left, in netting and hedging mode. Other open orders that would close the position count against what is left. |
+| Trimmed closing order | Keeps its requested `size`. It ends `Filled` once the trimmed size trades, or `Cancelled` with what it traded if the position shrinks first. |
+| Reduce-only order with nothing left to close, no position, or on the wrong side | Rejected with `422 Rejected` |
+| Market order with no opposite liquidity | Rejected with `422 Rejected` |
 | Order that partly fills and keeps resting | `LIVE`, with `sizeTraded` above zero |
 
 Which options each market accepts is in its order rules. Read them from
@@ -217,15 +227,12 @@ Which options each market accepts is in its order rules. Read them from
 - **Configurable latency.** Paper adds no artificial delay, and you cannot set one. Your orders still see real
   latency: they travel through Plurex and are matched against live market data as it arrives, just as a live order
   travels to the exchange.
-- **Market impact beyond the visible book.** Paper does not deplete the book after your order takes from it, so
-  orders in quick succession each see the same visible liquidity until the venue's book updates.
+- **Market impact beyond your own fills.** Paper removes the depth your account takes, for a short time, but does not
+  model how other traders react to your orders.
 - **Hidden liquidity and venue-specific queue rules.** Queue position is estimated from visible size and public
   trades.
-- **Fills per level.** A sweep across several levels is reported as one fill at the average price, where a live venue
-  may report several.
 - **Venue limits beyond the order rules.** Paper applies the market's published order rules, not an exchange's price
-  bands or maximum order sizes, and has no market-order price protection: a market order can take the whole visible
-  book.
+  bands or maximum order sizes. Its market order protection is its own and can differ from the exchange's.
 - **Self-trade prevention.** Your own orders never trade with each other.
 
 ## Trigger orders
@@ -241,10 +248,14 @@ trigger price in the direction of the condition, `RefPriceGTE` or `RefPriceLTE`.
   you place it fires immediately.
 - A fired trigger market order fills against the book like a market order. A fired trigger limit order crosses or rests
   like a limit order.
-- **Funds are held from submission.** A waiting trigger order reserves the funds or collateral it needs, so it counts
-  against your available balance before it fires.
+- **Funds are checked when the trigger fires.** A waiting trigger order holds nothing, so it does not reduce your
+  available balance. When it fires, its order is checked against your balance, collateral and position at that moment,
+  like a new order, and takes the fee rates in force then. If it cannot be accepted, it ends `Rejected` on the order
+  stream.
 
-Reduce-only trigger orders on perpetuals make stop-loss and take-profit orders.
+Reduce-only trigger orders on perpetuals make stop-loss and take-profit orders, and a full-size stop-loss and
+take-profit can wait side by side. They are not linked: once one closes the position, the other is rejected when it
+fires, so cancel it yourself.
 
 ## Positions, collateral and balances
 
@@ -253,14 +264,16 @@ Reduce-only trigger orders on perpetuals make stop-loss and take-profit orders.
 Each asset has one wallet with a total and an available balance. Open orders hold funds and open positions lock them,
 as on the host; what is held or locked is not available to new orders or withdrawals. You can deposit any asset.
 
-**Spot.** A buy holds quote and a sell holds base while the order is open; a cancel releases the hold. Fills move the
-balances. An order the balance cannot cover returns `422 InsufficientFunds`. Spot trades do not post `Settlement`
+**Spot.** A buy holds quote and a sell holds base while the order is open; a cancel releases the hold. A buy's hold
+includes its fee at the higher of your maker and taker rates, and a market buy is held at its protected worst price.
+Fills move the balances, and what they do not use is released when the order ends. An order the balance cannot cover,
+fee included, returns `422 InsufficientFunds`. Spot trades do not post `Settlement`
 transactions; their fees post as `TradingFee`.
 
 ### Collateral on perpetuals
 
-Paper trades perpetuals at 1×, without leverage: opening risk needs collateral equal to the position's value. An order
-that needs more collateral than is available is rejected with `422 Rejected`.
+Paper trades perpetuals at 1×, without leverage: opening risk needs collateral equal to the position's value plus the
+order's fee. An order that needs more collateral than is available is rejected with `422 InsufficientFunds`.
 
 Collateral is a single cross pool shared by every perpetual on the account, modelled on the model host's account:
 
@@ -282,9 +295,11 @@ stablecoins, to trade its perpetuals.
 - Linear and inverse perpetuals each use their own contract maths: see [Contract details](/capabilities/order-rules#contract-details-what-a-size-means).
 - Realised profit and loss posts to the settlement asset as a `Settlement` transaction on every fill that reduces or
   closes a position.
+- [List open positions](/api-reference/platform/hosts/list-positions) and Get market state report each open leg's
+  `markPrice` and its `unrealizedPnl` at that price, in the settlement asset, before fees and funding.
 - There is no liquidation. Losses, fees and funding can take a balance negative. A negative balance blocks new risk.
 - A closing order is never refused for lack of funds. An order that reverses a netting position needs collateral for
-  its new side; if that cannot be covered, the whole order is rejected.
+  its new side; if that cannot be covered, the whole order is rejected with `422 InsufficientFunds`.
 
 ### Position mode
 
@@ -313,7 +328,7 @@ leverage setting as `Disabled`.
 | Dated futures and options | Not listed on paper hosts |
 | Resets | Create a new account to start fresh; use Withdraw to lower a balance |
 | Volume-based fee tiers, promotions, fee-token discounts | You select a fee tier manually |
-| Configurable latency and market impact | Orders see the real latency of Plurex and live market data, against the visible book and trades |
+| Configurable latency and market impact beyond your own fills | Orders see the real latency of Plurex and live market data, against the visible book, less depth you just took, and trades |
 
 ## Next steps
 

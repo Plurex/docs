@@ -17,6 +17,7 @@ Plurex aggregates hosts that report different things. Its models follow one rule
 | `Fill.id` | The host has no execution ID. | Invent one. |
 | `Fill.role` | The host does not say whether you were maker or taker. | Guess from price or timing. |
 | `Position.entryPrice` | The host does not report it. | Compute it from your fills. |
+| `Position.markPrice`, `unrealizedPnl` | The host does not report them, or the leg is flat. | Value the position at a price it chose. |
 | `AccountTransaction.orderId`, `fillId`, `positionId` | The host does not report the link reliably. | Match postings to orders by time or amount. |
 
 Where hosts differ in what they *support*, rather than what they report, the difference is declared in their capabilities and market summaries. See [Capabilities](/capabilities/overview).
@@ -132,13 +133,19 @@ Four reads describe what the account holds. All need an API key; none needs anyt
 
 ### Positions
 
-A `MarketPosition` always has both a `long` and a `short` leg, each with a `size` in native contracts and an `entryPrice` when the host reports it. In `Netting` mode the market holds one net position, so at most one leg is non-zero. In `Hedging` mode both can be open at once:
+A `MarketPosition` always has both a `long` and a `short` leg, each with a `size` in native contracts and, when the host reports them, an `entryPrice`, the `markPrice` the leg is valued at, and its `unrealizedPnl` at that price in the settlement asset. In `Netting` mode the market holds one net position, so at most one leg is non-zero. In `Hedging` mode both can be open at once:
 
 ```json
 {
   "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
-  "long": { "size": "0.010", "entryPrice": "63800.0" },
-  "short": { "size": "0.004", "entryPrice": "64200.0" },
+  "long": {
+    "size": "0.010", "entryPrice": "63800.0", "markPrice": "64000.0",
+    "unrealizedPnl": { "asset": "USDT", "value": "2.000" }
+  },
+  "short": {
+    "size": "0.004", "entryPrice": "64200.0", "markPrice": "64000.0",
+    "unrealizedPnl": { "asset": "USDT", "value": "0.800" }
+  },
   "mode": "Hedging"
 }
 ```

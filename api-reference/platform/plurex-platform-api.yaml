@@ -1909,9 +1909,15 @@ paths:
                       long:
                         size: '0.250'
                         entryPrice: '66420.7'
+                        markPrice: '67012.4'
+                        unrealizedPnl:
+                          asset: USDT
+                          value: '147.925'
                       short:
                         size: '0'
                         entryPrice: null
+                        markPrice: null
+                        unrealizedPnl: null
                       mode: Netting
                     - instrument:
                         type: Perp
@@ -1920,9 +1926,15 @@ paths:
                       long:
                         size: '0'
                         entryPrice: null
+                        markPrice: null
+                        unrealizedPnl: null
                       short:
                         size: '3.20'
                         entryPrice: '2688.15'
+                        markPrice: '2650.90'
+                        unrealizedPnl:
+                          asset: USDT
+                          value: '119.2'
                       mode: Netting
                     nextCursor: null
         '400':
@@ -2058,9 +2070,15 @@ paths:
                         long:
                           size: '0.250'
                           entryPrice: '66420.7'
+                          markPrice: '67012.4'
+                          unrealizedPnl:
+                            asset: USDT
+                            value: '147.925'
                         short:
                           size: '0'
                           entryPrice: null
+                          markPrice: null
+                          unrealizedPnl: null
                         mode: Netting
                 Spot:
                   summary: Available base and quote balances on a spot market
@@ -3757,10 +3775,24 @@ components:
           - $ref: '#/components/schemas/Decimal'
           - type: 'null'
           description: Host-reported value; null if the host does not supply it.
+        markPrice:
+          anyOf:
+          - $ref: '#/components/schemas/Decimal'
+          - type: 'null'
+          description: The mark price the position is valued at; null if the host does not supply it.
+        unrealizedPnl:
+          anyOf:
+          - $ref: '#/components/schemas/AssetValue'
+          - type: 'null'
+          description: Profit or loss if the position closed at markPrice, in the settlement asset; null if the host
+            does not supply it or the side is flat.
       required:
       - size
       - entryPrice
-      description: 'One side of a position: its size and, when the host reports it, its entry price.'
+      - markPrice
+      - unrealizedPnl
+      description: 'One side of a position: its size and, when the host reports them, its entry price, mark price and
+        unrealized profit or loss.'
     PositionMode:
       type: string
       enum:

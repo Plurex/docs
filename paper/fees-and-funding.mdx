@@ -18,8 +18,8 @@ rates.
 You pick the tier, and paper charges it on every fill: the maker rate when a resting order fills, the taker rate when
 an order takes liquidity.
 
-Paper does not move you between tiers by trading volume, and does not apply VIP or regional schedules, promotions or
-fee-token discounts.
+Paper does not move you between tiers by trading volume: where the exchange publishes VIP levels, paper offers them as
+tiers you select. It does not apply regional schedules, promotions or fee-token discounts.
 
 <Tip>
   Choose the tier that matches your expected live account, so your paper results carry realistic costs.
@@ -119,11 +119,11 @@ afterwards.
 | Linear perpetual | The settlement asset, usually the quote asset |
 | Inverse perpetual | The settlement asset, the base asset |
 
-### Fee terms are fixed when you place an order
+### Fee terms are fixed when an order is accepted
 
-An order keeps the rates in force when it was placed. If you change tier while orders are resting, waiting to
-trigger or partly filled, those orders go on paying their original rates; only orders placed after the change use the
-new tier. Get effective fee rates always describes new orders.
+An order keeps the rates in force when it was accepted. If you change tier while orders are resting or partly filled,
+those orders go on paying their original rates; only orders placed after the change use the new tier. A trigger order
+is accepted when it fires, so it takes the rates in force then. Get effective fee rates always describes new orders.
 
 ## Perpetual funding
 
@@ -186,8 +186,8 @@ positive for a gain, negative for a loss. Spot trades do not post settlements; t
 ## Read it all back
 
 Every fee, funding payment, settlement, deposit and withdrawal is a transaction on the account. Read them with
-[List transactions](/api-reference/platform/hosts/list-transactions) or, where the host supports it, follow them live
-with the [transaction stream](/api-reference/platform/hosts/subscribe-to-account-transactions). Paper hosts offer
+[List transactions](/api-reference/platform/hosts/list-transactions) or follow them live with the
+[transaction stream](/api-reference/platform/hosts/subscribe-to-account-transactions). Paper hosts offer
 both transaction history and the transaction stream. Check the paper host's `accountTransactions` capabilities for the
 types it reports:
 
@@ -211,7 +211,8 @@ A paper account reports these transaction types:
 | `Settlement` | A perpetual fill realises profit or loss | `instrument`, `orderId`, `fillId`, `groupId` |
 | `FundingPayment` | Funding is paid or received for a funding time | `instrument`, `groupId` |
 
-`groupId` ties together postings that belong to the same event: the fee and settlement from one fill share it, and so
+`groupId` ties together postings that belong to the same event: the fee and settlement from one fill share it (a
+sweep across several price levels has one fill, and one `groupId`, per level), and so
 do the funding payments for one instrument at one funding time. Treat it as an opaque string. A funding payment looks
 like this:
 

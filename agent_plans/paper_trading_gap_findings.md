@@ -4,9 +4,51 @@
 re-checked by hand: findings 1 and 5. Paths are under
 `execution-host-paper/src/main/kotlin/io/plurex/paper/` unless stated.
 
-**The docs now assume these are fixed.** The public paper pages describe the engine as it should behave once these
-findings are resolved. The last section lists the doc statements that depend on each fix. Until then, those statements
-are ahead of the code.
+## Status (2026-10-27): mostly fixed in plurex `1504da80a` (merged as `2f10667cc`)
+
+Checked in the docs refresh `refresh-log/2026-10-27-02f0496-2f10667.md`. The paper docs now describe the code at
+`2f10667cc`, not an assumed future, except where noted as still open.
+
+| # | Finding | Status at `2f10667cc` |
+| --- | --- | --- |
+| 1 | Crossing GTC limit takes liquidity twice | Fixed, time-bounded: an account's taken depth is left out of its book for a short recovery window. |
+| 2 | Linear entry price rounded to 2 decimals | Fixed. |
+| 3 | Fees not reserved; spot market buys at best ask | Fixed: holds include the worst fee, and market orders are held at a protected price bound. |
+| 4 | Triggers not re-checked at firing | Fixed differently: triggers hold nothing while waiting and are admitted when they fire. |
+| 5 | Full-size SL and TP can't coexist | Fixed (same change). The second is rejected when it fires if the first closed the position. |
+| 6 | Funding schedule not refreshed | Fixed: re-read after each funding time. |
+| 7 | No funding while history is irregular | **Partly**: VALR has a fallback schedule; Bybit has none (open upstream item). |
+| 8 | Markets are a startup snapshot | Fixed: refreshed regularly. Orders already resting on a delisted market stay until cancelled. |
+| 9 | No transaction stream on bybit-paper | Fixed. |
+| 10 | `setMarketPositionMode` header always `PerMarket` | Fixed. |
+| 11 | `fractionDigits` spec wording | **Open**: spec still says "null when fees are not rounded". |
+| 12 | `Order.triggerPrice` after firing | Fixed. |
+| 13 | clientOrderId check not atomic | **Open**, now documented in code. |
+| 14 | Bybit fee tier unverified | Fixed: Standard, VIP 1–5 and Supreme VIP, verified 2026-10-26; VALR tiers 1–9. |
+| 15 | Stale design doc | Fixed (deleted). |
+| 16 | One fill per price level | Fixed. |
+| Decide | Reduce-only sizing by mode | Decided: trimmed in both modes, rejected only when nothing is left. |
+| Decide | Flip orders | Unchanged: rejected entirely, now with `422 InsufficientFunds`. |
+
+Also changed: a perp order without enough collateral now returns `422 InsufficientFunds` (was `Rejected`); there is no
+open-order cap; positions report `markPrice` and `unrealizedPnl`; collateral pools gained SOL and XRP (and DOGE on
+Bybit), and VALR values crypto at mark.
+
+### New feedback from this check
+
+- **Taken depth, AGENTS.md vs code.** AGENTS.md says taken depth is held "until the level leaves the book or [the
+  window] passes"; the code prunes by time only, so a level that leaves and returns within the window stays reduced.
+- **`Position.unrealizedPnl` on flat legs.** The spec says it is `null` when the side is flat. Bybit live maps hedge
+  legs without filtering size 0, so a flat hedging leg may carry a mark price and zero PnL. Inferred, not observed.
+- **`Position.markPrice` on VALR live** is always `null`, although VALR's position data appears to carry one.
+- Finding 11 (`fractionDigits` wording) and the Bybit funding fallback (7) remain.
+
+---
+
+The original findings follow, as sent.
+
+**The docs assumed these fixed.** The public paper pages described the engine as it should behave once these
+findings were resolved. The last section lists the doc statements that depended on each fix.
 
 Leverage, and the margin features that come with it (maintenance margin, liquidation), are a known gap and stay out of
 scope. The docs say paper trades perpetuals at 1× with no leverage control.

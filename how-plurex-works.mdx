@@ -79,11 +79,11 @@ The result is a model you can trust in code: a value is either what the exchange
 
 A paper host simulates a real host on that host's venue, using the venue's live market data. Paper accounts use exactly the same host operations and streams as real accounts.
 
-- Market orders and marketable limit orders fill against the live order book's depth, so large orders see realistic slippage.
+- Market orders and marketable limit orders fill against the live order book's depth, one fill per price level, so large orders see realistic slippage. Market orders are protected by a worst price, and depth your account takes is used up.
 - Resting orders wait behind the visible queue at their price, and fill as live public trades work through it.
-- Trigger orders fire on the live reference price they name.
+- Trigger orders fire on the live reference price they name, and are checked against your account when they fire.
 - Wallets hold and lock funds as the host does, and perpetual collateral is a weighted, multi-asset pool modelled on the host's account, valued at live prices.
-- Trading fees follow a fee tier you choose. Perpetual positions pay and receive funding at the venue's funding times, from its finalised rates, with the position valued at a price estimated from the mark price. See [Fees and funding](/paper/fees-and-funding).
+- Trading fees follow the exchange's published tier you choose. Perpetual positions pay and receive funding at the venue's funding times, from its finalised rates, with the position valued at the mark price. See [Fees and funding](/paper/fees-and-funding).
 - Paper markets follow the order rules of the host they simulate. Anything paper can't simulate is left out, and the paper host publishes its own capabilities so your program can see exactly what it supports. [From paper to live](/paper/going-live) lists the differences, such as leverage and liquidation.
 
 Read [Paper trading](/paper/overview) for the full model.

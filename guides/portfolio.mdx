@@ -48,8 +48,11 @@ These operations tell you what an account holds and how its markets are configur
   "items": [
     {
       "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
-      "long": { "size": "0.250", "entryPrice": "61250.5" },
-      "short": { "size": "0", "entryPrice": null },
+      "long": {
+        "size": "0.250", "entryPrice": "61250.5", "markPrice": "61500.0",
+        "unrealizedPnl": { "asset": "USDT", "value": "62.375" }
+      },
+      "short": { "size": "0", "entryPrice": null, "markPrice": null, "unrealizedPnl": null },
       "mode": "Netting"
     }
   ],
@@ -59,7 +62,10 @@ These operations tell you what an account holds and how its markets are configur
 
 - Sizes are in native contracts, not base units. Convert with the market's `contractDetails`; see [Instruments](/concepts/instruments).
 - A leg with no exposure has size `"0"`. In `Hedging` mode both legs can be open at once.
-- `entryPrice` and `mode` are `null` when the host does not report them.
+- Each leg's `markPrice` is the price it is valued at, and `unrealizedPnl` is its profit or loss if it closed at that
+  price, in the settlement asset. Use `size` to tell whether a leg is open, rather than relying on these being `null`.
+- `entryPrice`, `markPrice`, `unrealizedPnl` and `mode` are `null` when the host does not report them. A host can
+  report `unrealizedPnl` without `markPrice`, so read each field on its own.
 
 ## Margin
 
@@ -104,8 +110,11 @@ These operations tell you what an account holds and how its markets are configur
         "collateral": { "valueAsset": "USDT", "total": "10250.40", "available": "8710.15" },
         "position": {
           "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
-          "long": { "size": "0.250", "entryPrice": "61250.5" },
-          "short": { "size": "0", "entryPrice": null },
+          "long": {
+            "size": "0.250", "entryPrice": "61250.5", "markPrice": "61500.0",
+            "unrealizedPnl": { "asset": "USDT", "value": "62.375" }
+          },
+          "short": { "size": "0", "entryPrice": null, "markPrice": null, "unrealizedPnl": null },
           "mode": "Netting"
         }
       }
