@@ -42,16 +42,16 @@ Every operation is one of three kinds:
 
 - A **query** reads state, such as listing markets or getting an order. Queries are always safe to repeat.
 - A **command** changes state, such as submitting or cancelling an order. Each command says whether it is safe to repeat, because in trading a retry can mean a second order.
-- A **stream** pushes changes on your accounts to you over WebSocket: order changes and transactions.
+- A **stream** follows one topic and sends you its changes as they happen: a market's order book, trades, prices or candles, or an account's orders and transactions.
 
-Queries and commands are HTTP `POST` requests with a JSON body, sent to a path that names the operation, such as `/api/v1/hosts/command/SubmitOrder`. There are no `GET`, `PUT` or `DELETE` resources, and IDs never go in the path. This is deliberate:
+Every operation, streams included, is an HTTP `POST` request with a JSON body, sent to a path that names the operation, such as `/api/v1/hosts/command/SubmitOrder`. There are no `GET`, `PUT` or `DELETE` resources, and IDs never go in the path. This is deliberate:
 
 - **Operations are trading actions, not resources.** `CancelAllOrders` on one instrument, or `GetOrder` by `clientOrderId`, don't map cleanly onto HTTP verbs and URLs, so each operation is named for what it does.
 - **Requests are typed.** Instruments, order types and lookup variants are structured JSON with a `type` field, which query strings can't express unambiguously.
 - **Retry safety is in the path.** `query` or `command` tells your retry logic what it may repeat.
 - **Responses have a fixed shape.** Unlike GraphQL, you don't choose fields: each operation returns every field every time, with `null` where the host doesn't report a value, and has its own capability entry and errors.
 
-The [OpenAPI and AsyncAPI specifications](/api-reference/platform/overview#specifications) describe every operation and stream, so you can generate a client in any language.
+The [OpenAPI specification](/api-reference/platform/overview#specification) describes every operation and stream, so you can generate a client in any language.
 
 ## Self-describing by design
 

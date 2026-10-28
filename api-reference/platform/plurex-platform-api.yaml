@@ -6,8 +6,8 @@ info:
     Trade across exchanges and brokers through one API, and paper trade any of them with the same calls.
 
 
-    **Venues** are the exchanges where markets trade. Venue operations are public market data: markets, order books, recent
-    trades, prices, quotes, statistics, funding, open interest and candles. They need no API key.
+    **Venues** are the exchanges where markets trade. Venue operations are market data: markets, order books, recent trades,
+    prices, quotes, statistics, funding, open interest and candles.
 
 
     **Hosts** hold trading accounts and execute orders on a venue's markets, for example an exchange's own account service
@@ -17,7 +17,8 @@ info:
 
 
     **Tenants** own trading resources: every account belongs to one tenant. You act as your tenant, and your API keys are
-    created under it. Find your tenant ID next to your API keys on the DevTools page of the Plurex app.
+    created under it. Find your tenant ID next to your API keys on the DevTools page of the Plurex app. Every operation, market
+    data included, needs an API key: send it in the X-API-KEY and X-API-SECRET headers.
 
 
     **Accounts** are your accounts on hosts. Connect an exchange or broker account with its API credentials, or create a **paper**
@@ -29,10 +30,20 @@ info:
     its order types, settings and market data. Check these before calling: an unsupported call returns 422 NotSupported.
 
 
-    **Requests.** Every operation is a POST with a JSON body (Content-Type application/json). Account operations need both
-    the X-API-KEY and X-API-SECRET headers. Unknown fields, unknown enum values and wrong types are rejected with 400. Every
-    error has the ErrorEnvelope shape; its code says what went wrong. Account changes also arrive as WebSocket streams, described
-    in the AsyncAPI document.
+    **Requests.** Every operation is a POST with a JSON body (Content-Type application/json). Every operation needs both the
+    X-API-KEY and X-API-SECRET headers. Unknown fields, unknown enum values and wrong types are rejected with 400. Every error
+    has the ErrorEnvelope shape; its code says what went wrong.
+
+
+
+    **Streams.** Stream operations (paths under /stream/) follow one topic, such as an account's orders or a market's order
+    book. Errors are ordinary responses before the stream starts; otherwise the 200 response stays open and carries one JSON
+    message per line (application/jsonl). Market data streams start with a Reset holding the current state, then Updates;
+    a Reset can arrive again at any time and replaces everything you hold. Account streams send an Event per change and no
+    snapshot: read current state with the matching query after the stream opens. A blank line arrives at least every 15 seconds
+    while the stream is quiet. The last line is Ended, saying why the stream stopped. A stream that falls too far behind,
+    or that ends or fails without an Ended line, has lost messages: open it again after a short, randomized delay and rebuild
+    from its first message. Open one stream per topic; a client using HTTP/2 shares one connection between them.
 
 
     **Compatibility.** Enum values, union variants, error codes and fields are added over time without a new version. Ignore
@@ -43,7 +54,7 @@ servers:
 tags:
 - name: venues
   summary: Market data
-  description: Public market data from the exchanges where markets trade. No API key needed.
+  description: Market data from the exchanges where markets trade.
   kind: nav
 - name: venue-markets
   summary: Venues and markets
@@ -124,10 +135,6 @@ tags:
   description: Choose the fee tier a paper account is charged.
   parent: paper
   kind: nav
-- name: public
-  summary: No API key
-  description: Public market data and discovery; no authentication needed.
-  kind: badge
 - name: optional
   summary: Check capabilities
   description: Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported.
@@ -156,9 +163,7 @@ paths:
       description: Lists every venue with the market data it supports.
       tags:
       - venue-markets
-      - public
       - paged
-      security: []
       requestBody:
         required: true
         content:
@@ -187,30 +192,48 @@ paths:
                         orderBook:
                           getOrderBook:
                             type: Supported
+                          subscribeToOrderBooks:
+                            type: Supported
                         trades:
                           getRecentTrades:
+                            type: Supported
+                          subscribeToTrades:
                             type: Supported
                         prices:
                           traded:
                             getPrices:
                               type: PerMarket
+                            subscribeToPrices:
+                              type: PerMarket
                           mark:
                             getPrices:
+                              type: PerMarket
+                            subscribeToPrices:
                               type: PerMarket
                           index:
                             getPrices:
                               type: PerMarket
+                            subscribeToPrices:
+                              type: PerMarket
                         bestQuote:
                           getBestQuotes:
+                            type: PerMarket
+                          subscribeToBestQuotes:
                             type: PerMarket
                         statistics:
                           getMarketStatistics:
                             type: PerMarket
+                          subscribeToMarketStatistics:
+                            type: PerMarket
                         indicativeFunding:
                           getIndicativeFundings:
                             type: PerMarket
+                          subscribeToIndicativeFundings:
+                            type: PerMarket
                         openInterest:
                           getOpenInterests:
+                            type: PerMarket
+                          subscribeToOpenInterests:
                             type: PerMarket
                         candles:
                           listCandles:
@@ -218,9 +241,13 @@ paths:
                               type: PerMarket
                             byInstrumentBefore:
                               type: PerMarket
+                          subscribeToCandles:
+                            type: PerMarket
                     nextCursor: null
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
         '500':
@@ -235,9 +262,7 @@ paths:
         not listed.
       tags:
       - venue-markets
-      - public
       - paged
-      security: []
       requestBody:
         required: true
         content:
@@ -285,13 +310,17 @@ paths:
                         prices:
                           traded:
                             get: true
+                            subscribe: true
                           mark:
                             get: true
+                            subscribe: true
                           index:
                             get: true
+                            subscribe: true
                         bestQuote:
                           supportsSizes: true
                           get: true
+                          subscribe: true
                         statistics:
                           window:
                             type: Rolling
@@ -303,11 +332,14 @@ paths:
                           - VolumeBase
                           - VolumeQuote
                           get: true
+                          subscribe: true
                         indicativeFunding:
                           get: true
+                          subscribe: true
                         openInterest:
                           unit: BaseAsset
                           get: true
+                          subscribe: true
                         candles:
                           traded:
                             supportedIntervals:
@@ -320,6 +352,7 @@ paths:
                               Day1: PT87600H
                             list: true
                             listBefore: true
+                            subscribe: false
                           mark:
                             supportedIntervals:
                             - Minute1
@@ -331,6 +364,7 @@ paths:
                               Day1: PT87600H
                             list: true
                             listBefore: true
+                            subscribe: false
                           index:
                             supportedIntervals:
                             - Minute1
@@ -342,6 +376,7 @@ paths:
                               Day1: PT87600H
                             list: true
                             listBefore: true
+                            subscribe: false
                     - symbol: BTC-USDT-SPOT
                       instrument:
                         type: Spot
@@ -359,11 +394,13 @@ paths:
                         prices:
                           traded:
                             get: true
+                            subscribe: true
                           mark: null
                           index: null
                         bestQuote:
                           supportsSizes: true
                           get: true
+                          subscribe: true
                         statistics:
                           window:
                             type: Rolling
@@ -375,6 +412,7 @@ paths:
                           - VolumeBase
                           - VolumeQuote
                           get: true
+                          subscribe: true
                         indicativeFunding: null
                         openInterest: null
                         candles:
@@ -389,11 +427,14 @@ paths:
                               Day1: PT87600H
                             list: true
                             listBefore: true
+                            subscribe: false
                           mark: null
                           index: null
                     nextCursor: null
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
         '415':
@@ -409,8 +450,6 @@ paths:
       description: The current order book of one market, at the depth the venue provides. An unknown market returns 422 NotSupported.
       tags:
       - order-books
-      - public
-      security: []
       requestBody:
         required: true
         content:
@@ -426,6 +465,8 @@ paths:
                 $ref: '#/components/schemas/ResponseEnvelopeOrderBook'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
         '415':
@@ -450,8 +491,6 @@ paths:
         complete history. An unknown market returns 422 NotSupported.
       tags:
       - public-trades
-      - public
-      security: []
       requestBody:
         required: true
         content:
@@ -467,6 +506,107 @@ paths:
                 $ref: '#/components/schemas/ResponseEnvelopeRecentTrades'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Rejected'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/UnexpectedError'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+  /api/v1/venues/stream/SubscribeToOrderBooks:
+    post:
+      operationId: venuesSubscribeToOrderBooks
+      summary: Stream an order book
+      description: 'Streams one market''s order book: a Reset of the whole book, then Updates of the levels that changed.
+        The depth is the venue''s own and covers more than the best bid and ask. A market the venue does not list returns
+        422 NotSupported.'
+      tags:
+      - order-books
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeToOrderBooksRequest'
+      responses:
+        '200':
+          description: 'One message per line: a Reset first, then Updates, until an Ended line.'
+          content:
+            application/jsonl:
+              itemSchema:
+                $ref: '#/components/schemas/OrderBookStreamMessage'
+              examples:
+                Stream:
+                  summary: A Reset, an Update, a keepalive line and Ended
+                  serializedValue: |
+                    {"type":"Reset","timestamp":"2026-10-27T09:00:00.120Z","data":{"bids":[{"price":"67250.1","size":"0.42"}],"asks":[{"price":"67250.2","size":"0.08"}],"observedAt":"2026-10-27T09:00:00.101Z","receivedAt":"2026-10-27T09:00:00.115Z"}}
+                    {"type":"Update","timestamp":"2026-10-27T09:00:00.320Z","data":{"bids":[{"price":"67250.1","size":"0.9"}],"asks":[{"price":"67250.2","size":"0"}],"observedAt":"2026-10-27T09:00:00.301Z","receivedAt":"2026-10-27T09:00:00.316Z"}}
+
+                    {"type":"Ended","code":"UpstreamFailure","message":"Upstream stream ended"}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Rejected'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/UnexpectedError'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+  /api/v1/venues/stream/SubscribeToTrades:
+    post:
+      operationId: venuesSubscribeToTrades
+      summary: Stream public trades
+      description: 'Streams one market''s public trades: a Reset of the recent trades, as GetRecentTrades returns them, then
+        Updates with new trades. A market the venue does not list returns 422 NotSupported.'
+      tags:
+      - public-trades
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeToTradesRequest'
+      responses:
+        '200':
+          description: 'One message per line: a Reset first, then Updates, until an Ended line.'
+          content:
+            application/jsonl:
+              itemSchema:
+                $ref: '#/components/schemas/TradeStreamMessage'
+              examples:
+                Stream:
+                  summary: A Reset, an Update, a keepalive line and Ended
+                  serializedValue: |
+                    {"type":"Reset","timestamp":"2026-10-27T09:00:00.120Z","data":{"trades":[{"price":"67250.2","size":"0.01","takerSide":"Buy","observedAt":"2026-10-27T08:59:58.402Z","receivedAt":"2026-10-27T08:59:58.417Z"}]}}
+                    {"type":"Update","timestamp":"2026-10-27T09:00:01.210Z","data":{"trades":[{"price":"67251","size":"0.4","takerSide":"Sell","observedAt":"2026-10-27T09:00:01.188Z","receivedAt":"2026-10-27T09:00:01.201Z"}]}}
+
+                    {"type":"Ended","code":"UpstreamFailure","message":"Upstream stream ended"}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
         '415':
@@ -490,10 +630,8 @@ paths:
       description: The current price of one kind (traded, mark or index) for each instrument.
       tags:
       - market-observations
-      - public
       - optional
       - batch
-      security: []
       requestBody:
         required: true
         content:
@@ -544,10 +682,62 @@ paths:
                       message: The market does not support this read
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/UnexpectedError'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+  /api/v1/venues/stream/SubscribeToPrices:
+    post:
+      operationId: venuesSubscribeToPrices
+      summary: Stream a price
+      description: 'Streams one market''s price of one kind (traded, mark or index): a Reset with the current value, then
+        an Update whenever it changes. A market or kind the venue does not stream returns 422 NotSupported.'
+      tags:
+      - market-observations
+      - optional
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeToPricesRequest'
+      responses:
+        '200':
+          description: 'One message per line: a Reset first, then Updates, until an Ended line.'
+          content:
+            application/jsonl:
+              itemSchema:
+                $ref: '#/components/schemas/PriceStreamMessage'
+              examples:
+                Stream:
+                  summary: A Reset, an Update, a keepalive line and Ended
+                  serializedValue: |
+                    {"type":"Reset","timestamp":"2026-10-27T09:00:00.120Z","data":{"value":{"price":"67250.1"},"observedAt":"2026-10-27T09:00:00.101Z","receivedAt":"2026-10-27T09:00:00.115Z"}}
+                    {"type":"Update","timestamp":"2026-10-27T09:00:01.320Z","data":{"value":{"price":"67251.4"},"observedAt":"2026-10-27T09:00:01.301Z","receivedAt":"2026-10-27T09:00:01.316Z"}}
+
+                    {"type":"Ended","code":"UpstreamFailure","message":"Upstream stream ended"}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Rejected'
         '429':
           $ref: '#/components/responses/RateLimited'
         '500':
@@ -565,10 +755,8 @@ paths:
       description: The best bid and ask for each instrument.
       tags:
       - market-observations
-      - public
       - optional
       - batch
-      security: []
       requestBody:
         required: true
         content:
@@ -584,10 +772,62 @@ paths:
                 $ref: '#/components/schemas/ResponseEnvelopeBestQuoteResultList'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/UnexpectedError'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+  /api/v1/venues/stream/SubscribeToBestQuotes:
+    post:
+      operationId: venuesSubscribeToBestQuotes
+      summary: Stream the best bid and ask
+      description: 'Streams one market''s best bid and ask: a Reset with the current quote, then an Update whenever it changes.
+        A market the venue does not stream returns 422 NotSupported.'
+      tags:
+      - market-observations
+      - optional
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeToBestQuotesRequest'
+      responses:
+        '200':
+          description: 'One message per line: a Reset first, then Updates, until an Ended line.'
+          content:
+            application/jsonl:
+              itemSchema:
+                $ref: '#/components/schemas/BestQuoteStreamMessage'
+              examples:
+                Stream:
+                  summary: A Reset, an Update, a keepalive line and Ended
+                  serializedValue: |
+                    {"type":"Reset","timestamp":"2026-10-27T09:00:00.120Z","data":{"value":{"bid":{"price":"67250.1","size":"0.42"},"ask":{"price":"67250.2","size":"0.08"}},"observedAt":"2026-10-27T09:00:00.101Z","receivedAt":"2026-10-27T09:00:00.115Z"}}
+                    {"type":"Update","timestamp":"2026-10-27T09:00:01.320Z","data":{"value":{"bid":{"price":"67250.1","size":"0.9"},"ask":{"price":"67250.2","size":"0.08"}},"observedAt":"2026-10-27T09:00:01.301Z","receivedAt":"2026-10-27T09:00:01.316Z"}}
+
+                    {"type":"Ended","code":"UpstreamFailure","message":"Upstream stream ended"}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Rejected'
         '429':
           $ref: '#/components/responses/RateLimited'
         '500':
@@ -605,10 +845,8 @@ paths:
       description: Venue-reported statistics for each instrument, over the window its market declares.
       tags:
       - market-observations
-      - public
       - optional
       - batch
-      security: []
       requestBody:
         required: true
         content:
@@ -624,10 +862,62 @@ paths:
                 $ref: '#/components/schemas/ResponseEnvelopeMarketStatisticsResultList'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/UnexpectedError'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+  /api/v1/venues/stream/SubscribeToMarketStatistics:
+    post:
+      operationId: venuesSubscribeToMarketStatistics
+      summary: Stream market statistics
+      description: 'Streams one market''s statistics over the window its market declares: a Reset with the current values,
+        then an Update whenever they change. A market the venue does not stream returns 422 NotSupported.'
+      tags:
+      - market-observations
+      - optional
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeToMarketStatisticsRequest'
+      responses:
+        '200':
+          description: 'One message per line: a Reset first, then Updates, until an Ended line.'
+          content:
+            application/jsonl:
+              itemSchema:
+                $ref: '#/components/schemas/MarketStatisticsStreamMessage'
+              examples:
+                Stream:
+                  summary: A Reset, an Update, a keepalive line and Ended
+                  serializedValue: |
+                    {"type":"Reset","timestamp":"2026-10-27T09:00:00.120Z","data":{"value":{"window":{"type":"Rolling","length":"PT24H"},"open":"66100","high":"67600","low":"65950","previousClose":null,"volumeBase":"18234.5","volumeQuote":"1215367000.4"},"observedAt":"2026-10-27T09:00:00.101Z","receivedAt":"2026-10-27T09:00:00.115Z"}}
+                    {"type":"Update","timestamp":"2026-10-27T09:00:01.320Z","data":{"value":{"window":{"type":"Rolling","length":"PT24H"},"open":"66100","high":"67600","low":"65950","previousClose":null,"volumeBase":"18235.1","volumeQuote":"1215407350.5"},"observedAt":"2026-10-27T09:00:01.301Z","receivedAt":"2026-10-27T09:00:01.316Z"}}
+
+                    {"type":"Ended","code":"UpstreamFailure","message":"Upstream stream ended"}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Rejected'
         '429':
           $ref: '#/components/responses/RateLimited'
         '500':
@@ -645,10 +935,8 @@ paths:
       description: 'The current indicative funding rate for each perpetual. It is an estimate: the rate that settles can differ.'
       tags:
       - market-observations
-      - public
       - optional
       - batch
-      security: []
       requestBody:
         required: true
         content:
@@ -664,10 +952,62 @@ paths:
                 $ref: '#/components/schemas/ResponseEnvelopeIndicativeFundingResultList'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/UnexpectedError'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+  /api/v1/venues/stream/SubscribeToIndicativeFundings:
+    post:
+      operationId: venuesSubscribeToIndicativeFundings
+      summary: Stream indicative funding
+      description: 'Streams one perpetual''s indicative funding rate: a Reset with the current estimate, then an Update whenever
+        it changes. The rate that settles can differ. A market the venue does not stream returns 422 NotSupported.'
+      tags:
+      - market-observations
+      - optional
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeToIndicativeFundingsRequest'
+      responses:
+        '200':
+          description: 'One message per line: a Reset first, then Updates, until an Ended line.'
+          content:
+            application/jsonl:
+              itemSchema:
+                $ref: '#/components/schemas/IndicativeFundingStreamMessage'
+              examples:
+                Stream:
+                  summary: A Reset, an Update, a keepalive line and Ended
+                  serializedValue: |
+                    {"type":"Reset","timestamp":"2026-10-27T09:00:00.120Z","data":{"value":{"rate":"0.0001","nextFundingTime":"2026-10-27T16:00:00Z"},"observedAt":"2026-10-27T09:00:00.101Z","receivedAt":"2026-10-27T09:00:00.115Z"}}
+                    {"type":"Update","timestamp":"2026-10-27T09:00:01.320Z","data":{"value":{"rate":"0.000105","nextFundingTime":"2026-10-27T16:00:00Z"},"observedAt":"2026-10-27T09:00:01.301Z","receivedAt":"2026-10-27T09:00:01.316Z"}}
+
+                    {"type":"Ended","code":"UpstreamFailure","message":"Upstream stream ended"}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Rejected'
         '429':
           $ref: '#/components/responses/RateLimited'
         '500':
@@ -685,10 +1025,8 @@ paths:
       description: The current open interest for each derivative, in the unit its market declares.
       tags:
       - market-observations
-      - public
       - optional
       - batch
-      security: []
       requestBody:
         required: true
         content:
@@ -704,10 +1042,62 @@ paths:
                 $ref: '#/components/schemas/ResponseEnvelopeOpenInterestResultList'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/UnexpectedError'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+  /api/v1/venues/stream/SubscribeToOpenInterests:
+    post:
+      operationId: venuesSubscribeToOpenInterests
+      summary: Stream open interest
+      description: 'Streams one derivative''s open interest, in the unit its market declares: a Reset with the current amount,
+        then an Update whenever it changes. A market the venue does not stream returns 422 NotSupported.'
+      tags:
+      - market-observations
+      - optional
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeToOpenInterestsRequest'
+      responses:
+        '200':
+          description: 'One message per line: a Reset first, then Updates, until an Ended line.'
+          content:
+            application/jsonl:
+              itemSchema:
+                $ref: '#/components/schemas/OpenInterestStreamMessage'
+              examples:
+                Stream:
+                  summary: A Reset, an Update, a keepalive line and Ended
+                  serializedValue: |
+                    {"type":"Reset","timestamp":"2026-10-27T09:00:00.120Z","data":{"value":{"amount":"51234.5","unit":"Contracts"},"observedAt":"2026-10-27T09:00:00.101Z","receivedAt":"2026-10-27T09:00:00.115Z"}}
+                    {"type":"Update","timestamp":"2026-10-27T09:00:01.320Z","data":{"value":{"amount":"51240.1","unit":"Contracts"},"observedAt":"2026-10-27T09:00:01.301Z","receivedAt":"2026-10-27T09:00:01.316Z"}}
+
+                    {"type":"Ended","code":"UpstreamFailure","message":"Upstream stream ended"}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Rejected'
         '429':
           $ref: '#/components/responses/RateLimited'
         '500':
@@ -728,10 +1118,8 @@ paths:
         market does not list returns 422 NotSupported.
       tags:
       - candles
-      - public
       - optional
       - paged
-      security: []
       requestBody:
         required: true
         content:
@@ -805,6 +1193,59 @@ paths:
                     nextCursor: eyJjb250aW51YXRpb24iOiIyMDI2LTEwLTI2VDA4OjAwOjAwWiJ9
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Rejected'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/UnexpectedError'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+  /api/v1/venues/stream/SubscribeToCandles:
+    post:
+      operationId: venuesSubscribeToCandles
+      summary: Stream candles
+      description: 'Streams one market''s candles of one price kind at one interval: a Reset of the recent candles, then an
+        Update of the current candle as it forms and as each new one starts. A market, price kind or interval the venue does
+        not stream returns 422 NotSupported.'
+      tags:
+      - candles
+      - optional
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeToCandlesRequest'
+      responses:
+        '200':
+          description: 'One message per line: a Reset first, then Updates, until an Ended line.'
+          content:
+            application/jsonl:
+              itemSchema:
+                $ref: '#/components/schemas/CandleStreamMessage'
+              examples:
+                Stream:
+                  summary: A Reset, an Update, a keepalive line and Ended
+                  serializedValue: |
+                    {"type":"Reset","timestamp":"2026-10-27T09:01:20.120Z","data":{"candles":[{"startAt":"2026-10-27T09:00:00Z","endAt":"2026-10-27T09:01:00Z","open":"67250","high":"67262.5","low":"67248","close":"67260","volume":{"asset":"BTC","value":"12.4"},"turnover":{"asset":"USDT","value":"834012.6"}},{"startAt":"2026-10-27T09:01:00Z","endAt":"2026-10-27T09:02:00Z","open":"67260","high":"67266","low":"67259","close":"67263.5","volume":{"asset":"BTC","value":"3.1"},"turnover":{"asset":"USDT","value":"208517.9"}}]}}
+                    {"type":"Update","timestamp":"2026-10-27T09:01:21.410Z","data":{"candles":[{"startAt":"2026-10-27T09:01:00Z","endAt":"2026-10-27T09:02:00Z","open":"67260","high":"67270","low":"67259","close":"67270","volume":{"asset":"BTC","value":"3.4"},"turnover":{"asset":"USDT","value":"228697.9"}}]}}
+
+                    {"type":"Ended","code":"UpstreamFailure","message":"Upstream stream ended"}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
         '415':
@@ -828,9 +1269,7 @@ paths:
       description: Lists every host, real and paper, with the operations it supports.
       tags:
       - host-markets
-      - public
       - paged
-      security: []
       requestBody:
         required: true
         content:
@@ -1075,6 +1514,8 @@ paths:
                     nextCursor: null
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
         '500':
@@ -1089,9 +1530,7 @@ paths:
         markets are not listed.
       tags:
       - host-markets
-      - public
       - paged
-      security: []
       requestBody:
         required: true
         content:
@@ -1322,6 +1761,8 @@ paths:
                     nextCursor: null
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
         '415':
@@ -1586,6 +2027,58 @@ paths:
           $ref: '#/components/responses/Unavailable'
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
+  /api/v1/hosts/stream/SubscribeToAccountOrders:
+    post:
+      operationId: hostsSubscribeToAccountOrders
+      summary: Stream account orders
+      description: 'Streams every change to one account''s orders: created, filled, cancelled, rejected. Each Event carries
+        the change and the complete order, as GetOrder returns it; reconcile with ListOpenOrders after the stream opens. accountOrders.changes
+        lists the changes the host sends.'
+      tags:
+      - orders
+      - optional
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeToAccountOrdersRequest'
+      responses:
+        '200':
+          description: One Event per line, until an Ended line.
+          content:
+            application/jsonl:
+              itemSchema:
+                $ref: '#/components/schemas/AccountOrderStreamMessage'
+              examples:
+                Stream:
+                  summary: An Event, a keepalive line and Ended
+                  serializedValue: |
+                    {"type":"Event","timestamp":"2026-10-26T08:17:18.732Z","data":{"change":{"type":"Cancelled"},"order":{"type":"Limit","id":"BTC-USDT-SPOT|5fee96c0-8063-412d-8b4d-e36e44a8ea2d","createdAt":"2026-10-26T08:17:17.709Z","side":"Buy","instrument":{"type":"Spot","base":"BTC","quote":"USDT"},"state":"Cancelled","sizeTraded":"0","averagePrice":null,"realizedPnl":null,"totalFees":[],"clientOrderId":"my-order-1","size":"1","price":"90"}}}
+
+                    {"type":"Ended","code":"UpstreamFailure","message":"Upstream stream ended"}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Rejected'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/UnexpectedError'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/query/ListClosedOrders:
     post:
       operationId: hostsListClosedOrders
@@ -1777,6 +2270,58 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageResponseAccountTransaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Rejected'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/UnexpectedError'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+  /api/v1/hosts/stream/SubscribeToAccountTransactions:
+    post:
+      operationId: hostsSubscribeToAccountTransactions
+      summary: Stream account transactions
+      description: Streams one account's new balance postings (fees, funding payments, deposits and so on), each with the
+        same ID ListTransactions returns; reconcile with ListTransactions after the stream opens. Transaction events are not
+        ordered relative to order events.
+      tags:
+      - transactions
+      - optional
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeToAccountTransactionsRequest'
+      responses:
+        '200':
+          description: One Event per line, until an Ended line.
+          content:
+            application/jsonl:
+              itemSchema:
+                $ref: '#/components/schemas/AccountTransactionStreamMessage'
+              examples:
+                Stream:
+                  summary: An Event, a keepalive line and Ended
+                  serializedValue: |
+                    {"type":"Event","timestamp":"2026-10-26T08:20:00.120Z","data":{"id":"trade-fee:7f3a","effectiveAt":"2026-10-26T08:20:00.104Z","amount":{"asset":"USDT","value":"-0.055"},"type":"TradingFee","instrument":{"type":"Perp","base":"BTC","quote":"USDT"},"orderId":"BTC-USDT-PERP|0b6c1e52-2f7e-4c55-9d43-1c1a9b6f2e10","fillId":"fill-91","positionId":null,"groupId":"trade:BTC-USDT-PERP:fill-91","nativeType":"TRADE_FEE","description":null}}
+
+                    {"type":"Ended","code":"UpstreamFailure","message":"Upstream stream ended"}
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -3784,15 +4329,15 @@ components:
           anyOf:
           - $ref: '#/components/schemas/AssetValue'
           - type: 'null'
-          description: Profit or loss if the position closed at markPrice, in the settlement asset; null if the host
-            does not supply it or the side is flat.
+          description: Profit or loss if the position closed at markPrice, in the settlement asset; null if the host does
+            not supply it or the side is flat.
       required:
       - size
       - entryPrice
       - markPrice
       - unrealizedPnl
-      description: 'One side of a position: its size and, when the host reports them, its entry price, mark price and
-        unrealized profit or loss.'
+      description: 'One side of a position: its size and, when the host reports them, its entry price, mark price and unrealized
+        profit or loss.'
     PositionMode:
       type: string
       enum:
@@ -6068,6 +6613,15 @@ components:
       - accountId
       - query
       description: Lists the account's live orders.
+    SubscribeToAccountOrdersRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: The account to stream.
+      required:
+      - accountId
+      description: Streams one account's order changes.
     ListOpenPositionsQuery:
       type: object
       properties:
@@ -6579,17 +7133,23 @@ components:
       properties:
         getOrderBook:
           $ref: '#/components/schemas/Supported'
+        subscribeToOrderBooks:
+          $ref: '#/components/schemas/Supported'
       required:
       - getOrderBook
-      description: GetOrderBook; supported on every venue.
+      - subscribeToOrderBooks
+      description: GetOrderBook and the order book stream; supported on every venue.
     TradesCapabilities:
       type: object
       properties:
         getRecentTrades:
           $ref: '#/components/schemas/Supported'
+        subscribeToTrades:
+          $ref: '#/components/schemas/Supported'
       required:
       - getRecentTrades
-      description: GetRecentTrades; supported on every venue.
+      - subscribeToTrades
+      description: GetRecentTrades and the trades stream; supported on every venue.
     PricesCapabilities:
       type: object
       properties:
@@ -6609,49 +7169,67 @@ components:
       properties:
         getPrices:
           $ref: '#/components/schemas/OperationSupport'
+        subscribeToPrices:
+          $ref: '#/components/schemas/OperationSupport'
       required:
       - getPrices
-      description: Whether the venue serves GetPrices for this price kind.
+      - subscribeToPrices
+      description: Whether the venue serves GetPrices and SubscribeToPrices for this price kind.
     BestQuoteCapabilities:
       type: object
       properties:
         getBestQuotes:
           $ref: '#/components/schemas/OperationSupport'
+        subscribeToBestQuotes:
+          $ref: '#/components/schemas/OperationSupport'
       required:
       - getBestQuotes
-      description: Whether the venue serves GetBestQuotes.
+      - subscribeToBestQuotes
+      description: Whether the venue serves GetBestQuotes and SubscribeToBestQuotes.
     MarketStatisticsCapabilities:
       type: object
       properties:
         getMarketStatistics:
           $ref: '#/components/schemas/OperationSupport'
+        subscribeToMarketStatistics:
+          $ref: '#/components/schemas/OperationSupport'
       required:
       - getMarketStatistics
-      description: Whether the venue serves GetMarketStatistics.
+      - subscribeToMarketStatistics
+      description: Whether the venue serves GetMarketStatistics and SubscribeToMarketStatistics.
     IndicativeFundingCapabilities:
       type: object
       properties:
         getIndicativeFundings:
           $ref: '#/components/schemas/OperationSupport'
+        subscribeToIndicativeFundings:
+          $ref: '#/components/schemas/OperationSupport'
       required:
       - getIndicativeFundings
-      description: Whether the venue serves GetIndicativeFundings.
+      - subscribeToIndicativeFundings
+      description: Whether the venue serves GetIndicativeFundings and SubscribeToIndicativeFundings.
     OpenInterestCapabilities:
       type: object
       properties:
         getOpenInterests:
           $ref: '#/components/schemas/OperationSupport'
+        subscribeToOpenInterests:
+          $ref: '#/components/schemas/OperationSupport'
       required:
       - getOpenInterests
-      description: Whether the venue serves GetOpenInterests.
+      - subscribeToOpenInterests
+      description: Whether the venue serves GetOpenInterests and SubscribeToOpenInterests.
     CandlesCapabilities:
       type: object
       properties:
         listCandles:
           $ref: '#/components/schemas/ListCandlesCapabilities'
+        subscribeToCandles:
+          $ref: '#/components/schemas/OperationSupport'
       required:
       - listCandles
-      description: Whether the venue serves ListCandles, and which variants.
+      - subscribeToCandles
+      description: Whether the venue serves ListCandles, and which variants, and SubscribeToCandles.
     ListCandlesCapabilities:
       type: object
       properties:
@@ -6727,8 +7305,12 @@ components:
         get:
           type: boolean
           description: GetPrices for this kind on this market.
+        subscribe:
+          type: boolean
+          description: SubscribeToPrices for this kind on this market.
       required:
       - get
+      - subscribe
       description: How this market supports one price kind.
     BestQuoteSpec:
       type: object
@@ -6739,9 +7321,13 @@ components:
         get:
           type: boolean
           description: GetBestQuotes on this market.
+        subscribe:
+          type: boolean
+          description: SubscribeToBestQuotes on this market.
       required:
       - supportsSizes
       - get
+      - subscribe
       description: How this market supports best bid and ask reads.
     StatisticsSpec:
       type: object
@@ -6758,10 +7344,14 @@ components:
         get:
           type: boolean
           description: GetMarketStatistics on this market.
+        subscribe:
+          type: boolean
+          description: SubscribeToMarketStatistics on this market.
       required:
       - window
       - supportedFields
       - get
+      - subscribe
       description: 'How this market supports statistics reads: the window and the fields the venue reports.'
     IndicativeFundingSpec:
       type: object
@@ -6769,8 +7359,12 @@ components:
         get:
           type: boolean
           description: GetIndicativeFundings on this market.
+        subscribe:
+          type: boolean
+          description: SubscribeToIndicativeFundings on this market.
       required:
       - get
+      - subscribe
       description: How this market supports indicative funding reads.
     OpenInterestSpec:
       type: object
@@ -6780,9 +7374,13 @@ components:
         get:
           type: boolean
           description: GetOpenInterests on this market.
+        subscribe:
+          type: boolean
+          description: SubscribeToOpenInterests on this market.
       required:
       - unit
       - get
+      - subscribe
       description: How this market supports open interest reads, and the unit they are reported in.
     CandlesSpec:
       type: object
@@ -6832,11 +7430,15 @@ components:
         listBefore:
           type: boolean
           description: ListCandles.ByInstrumentBefore, and continuing past the first page.
+        subscribe:
+          type: boolean
+          description: SubscribeToCandles for this series, at every supported interval.
       required:
       - supportedIntervals
       - maxHistoryAgeByInterval
       - list
       - listBefore
+      - subscribe
       description: One price kind's candles on one market. At least one of list and listBefore is true.
     PriceKind:
       type: string
@@ -6967,6 +7569,36 @@ components:
       - price
       - size
       description: 'One price level of an order book: a price and the total size resting there.'
+    OrderBookLevels:
+      type: object
+      properties:
+        bids:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderBookLevel'
+          description: Best (highest) price first.
+        asks:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderBookLevel'
+          description: Best (lowest) price first.
+        observedAt:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          description: Venue time of these levels; null when the venue does not report it.
+        receivedAt:
+          type: string
+          format: date-time
+          description: When Plurex received these levels.
+      required:
+      - bids
+      - asks
+      - observedAt
+      - receivedAt
+      description: Order book levels on the order book stream. In a Reset they are the whole book, best price first; in an
+        Update only the levels that changed, each with its new total size, where size 0 removes the level.
     GetRecentTradesQuery:
       type: object
       properties:
@@ -6978,6 +7610,103 @@ components:
       - venueId
       - instrument
       description: Gets the most recent public trades of one market on a venue.
+    SubscribeToOrderBooksRequest:
+      type: object
+      properties:
+        venueId:
+          type: string
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+      required:
+      - venueId
+      - instrument
+      description: Streams one market's order book on a venue.
+    SubscribeToTradesRequest:
+      type: object
+      properties:
+        venueId:
+          type: string
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+      required:
+      - venueId
+      - instrument
+      description: Streams one market's public trades on a venue.
+    SubscribeToPricesRequest:
+      type: object
+      properties:
+        venueId:
+          type: string
+        kind:
+          $ref: '#/components/schemas/PriceKind'
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+      required:
+      - venueId
+      - kind
+      - instrument
+      description: Streams one market's price on a venue.
+    SubscribeToBestQuotesRequest:
+      type: object
+      properties:
+        venueId:
+          type: string
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+      required:
+      - venueId
+      - instrument
+      description: Streams one market's best bid and ask on a venue.
+    SubscribeToMarketStatisticsRequest:
+      type: object
+      properties:
+        venueId:
+          type: string
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+      required:
+      - venueId
+      - instrument
+      description: Streams one market's statistics on a venue.
+    SubscribeToIndicativeFundingsRequest:
+      type: object
+      properties:
+        venueId:
+          type: string
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+      required:
+      - venueId
+      - instrument
+      description: Streams one market's indicative funding on a venue.
+    SubscribeToOpenInterestsRequest:
+      type: object
+      properties:
+        venueId:
+          type: string
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+      required:
+      - venueId
+      - instrument
+      description: Streams one market's open interest on a venue.
+    SubscribeToCandlesRequest:
+      type: object
+      properties:
+        venueId:
+          type: string
+        priceKind:
+          $ref: '#/components/schemas/PriceKind'
+        interval:
+          $ref: '#/components/schemas/CandleInterval'
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+      required:
+      - venueId
+      - priceKind
+      - interval
+      - instrument
+      description: Streams one market's candles of one price kind at one interval on a venue.
     RecentTrades:
       type: object
       properties:
@@ -7025,6 +7754,18 @@ components:
       - observedAt
       - receivedAt
       description: A public trade print. Trades carry no identity.
+    PublicTrades:
+      type: object
+      properties:
+        trades:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicTrade'
+          description: Oldest first.
+      required:
+      - trades
+      description: Public trades on the trades stream. In a Reset they are the recent trades, which can include trades an
+        earlier Update already delivered; in an Update they are new trades.
     GetPricesQuery:
       type: object
       properties:
@@ -7388,6 +8129,26 @@ components:
       required:
       - price
       description: A price of the requested kind.
+    PriceObservation:
+      type: object
+      properties:
+        value:
+          $ref: '#/components/schemas/Price'
+        observedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Venue time of the value; null when the venue gives none.
+        receivedAt:
+          type: string
+          format: date-time
+          description: When Plurex received the value.
+      required:
+      - value
+      - observedAt
+      - receivedAt
+      description: The price of the streamed market, with when the venue reported it and when Plurex received it.
     BestQuote:
       type: object
       properties:
@@ -7405,6 +8166,26 @@ components:
       - bid
       - ask
       description: The best bid and best ask of a market.
+    BestQuoteObservation:
+      type: object
+      properties:
+        value:
+          $ref: '#/components/schemas/BestQuote'
+        observedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Venue time of the value; null when the venue gives none.
+        receivedAt:
+          type: string
+          format: date-time
+          description: When Plurex received the value.
+      required:
+      - value
+      - observedAt
+      - receivedAt
+      description: The best bid and ask of the streamed market, with when the venue reported it and when Plurex received it.
     QuoteLevel:
       type: object
       properties:
@@ -7463,6 +8244,26 @@ components:
       - volumeBase
       - volumeQuote
       description: Venue-reported statistics over window. Fields outside StatisticsSpec.supportedFields are always null.
+    MarketStatisticsObservation:
+      type: object
+      properties:
+        value:
+          $ref: '#/components/schemas/MarketStatistics'
+        observedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Venue time of the value; null when the venue gives none.
+        receivedAt:
+          type: string
+          format: date-time
+          description: When Plurex received the value.
+      required:
+      - value
+      - observedAt
+      - receivedAt
+      description: The statistics of the streamed market, with when the venue reported it and when Plurex received it.
     IndicativeFunding:
       type: object
       properties:
@@ -7481,6 +8282,27 @@ components:
       - rate
       - nextFundingTime
       description: The funding rate the venue currently indicates for the next funding, and when that funding happens.
+    IndicativeFundingObservation:
+      type: object
+      properties:
+        value:
+          $ref: '#/components/schemas/IndicativeFunding'
+        observedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Venue time of the value; null when the venue gives none.
+        receivedAt:
+          type: string
+          format: date-time
+          description: When Plurex received the value.
+      required:
+      - value
+      - observedAt
+      - receivedAt
+      description: The indicative funding of the streamed market, with when the venue reported it and when Plurex received
+        it.
     OpenInterest:
       type: object
       properties:
@@ -7495,6 +8317,26 @@ components:
       - amount
       - unit
       description: The total size of open positions in a market, in unit.
+    OpenInterestObservation:
+      type: object
+      properties:
+        value:
+          $ref: '#/components/schemas/OpenInterest'
+        observedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Venue time of the value; null when the venue gives none.
+        receivedAt:
+          type: string
+          format: date-time
+          description: When Plurex received the value.
+      required:
+      - value
+      - observedAt
+      - receivedAt
+      description: The open interest of the streamed market, with when the venue reported it and when Plurex received it.
     ListCandlesQuery:
       type: object
       properties:
@@ -7600,6 +8442,18 @@ components:
       - volume
       - turnover
       description: OHLC for [startAt, endAt).
+    Candles:
+      type: object
+      properties:
+        candles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Candle'
+          description: Oldest first.
+      required:
+      - candles
+      description: Candles on the candle stream. In a Reset they are the recent candles, ending with the current one; in an
+        Update, the current candle alone.
     Wallet:
       type: object
       properties:
@@ -7984,186 +8838,10 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/PaperFeeRates'
-    AccountStreamTopic:
-      type: object
-      properties:
-        accountId:
-          type: string
-          description: The account to stream.
-      required:
-      - accountId
-      description: One account on an account stream. Requires access to the account.
-    AccountStreamControl:
-      oneOf:
-      - $ref: '#/components/schemas/AccountStreamSubscribe'
-      - $ref: '#/components/schemas/AccountStreamUnsubscribe'
-      discriminator:
-        propertyName: type
-        mapping:
-          Subscribe: '#/components/schemas/AccountStreamSubscribe'
-          Unsubscribe: '#/components/schemas/AccountStreamUnsubscribe'
-      description: A message the client sends on an account stream.
-    AccountStreamSubscribe:
-      title: Subscribe
-      type: object
-      properties:
-        id:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Your ID for this request, echoed on its reply.
-        topics:
-          type: array
-          items:
-            $ref: '#/components/schemas/AccountStreamTopic'
-          minItems: 1
-          maxItems: 25
-          description: Accounts to stream, 1 to 25 per message. A connection streams at most 25 accounts in total; accounts
-            beyond that are Rejected with InvalidRequest.
-        type:
-          type: string
-          enum:
-          - Subscribe
-          description: Always Subscribe.
-      required:
-      - type
-      - id
-      - topics
-      description: Start streaming these accounts. The reply is a Rejected for each refused account, then one Subscribed listing
-        the accounts now streaming; their events follow it. An account already streaming is listed again without a second
-        stream.
-    AccountStreamUnsubscribe:
-      title: Unsubscribe
-      type: object
-      properties:
-        id:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Your ID for this request, echoed on its reply.
-        topics:
-          type: array
-          items:
-            $ref: '#/components/schemas/AccountStreamTopic'
-          minItems: 1
-          description: Accounts to stop streaming; at least one.
-        type:
-          type: string
-          enum:
-          - Unsubscribe
-          description: Always Unsubscribe.
-      required:
-      - type
-      - id
-      - topics
-      description: Stop streaming these accounts. The reply is one Unsubscribed, after which nothing more arrives for them.
-        Accounts that are not streaming are acknowledged too.
-    AccountStreamSubscribed:
-      title: Subscribed
-      type: object
-      properties:
-        id:
-          type: string
-          description: The id of the request this replies to.
-        topics:
-          type: array
-          items:
-            $ref: '#/components/schemas/AccountStreamTopic'
-          description: The accounts now streaming from this request; empty when every account was refused.
-        type:
-          type: string
-          enum:
-          - Subscribed
-          description: Always Subscribed.
-      required:
-      - type
-      - id
-      - topics
-      description: Reply to Subscribe. Events for these accounts follow this message.
-    AccountStreamUnsubscribed:
-      title: Unsubscribed
-      type: object
-      properties:
-        id:
-          type: string
-          description: The id of the request this replies to.
-        topics:
-          type: array
-          items:
-            $ref: '#/components/schemas/AccountStreamTopic'
-          description: The accounts no longer streaming, as listed in the Unsubscribe.
-        type:
-          type: string
-          enum:
-          - Unsubscribed
-          description: Always Unsubscribed.
-      required:
-      - type
-      - id
-      - topics
-      description: Reply to Unsubscribe. Nothing more arrives for these accounts.
-    AccountStreamRejected:
-      title: Rejected
-      type: object
-      properties:
-        id:
-          type: string
-          description: The id of the request this replies to.
-        topic:
-          $ref: '#/components/schemas/AccountStreamTopic'
-          description: The refused account, as you sent it.
-        code:
-          $ref: '#/components/schemas/ErrorCode'
-          description: 'Why the account was refused: for example Forbidden for an account you cannot access, NotSupported
-            when the host does not stream it, or InvalidRequest beyond 25 accounts.'
-        message:
-          type: string
-          description: Readable detail for logs; do not parse it.
-        type:
-          type: string
-          enum:
-          - Rejected
-          description: Always Rejected.
-      required:
-      - type
-      - id
-      - topic
-      - code
-      - message
-      description: One account in a Subscribe was refused, for example AccountNotFound, Forbidden, or NotSupported when the
-        host does not stream it. Sent before the request's Subscribed; the connection stays open.
-    AccountStreamEnded:
-      title: Ended
-      type: object
-      properties:
-        topic:
-          $ref: '#/components/schemas/AccountStreamTopic'
-          description: The account that stopped streaming.
-        code:
-          $ref: '#/components/schemas/ErrorCode'
-          description: Why it stopped, for example UpstreamFailure when the host's own feed ended.
-        message:
-          type: string
-          description: Readable detail for logs; do not parse it.
-        type:
-          type: string
-          enum:
-          - Ended
-          description: Always Ended.
-      required:
-      - type
-      - topic
-      - code
-      - message
-      description: 'The account stopped streaming, for example because the host''s own feed ended (UpstreamFailure). Nothing
-        more arrives for it: read current state through the REST API, then subscribe again.'
     AccountOrderStreamEvent:
       title: Event
       type: object
       properties:
-        topic:
-          $ref: '#/components/schemas/AccountStreamTopic'
-          description: The account this event belongs to.
         timestamp:
           type: string
           format: date-time
@@ -8178,26 +8856,19 @@ components:
           description: Always Event.
       required:
       - type
-      - topic
       - timestamp
       - data
-      description: One order change on a streaming account.
+      description: One order change on the account.
     AccountOrderStreamMessage:
       oneOf:
       - $ref: '#/components/schemas/AccountOrderStreamEvent'
-      - $ref: '#/components/schemas/AccountStreamEnded'
-      - $ref: '#/components/schemas/AccountStreamRejected'
-      - $ref: '#/components/schemas/AccountStreamSubscribed'
-      - $ref: '#/components/schemas/AccountStreamUnsubscribed'
+      - $ref: '#/components/schemas/StreamEnded'
       discriminator:
         propertyName: type
         mapping:
-          Subscribed: '#/components/schemas/AccountStreamSubscribed'
-          Unsubscribed: '#/components/schemas/AccountStreamUnsubscribed'
-          Rejected: '#/components/schemas/AccountStreamRejected'
-          Ended: '#/components/schemas/AccountStreamEnded'
           Event: '#/components/schemas/AccountOrderStreamEvent'
-      description: A message the server sends on the account orders stream.
+          Ended: '#/components/schemas/StreamEnded'
+      description: One line of the account orders stream.
     AccountTransaction:
       type: object
       properties:
@@ -8312,20 +8983,26 @@ components:
       required:
       - accountId
       description: Lists the account's balance postings.
+    SubscribeToAccountTransactionsRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: The account to stream.
+      required:
+      - accountId
+      description: Streams one account's new balance postings.
     AccountTransactionStreamEvent:
       title: Event
       type: object
       properties:
-        topic:
-          $ref: '#/components/schemas/AccountStreamTopic'
-          description: The account this event belongs to.
         timestamp:
           type: string
           format: date-time
           description: When Plurex sent the event.
         data:
           $ref: '#/components/schemas/AccountTransaction'
-          description: The new posting, as ListTransactions returns it.
+          description: The posting, as ListTransactions returns it.
         type:
           type: string
           enum:
@@ -8333,26 +9010,483 @@ components:
           description: Always Event.
       required:
       - type
-      - topic
       - timestamp
       - data
-      description: One new balance posting on a streaming account.
+      description: One new balance posting on the account.
     AccountTransactionStreamMessage:
       oneOf:
-      - $ref: '#/components/schemas/AccountStreamEnded'
-      - $ref: '#/components/schemas/AccountStreamRejected'
-      - $ref: '#/components/schemas/AccountStreamSubscribed'
-      - $ref: '#/components/schemas/AccountStreamUnsubscribed'
       - $ref: '#/components/schemas/AccountTransactionStreamEvent'
+      - $ref: '#/components/schemas/StreamEnded'
       discriminator:
         propertyName: type
         mapping:
-          Subscribed: '#/components/schemas/AccountStreamSubscribed'
-          Unsubscribed: '#/components/schemas/AccountStreamUnsubscribed'
-          Rejected: '#/components/schemas/AccountStreamRejected'
-          Ended: '#/components/schemas/AccountStreamEnded'
           Event: '#/components/schemas/AccountTransactionStreamEvent'
-      description: A message the server sends on the account transactions stream.
+          Ended: '#/components/schemas/StreamEnded'
+      description: One line of the account transactions stream.
+    StreamEnded:
+      title: Ended
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+          description: Why the stream stopped, for example UpstreamFailure when the venue's or host's own feed ended.
+        message:
+          type: string
+          description: Readable detail for logs; do not parse it.
+        type:
+          type: string
+          enum:
+          - Ended
+          description: Always Ended.
+      required:
+      - type
+      - code
+      - message
+      description: 'The last line of every stream: it stopped, and nothing more follows. Read current state and open it again.'
+    OrderBookStreamReset:
+      title: Reset
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/OrderBookLevels'
+          description: The whole book.
+        type:
+          type: string
+          enum:
+          - Reset
+          description: Always Reset.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The market's whole order book, replacing any book you hold. The first line of the stream, and sent again
+        whenever the stream has to resynchronize.
+    OrderBookStreamUpdate:
+      title: Update
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/OrderBookLevels'
+          description: The changed levels; size 0 removes a level.
+        type:
+          type: string
+          enum:
+          - Update
+          description: Always Update.
+      required:
+      - type
+      - timestamp
+      - data
+      description: 'Changed levels to apply to the book from the last Reset: set each level to its new size and remove levels
+        with size 0. Levels not listed are unchanged.'
+    OrderBookStreamMessage:
+      oneOf:
+      - $ref: '#/components/schemas/OrderBookStreamReset'
+      - $ref: '#/components/schemas/OrderBookStreamUpdate'
+      - $ref: '#/components/schemas/StreamEnded'
+      discriminator:
+        propertyName: type
+        mapping:
+          Reset: '#/components/schemas/OrderBookStreamReset'
+          Update: '#/components/schemas/OrderBookStreamUpdate'
+          Ended: '#/components/schemas/StreamEnded'
+      description: One line of the order book stream.
+    TradeStreamReset:
+      title: Reset
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/PublicTrades'
+          description: The recent trades, oldest first.
+        type:
+          type: string
+          enum:
+          - Reset
+          description: Always Reset.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The market's recent trades, replacing any trade history you hold; they can repeat trades an Update already
+        delivered, so do not add them to running totals. The first line of the stream, and sent again whenever the stream
+        has to resynchronize.
+    TradeStreamUpdate:
+      title: Update
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/PublicTrades'
+          description: New trades, oldest first.
+        type:
+          type: string
+          enum:
+          - Update
+          description: Always Update.
+      required:
+      - type
+      - timestamp
+      - data
+      description: New trades on the market, after those of the last Reset.
+    TradeStreamMessage:
+      oneOf:
+      - $ref: '#/components/schemas/TradeStreamReset'
+      - $ref: '#/components/schemas/TradeStreamUpdate'
+      - $ref: '#/components/schemas/StreamEnded'
+      discriminator:
+        propertyName: type
+        mapping:
+          Reset: '#/components/schemas/TradeStreamReset'
+          Update: '#/components/schemas/TradeStreamUpdate'
+          Ended: '#/components/schemas/StreamEnded'
+      description: One line of the trades stream.
+    PriceStreamReset:
+      title: Reset
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Reset
+          description: Always Reset.
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/PriceObservation'
+          description: The current value.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The current price, replacing any value you hold. The first line of the stream, and sent again whenever
+        the stream has to resynchronize.
+    PriceStreamUpdate:
+      title: Update
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Update
+          description: Always Update.
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/PriceObservation'
+          description: The complete new value.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The price changed. The value is complete, so a field that is now null was cleared.
+    PriceStreamMessage:
+      oneOf:
+      - $ref: '#/components/schemas/PriceStreamReset'
+      - $ref: '#/components/schemas/PriceStreamUpdate'
+      - $ref: '#/components/schemas/StreamEnded'
+      discriminator:
+        propertyName: type
+        mapping:
+          Reset: '#/components/schemas/PriceStreamReset'
+          Update: '#/components/schemas/PriceStreamUpdate'
+          Ended: '#/components/schemas/StreamEnded'
+      description: One line of the price stream.
+    BestQuoteStreamReset:
+      title: Reset
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Reset
+          description: Always Reset.
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/BestQuoteObservation'
+          description: The current value.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The current best bid and ask, replacing any value you hold. The first line of the stream, and sent again
+        whenever the stream has to resynchronize.
+    BestQuoteStreamUpdate:
+      title: Update
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Update
+          description: Always Update.
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/BestQuoteObservation'
+          description: The complete new value.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The best bid and ask changed. The value is complete, so a field that is now null was cleared.
+    BestQuoteStreamMessage:
+      oneOf:
+      - $ref: '#/components/schemas/BestQuoteStreamReset'
+      - $ref: '#/components/schemas/BestQuoteStreamUpdate'
+      - $ref: '#/components/schemas/StreamEnded'
+      discriminator:
+        propertyName: type
+        mapping:
+          Reset: '#/components/schemas/BestQuoteStreamReset'
+          Update: '#/components/schemas/BestQuoteStreamUpdate'
+          Ended: '#/components/schemas/StreamEnded'
+      description: One line of the best bid and ask stream.
+    MarketStatisticsStreamReset:
+      title: Reset
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Reset
+          description: Always Reset.
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/MarketStatisticsObservation'
+          description: The current value.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The current statistics, replacing any value you hold. The first line of the stream, and sent again whenever
+        the stream has to resynchronize.
+    MarketStatisticsStreamUpdate:
+      title: Update
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Update
+          description: Always Update.
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/MarketStatisticsObservation'
+          description: The complete new value.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The statistics changed. The value is complete, so a field that is now null was cleared.
+    MarketStatisticsStreamMessage:
+      oneOf:
+      - $ref: '#/components/schemas/MarketStatisticsStreamReset'
+      - $ref: '#/components/schemas/MarketStatisticsStreamUpdate'
+      - $ref: '#/components/schemas/StreamEnded'
+      discriminator:
+        propertyName: type
+        mapping:
+          Reset: '#/components/schemas/MarketStatisticsStreamReset'
+          Update: '#/components/schemas/MarketStatisticsStreamUpdate'
+          Ended: '#/components/schemas/StreamEnded'
+      description: One line of the statistics stream.
+    IndicativeFundingStreamReset:
+      title: Reset
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Reset
+          description: Always Reset.
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/IndicativeFundingObservation'
+          description: The current value.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The current indicative funding, replacing any value you hold. The first line of the stream, and sent again
+        whenever the stream has to resynchronize.
+    IndicativeFundingStreamUpdate:
+      title: Update
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Update
+          description: Always Update.
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/IndicativeFundingObservation'
+          description: The complete new value.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The indicative funding changed. The value is complete, so a field that is now null was cleared.
+    IndicativeFundingStreamMessage:
+      oneOf:
+      - $ref: '#/components/schemas/IndicativeFundingStreamReset'
+      - $ref: '#/components/schemas/IndicativeFundingStreamUpdate'
+      - $ref: '#/components/schemas/StreamEnded'
+      discriminator:
+        propertyName: type
+        mapping:
+          Reset: '#/components/schemas/IndicativeFundingStreamReset'
+          Update: '#/components/schemas/IndicativeFundingStreamUpdate'
+          Ended: '#/components/schemas/StreamEnded'
+      description: One line of the indicative funding stream.
+    OpenInterestStreamReset:
+      title: Reset
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Reset
+          description: Always Reset.
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/OpenInterestObservation'
+          description: The current value.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The current open interest, replacing any value you hold. The first line of the stream, and sent again whenever
+        the stream has to resynchronize.
+    OpenInterestStreamUpdate:
+      title: Update
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Update
+          description: Always Update.
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/OpenInterestObservation'
+          description: The complete new value.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The open interest changed. The value is complete, so a field that is now null was cleared.
+    OpenInterestStreamMessage:
+      oneOf:
+      - $ref: '#/components/schemas/OpenInterestStreamReset'
+      - $ref: '#/components/schemas/OpenInterestStreamUpdate'
+      - $ref: '#/components/schemas/StreamEnded'
+      discriminator:
+        propertyName: type
+        mapping:
+          Reset: '#/components/schemas/OpenInterestStreamReset'
+          Update: '#/components/schemas/OpenInterestStreamUpdate'
+          Ended: '#/components/schemas/StreamEnded'
+      description: One line of the open interest stream.
+    CandleStreamReset:
+      title: Reset
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Reset
+          description: Always Reset.
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/Candles'
+          description: The recent candles, oldest first, ending with the current one.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The market's recent candles, replacing any you hold for this stream. The last is the current candle, still
+        forming. The first line of the stream, and sent again whenever the stream has to resynchronize; read older candles
+        with ListCandles.
+    CandleStreamUpdate:
+      title: Update
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - Update
+          description: Always Update.
+        timestamp:
+          type: string
+          format: date-time
+          description: When Plurex sent the event.
+        data:
+          $ref: '#/components/schemas/Candles'
+          description: The current candle.
+      required:
+      - type
+      - timestamp
+      - data
+      description: The current candle changed. A candle with the same startAt replaces the current one; a later startAt completes
+        it and starts the next. Updates never move back in time.
+    CandleStreamMessage:
+      oneOf:
+      - $ref: '#/components/schemas/CandleStreamReset'
+      - $ref: '#/components/schemas/CandleStreamUpdate'
+      - $ref: '#/components/schemas/StreamEnded'
+      discriminator:
+        propertyName: type
+        mapping:
+          Reset: '#/components/schemas/CandleStreamReset'
+          Update: '#/components/schemas/CandleStreamUpdate'
+          Ended: '#/components/schemas/StreamEnded'
+      description: One line of the candle stream.
     ErrorCode:
       type: string
       enum:

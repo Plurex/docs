@@ -1,0 +1,14 @@
+---
+title: "Stream open interest"
+description: "Streams one derivative's open interest, in the unit its market declares: a Reset with the current amount, then an Update whenever it changes. A market the venue does not stream returns 422 NotSupported."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/stream/SubscribeToOpenInterests"
+playground: "none"
+---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "stream", "label": "Stream", "description": "The response stays open and carries one JSON message per line until an Ended line."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}]} />
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.openInterest.subscribeToOpenInterests", "support": true}]} market={[{"path": "marketData.openInterest.subscribe", "note": "true when the market streams open interest"}]} perMarket />

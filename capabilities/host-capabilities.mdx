@@ -5,11 +5,13 @@ description: "Every capability in a host's header, the request variant each one 
 
 A host's header capabilities say which account operations and variants it supports. They cover orders, fills, market settings, the order stream and transactions. Order types, order rules and per-market settings are on each market instead; see [Market order rules](/capabilities/order-rules).
 
-Read them with [List hosts](/api-reference/platform/hosts/list). It is public and paged:
+Read them with [List hosts](/api-reference/platform/hosts/list). It is paged:
 
 ```bash
 curl --request POST https://api.plurex.io/api/v1/hosts/query/List \
   --header 'Content-Type: application/json' \
+  --header "X-API-KEY: $PLUREX_API_KEY" \
+  --header "X-API-SECRET: $PLUREX_API_SECRET" \
   --data '{}'
 ```
 
@@ -105,11 +107,11 @@ Settings are described per market, so these leaves are `PerMarket` or `NotSuppor
 
 ## accountOrders
 
-The order stream, [Subscribe to account orders](/api-reference/platform/hosts/subscribe-to-account-orders), pushes order changes as they happen.
+The order stream, [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders), follows one account's order changes as they happen.
 
 | Field | Meaning |
 | --- | --- |
-| [`subscribeToAccountOrders`](/api-reference/platform/hosts/subscribe-to-account-orders) | Whether the host offers the order stream. |
+| [`subscribeToAccountOrders`](/api-reference/platform/hosts/subscribe-to-account-orders) | Whether the host offers the order stream. When it is `NotSupported`, opening the stream returns `422 NotSupported`. |
 | [`changes`](/api-reference/platform/hosts/subscribe-to-account-orders) | The `OrderStreamChangeType` values the stream sends: `Created`, `FillApplied`, `Cancelled`, `Rejected`. Empty when the stream is not supported. |
 | [`includesFillDetails`](/api-reference/platform/hosts/subscribe-to-account-orders) | Whether `FillApplied` events carry the individual execution in `fill`. |
 
@@ -292,4 +294,4 @@ curl --request POST https://api.plurex.io/api/v1/hosts/query/GetOrder \
   }'
 ```
 
-If the host supports the order stream, subscribe before you submit: a `Created` event for your `clientOrderId` answers the question without any lookup. If you need to cancel instead of find, the same choice applies to `cancelOrder.byClientOrderId` and `cancelOrder.byClientOrderIdForInstrument`. See [Orders](/guides/orders) for the full order lifecycle.
+If the host supports the order stream, open it before you submit: a `Created` event for your `clientOrderId` answers the question without any lookup. If you need to cancel instead of find, the same choice applies to `cancelOrder.byClientOrderId` and `cancelOrder.byClientOrderIdForInstrument`. See [Orders](/guides/orders) for the full order lifecycle.

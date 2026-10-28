@@ -7,11 +7,13 @@ Every market a host lists has a **host market summary**: the order types it acce
 
 Plurex validates orders against exactly these published rules and never rounds your inputs. An order that follows them is passed to the host; one that breaks them returns `422 Rejected` without reaching the host.
 
-Read summaries with [List host markets](/api-reference/platform/hosts/list-markets). It is public and paged, and takes optional filters:
+Read summaries with [List host markets](/api-reference/platform/hosts/list-markets). It is paged and takes optional filters:
 
 ```bash
 curl --request POST https://api.plurex.io/api/v1/hosts/query/ListMarkets \
   --header 'Content-Type: application/json' \
+  --header "X-API-KEY: $PLUREX_API_KEY" \
+  --header "X-API-SECRET: $PLUREX_API_SECRET" \
   --data '{ "hostId": "bybit", "base": "BTC", "types": ["Perp"] }'
 ```
 

@@ -3,3 +3,7 @@ title: "Delete an account"
 description: "Deletes an account. Repeating after success returns 404 AccountNotFound."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/accounts/command/Delete"
 ---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "command", "label": "Command", "description": "Changes state. Safe to repeat unless it has the Not safe to repeat badge."}]} />

@@ -17,14 +17,14 @@ Plurex does not hide these differences behind behaviour you have to discover. Ev
 
 ## Where capabilities live
 
-Capabilities come in two levels: the **header** of each host or venue, and the **summary** of each of its markets. All four are read with public discovery operations that need no API key. All of them are paged: follow `nextCursor` until it is `null`.
+Capabilities come in two levels: the **header** of each host or venue, and the **summary** of each of its markets. All four are read with the discovery operations, which need an API key like every operation. All of them are paged: follow `nextCursor` until it is `null`.
 
 | Level | Field | Read with | Describes |
 | --- | --- | --- | --- |
 | Host header | `HostHeader.capabilities` | [List hosts](/api-reference/platform/hosts/list) | Order queries and commands, fills, market settings, the order stream and transactions |
 | Host market | `HostMarketSummary.orderTypes`, `.settings`, `.contractDetails` | [List host markets](/api-reference/platform/hosts/list-markets) | Which order types the market accepts, each input's rules and options, leverage and position mode |
-| Venue header | `VenueHeader.capabilities` | [List venues](/api-reference/platform/venues/list) | Order book, trades, prices, best quotes, statistics, funding, open interest and candles |
-| Venue market | `VenueMarketSummary.marketData` | [List venue markets](/api-reference/platform/venues/list-markets) | Which market-data reads the market supports, and on what terms |
+| Venue header | `VenueHeader.capabilities` | [List venues](/api-reference/platform/venues/list) | Order book, trades, prices, best quotes, statistics, funding, open interest and candles, each as a read and a stream |
+| Venue market | `VenueMarketSummary.marketData` | [List venue markets](/api-reference/platform/venues/list-markets) | Which market-data reads and streams the market supports, and on what terms |
 
 A venue market tells you what is trading. The matching host market tells you how you can trade it: the order types it accepts and their order rules. A host market names its venue in `venueId`, so you can join it to the venue market with the same `instrument`.
 
@@ -95,7 +95,7 @@ A minimal trading loop works on every host and every venue. These entries are al
 | --- | --- |
 | Every host market | Limit orders: `orderTypes.limit` is never `null` |
 | Every host | `orders.getOrder.byId`, `orders.cancelOrder.byId` |
-| Every venue | `orderBook.getOrderBook`, `trades.getRecentTrades` |
+| Every venue | `orderBook.getOrderBook`, `orderBook.subscribeToOrderBooks`, `trades.getRecentTrades`, `trades.subscribeToTrades` |
 
 Some operations have no capability entry because every host offers them: [SubmitOrder](/api-reference/platform/hosts/submit-order) itself (the market's `orderTypes` say which order types it accepts), [ListWallets](/api-reference/platform/hosts/list-wallets), [ListOpenPositions](/api-reference/platform/hosts/list-positions), [ListAccountMarginStates](/api-reference/platform/hosts/list-margin-states), [GetAccountMarketState](/api-reference/platform/hosts/get-market-state), and the List and ListMarkets discovery operations.
 
@@ -169,7 +169,7 @@ def can_get_order_by_client_id(host):
 Use `Decimal` (or your language's exact decimal type) for every comparison. Values arrive as JSON strings such as `"0.01"`; binary floating point will misjudge whole multiples.
 
 <Note>
-Today, market settings in the host header are always `PerMarket` or `NotSupported`, because settings are described per market. Venue market-data reads other than the order book and trades are likewise `PerMarket` or `NotSupported`. Write your resolver for the general case anyway; it costs nothing.
+Today, market settings in the host header are always `PerMarket` or `NotSupported`, because settings are described per market. Venue market-data reads and streams other than the order book and trades are likewise `PerMarket` or `NotSupported`. Write your resolver for the general case anyway; it costs nothing.
 </Note>
 
 ## NotSupported and Rejected
@@ -178,7 +178,7 @@ Both are HTTP `422`, and they mean different things.
 
 | Code | Means | Typical causes | What to do |
 | --- | --- | --- | --- |
-| `NotSupported` | The host or venue does not offer this operation, variant or order type, or (for venue reads and market settings) does not list the market. | A header entry is `NotSupported`; a market descriptor is `null` or its flag is `false`; a candle interval or price kind the market does not list. | Do not retry unchanged. Choose another variant or skip the market, and refresh capabilities. |
+| `NotSupported` | The host or venue does not offer this operation, variant or order type, or (for venue reads, venue streams and market settings) does not list the market. | A header entry is `NotSupported`; a market descriptor is `null` or its flag is `false`; a candle interval or price kind the market does not list. | Do not retry unchanged. Choose another variant or skip the market, and refresh capabilities. |
 | `Rejected` | The operation is offered, but the inputs break the market's rules, or the host rejected the command. | A price off the increment, a size below `min`, `postOnly` where `supportsPostOnly` is `false`, a leverage off the grid. | Fix the inputs. The error `message` describes the problem. |
 
 Submit orders only for markets the host lists in [List host markets](/api-reference/platform/hosts/list-markets); do not expect `NotSupported` for an order on an unlisted market.

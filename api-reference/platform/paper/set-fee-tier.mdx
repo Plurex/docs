@@ -3,3 +3,7 @@ title: "Set paper fee tier"
 description: "Selects the paper account's fee tier and returns the resulting fee settings. Existing orders keep their fee terms."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/paper/command/SetFeeTier"
 ---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "command", "label": "Command", "description": "Changes state. Safe to repeat unless it has the Not safe to repeat badge."}]} />

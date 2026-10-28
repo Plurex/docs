@@ -1,15 +1,17 @@
 ---
 title: "Venue capabilities"
-description: "Which market-data reads each venue and market supports, on what terms, and how to resolve a read before you make it."
+description: "Which market-data reads and streams each venue and market supports, on what terms, and how to resolve one before you call it."
 ---
 
-A venue's capabilities say which market-data reads it offers: order books, recent trades, prices of each kind, best quotes, statistics, indicative funding, open interest and candles. Each of its markets then says which of those reads it supports, and on what terms: which candle intervals, over what statistics window, in what open-interest unit.
+A venue's capabilities say which market-data reads and streams it offers: order books, recent trades, prices of each kind, best quotes, statistics, indicative funding, open interest and candles. Each of its markets then says which of those reads and streams it supports, and on what terms: which candle intervals, over what statistics window, in what open-interest unit.
 
-Venue reads are public and need no API key. Read venue headers with [List venues](/api-reference/platform/venues/list) and market summaries with [List venue markets](/api-reference/platform/venues/list-markets). Both are paged.
+Read venue headers with [List venues](/api-reference/platform/venues/list) and market summaries with [List venue markets](/api-reference/platform/venues/list-markets). Both are paged.
 
 ```bash
 curl --request POST https://api.plurex.io/api/v1/venues/query/ListMarkets \
   --header 'Content-Type: application/json' \
+  --header "X-API-KEY: $PLUREX_API_KEY" \
+  --header "X-API-SECRET: $PLUREX_API_SECRET" \
   --data '{ "venueId": "bybit", "types": ["Perp"] }'
 ```
 
@@ -21,42 +23,51 @@ Venue IDs in examples on this page are illustrative. Discover venues with List.
 
 ```text
 capabilities
-├─ orderBook          getOrderBook                      always Supported
-├─ trades             getRecentTrades                   always Supported
-├─ prices             traded.getPrices · mark.getPrices · index.getPrices
-├─ bestQuote          getBestQuotes
-├─ statistics         getMarketStatistics
-├─ indicativeFunding  getIndicativeFundings
-├─ openInterest       getOpenInterests
+├─ orderBook          getOrderBook · subscribeToOrderBooks              always Supported
+├─ trades             getRecentTrades · subscribeToTrades               always Supported
+├─ prices             <kind>.getPrices · <kind>.subscribeToPrices       for traded, mark, index
+├─ bestQuote          getBestQuotes · subscribeToBestQuotes
+├─ statistics         getMarketStatistics · subscribeToMarketStatistics
+├─ indicativeFunding  getIndicativeFundings · subscribeToIndicativeFundings
+├─ openInterest       getOpenInterests · subscribeToOpenInterests
 └─ candles            listCandles.byInstrument · listCandles.byInstrumentBefore   (paged)
+                      subscribeToCandles
 ```
 
 | Leaf | Operation | Notes |
 | --- | --- | --- |
 | [`orderBook.getOrderBook`](/api-reference/platform/venues/get-order-book) | [GetOrderBook](/api-reference/platform/venues/get-order-book) | Supported on every venue and every listed market. |
+| [`orderBook.subscribeToOrderBooks`](/api-reference/platform/venues/subscribe-to-order-books) | [SubscribeToOrderBooks](/api-reference/platform/venues/subscribe-to-order-books) | Supported on every venue and every listed market. |
 | [`trades.getRecentTrades`](/api-reference/platform/venues/get-recent-trades) | [GetRecentTrades](/api-reference/platform/venues/get-recent-trades) | Supported on every venue and every listed market. |
+| [`trades.subscribeToTrades`](/api-reference/platform/venues/subscribe-to-trades) | [SubscribeToTrades](/api-reference/platform/venues/subscribe-to-trades) | Supported on every venue and every listed market. |
 | [`prices.<kind>.getPrices`](/api-reference/platform/venues/get-prices) | [GetPrices](/api-reference/platform/venues/get-prices) with `kind` `Traded`, `Mark` or `Index` | One leaf per price kind. |
+| [`prices.<kind>.subscribeToPrices`](/api-reference/platform/venues/subscribe-to-prices) | [SubscribeToPrices](/api-reference/platform/venues/subscribe-to-prices) with that `kind` | One leaf per price kind. |
 | [`bestQuote.getBestQuotes`](/api-reference/platform/venues/get-best-quotes) | [GetBestQuotes](/api-reference/platform/venues/get-best-quotes) | |
+| [`bestQuote.subscribeToBestQuotes`](/api-reference/platform/venues/subscribe-to-best-quotes) | [SubscribeToBestQuotes](/api-reference/platform/venues/subscribe-to-best-quotes) | |
 | [`statistics.getMarketStatistics`](/api-reference/platform/venues/get-market-statistics) | [GetMarketStatistics](/api-reference/platform/venues/get-market-statistics) | |
+| [`statistics.subscribeToMarketStatistics`](/api-reference/platform/venues/subscribe-to-market-statistics) | [SubscribeToMarketStatistics](/api-reference/platform/venues/subscribe-to-market-statistics) | |
 | [`indicativeFunding.getIndicativeFundings`](/api-reference/platform/venues/get-indicative-fundings) | [GetIndicativeFundings](/api-reference/platform/venues/get-indicative-fundings) | |
+| [`indicativeFunding.subscribeToIndicativeFundings`](/api-reference/platform/venues/subscribe-to-indicative-fundings) | [SubscribeToIndicativeFundings](/api-reference/platform/venues/subscribe-to-indicative-fundings) | |
 | [`openInterest.getOpenInterests`](/api-reference/platform/venues/get-open-interests) | [GetOpenInterests](/api-reference/platform/venues/get-open-interests) | |
+| [`openInterest.subscribeToOpenInterests`](/api-reference/platform/venues/subscribe-to-open-interests) | [SubscribeToOpenInterests](/api-reference/platform/venues/subscribe-to-open-interests) | |
 | [`candles.listCandles.byInstrument`](/api-reference/platform/venues/list-candles) | [ListCandles](/api-reference/platform/venues/list-candles) with `query.type` `ByInstrument` | A `CursorQueryCapability`. Candles are always newest first. |
 | [`candles.listCandles.byInstrumentBefore`](/api-reference/platform/venues/list-candles) | [ListCandles](/api-reference/platform/venues/list-candles) with `query.type` `ByInstrumentBefore` | |
+| [`candles.subscribeToCandles`](/api-reference/platform/venues/subscribe-to-candles) | [SubscribeToCandles](/api-reference/platform/venues/subscribe-to-candles) | |
 
-Apart from the order book and trades, these entries are `PerMarket` or `NotSupported`: whether a market has a read depends on the market. `NotSupported` means no market on the venue has it, for example a venue that reports no index prices.
+Apart from the order book and trades, these entries are `PerMarket` or `NotSupported`: whether a market has a read or stream depends on the market. `NotSupported` means no market on the venue has it, for example a venue that reports no index prices.
 
 ## Market data on each market
 
-`VenueMarketSummary.marketData` is a `VenueMarketData`. Each entry is a descriptor: `null` when the market does not have that data, otherwise an object with a flag for the read and the terms you need.
+`VenueMarketSummary.marketData` is a `VenueMarketData`. Each entry is a descriptor: `null` when the market does not have that data, otherwise an object with a flag for the read, a flag for the stream and the terms you need.
 
-| Entry | `null` when | Read flag | Terms |
+| Entry | `null` when | Read and stream flags | Terms |
 | --- | --- | --- | --- |
-| [`prices.traded`](/api-reference/platform/venues/get-prices), [`.mark`](/api-reference/platform/venues/get-prices), [`.index`](/api-reference/platform/venues/get-prices) | The market does not report that price kind | `get` | |
-| [`bestQuote`](/api-reference/platform/venues/get-best-quotes) | The market has no best quote | `get` | `supportsSizes` |
-| [`statistics`](/api-reference/platform/venues/get-market-statistics) | The market has no statistics | `get` | `window`, `supportedFields` |
-| [`indicativeFunding`](/api-reference/platform/venues/get-indicative-fundings) | The market is not a perpetual with indicative funding | `get` | |
-| [`openInterest`](/api-reference/platform/venues/get-open-interests) | The market is not a derivative with open interest | `get` | `unit` |
-| [`candles.traded`](/api-reference/platform/venues/list-candles), [`.mark`](/api-reference/platform/venues/list-candles), [`.index`](/api-reference/platform/venues/list-candles) | The market has no candles of that price kind | `list`, `listBefore` | `supportedIntervals`, `maxHistoryAgeByInterval` |
+| [`prices.traded`](/api-reference/platform/venues/get-prices), [`.mark`](/api-reference/platform/venues/get-prices), [`.index`](/api-reference/platform/venues/get-prices) | The market does not report that price kind | `get`, `subscribe` | |
+| [`bestQuote`](/api-reference/platform/venues/get-best-quotes) | The market has no best quote | `get`, `subscribe` | `supportsSizes` |
+| [`statistics`](/api-reference/platform/venues/get-market-statistics) | The market has no statistics | `get`, `subscribe` | `window`, `supportedFields` |
+| [`indicativeFunding`](/api-reference/platform/venues/get-indicative-fundings) | The market is not a perpetual with indicative funding | `get`, `subscribe` | |
+| [`openInterest`](/api-reference/platform/venues/get-open-interests) | The market is not a derivative with open interest | `get`, `subscribe` | `unit` |
+| [`candles.traded`](/api-reference/platform/venues/list-candles), [`.mark`](/api-reference/platform/venues/list-candles), [`.index`](/api-reference/platform/venues/list-candles) | The market has no candles of that price kind | `list`, `listBefore`, `subscribe` | `supportedIntervals`, `maxHistoryAgeByInterval` |
 
 `prices` and `candles` are always objects; their per-kind entries are the nullable descriptors.
 
@@ -91,10 +102,11 @@ Each price kind has its own `CandleSeriesSpec`:
 | `maxHistoryAgeByInterval` | For each interval, the ISO 8601 age limit of reachable history. An interval without an entry has no declared limit. |
 | `list` | `ListCandles` with `ByInstrument`: the latest closed candles. |
 | `listBefore` | `ListCandles` with `ByInstrumentBefore`, and continuing past the first page of either variant. |
+| `subscribe` | `SubscribeToCandles` for this series, at every interval in `supportedIntervals`. |
 
 At least one of `list` and `listBefore` is `true`. Candles are aligned to whole multiples of the interval from the Unix epoch, in UTC. ListCandles returns closed candles only, newest first, with no gaps.
 
-## Resolve a read
+## Resolve a read or stream
 
 Check the header leaf, then the market descriptor and its terms. The header alone is enough only for the order book and trades.
 
@@ -108,6 +120,8 @@ Check the header leaf, then the market descriptor and its terms. The header alon
 | GetOpenInterests | [`openInterest.getOpenInterests`](/api-reference/platform/venues/get-open-interests) | [`marketData.openInterest`](/api-reference/platform/venues/get-open-interests) non-null and `get` is `true` |
 | ListCandles `ByInstrument` | [`candles.listCandles.byInstrument`](/api-reference/platform/venues/list-candles) | [`marketData.candles.<k>`](/api-reference/platform/venues/list-candles) non-null, `list` is `true`, interval in `supportedIntervals` |
 | ListCandles `ByInstrumentBefore`, or any page after the first | [`candles.listCandles.byInstrumentBefore`](/api-reference/platform/venues/list-candles) | The same, with `listBefore` `true` |
+| SubscribeToOrderBooks, SubscribeToTrades | Always supported | The venue lists the market |
+| Any other stream | The read's area, with `subscribeTo…` in place of `get…` (for example [`prices.<k>.subscribeToPrices`](/api-reference/platform/venues/subscribe-to-prices)) | The same descriptor non-null and `subscribe` is `true`; for candles, also the interval in `supportedIntervals` |
 
 Here `<k>` is the lowerCamel price kind (`traded`, `mark`, `index`) for the request's `Traded`, `Mark` or `Index`.
 
@@ -126,12 +140,13 @@ def can_list_candles(venue, market, price_kind, interval, before=False):
 
 ## Batch reads and single-market reads
 
-The two kinds of venue read report a missing capability differently.
+The kinds of venue operation report a missing capability differently.
 
 | Reads | Shape | An unsupported market gives |
 | --- | --- | --- |
 | GetPrices, GetBestQuotes, GetMarketStatistics, GetIndicativeFundings, GetOpenInterests | Batch: up to 50 distinct instruments, one result per instrument in request order | That instrument's result is `{"type": "Unavailable", "code": "NotSupported", ...}`. The rest of the batch is unaffected. |
 | GetOrderBook, GetRecentTrades, ListCandles | One market | The whole call returns `422 NotSupported`. |
+| Every stream | One market | `422 NotSupported`, before the stream starts. |
 
 A batch result's `Unavailable` code is the one a single read would return: `NotSupported` when the market does not support the read, `NotFound` when the venue reported no value, and `UpstreamFailure` when the venue read failed. Only `NotSupported` tells you something about capabilities; the other two can succeed on a later call.
 
@@ -215,22 +230,23 @@ An illustrative venue header and the summary of a linear perpetual on it. The st
 {
   "id": "bybit",
   "capabilities": {
-    "orderBook": { "getOrderBook": { "type": "Supported" } },
-    "trades": { "getRecentTrades": { "type": "Supported" } },
+    "orderBook": { "getOrderBook": { "type": "Supported" }, "subscribeToOrderBooks": { "type": "Supported" } },
+    "trades": { "getRecentTrades": { "type": "Supported" }, "subscribeToTrades": { "type": "Supported" } },
     "prices": {
-      "traded": { "getPrices": { "type": "PerMarket" } },
-      "mark": { "getPrices": { "type": "PerMarket" } },
-      "index": { "getPrices": { "type": "PerMarket" } }
+      "traded": { "getPrices": { "type": "PerMarket" }, "subscribeToPrices": { "type": "PerMarket" } },
+      "mark": { "getPrices": { "type": "PerMarket" }, "subscribeToPrices": { "type": "PerMarket" } },
+      "index": { "getPrices": { "type": "PerMarket" }, "subscribeToPrices": { "type": "PerMarket" } }
     },
-    "bestQuote": { "getBestQuotes": { "type": "PerMarket" } },
-    "statistics": { "getMarketStatistics": { "type": "PerMarket" } },
-    "indicativeFunding": { "getIndicativeFundings": { "type": "PerMarket" } },
-    "openInterest": { "getOpenInterests": { "type": "PerMarket" } },
+    "bestQuote": { "getBestQuotes": { "type": "PerMarket" }, "subscribeToBestQuotes": { "type": "PerMarket" } },
+    "statistics": { "getMarketStatistics": { "type": "PerMarket" }, "subscribeToMarketStatistics": { "type": "PerMarket" } },
+    "indicativeFunding": { "getIndicativeFundings": { "type": "PerMarket" }, "subscribeToIndicativeFundings": { "type": "PerMarket" } },
+    "openInterest": { "getOpenInterests": { "type": "PerMarket" }, "subscribeToOpenInterests": { "type": "PerMarket" } },
     "candles": {
       "listCandles": {
         "byInstrument": { "type": "PerMarket" },
         "byInstrumentBefore": { "type": "PerMarket" }
-      }
+      },
+      "subscribeToCandles": { "type": "PerMarket" }
     }
   }
 }
@@ -244,30 +260,33 @@ An illustrative venue header and the summary of a linear perpetual on it. The st
   "contractDetails": { "contractType": "Linear", "settlementAsset": "USDT", "contractSize": "1", "contractSizeAsset": "BTC" },
   "marketData": {
     "prices": {
-      "traded": { "get": true },
-      "mark": { "get": true },
-      "index": { "get": true }
+      "traded": { "get": true, "subscribe": true },
+      "mark": { "get": true, "subscribe": true },
+      "index": { "get": true, "subscribe": false }
     },
-    "bestQuote": { "supportsSizes": true, "get": true },
+    "bestQuote": { "supportsSizes": true, "get": true, "subscribe": true },
     "statistics": {
       "window": { "type": "Rolling", "length": "PT24H" },
       "supportedFields": ["Open", "High", "Low", "VolumeBase", "VolumeQuote"],
-      "get": true
+      "get": true,
+      "subscribe": true
     },
-    "indicativeFunding": { "get": true },
-    "openInterest": { "unit": "Contracts", "get": true },
+    "indicativeFunding": { "get": true, "subscribe": true },
+    "openInterest": { "unit": "Contracts", "get": true, "subscribe": true },
     "candles": {
       "traded": {
         "supportedIntervals": ["Minute1", "Minute5", "Minute15", "Hour1", "Hour4", "Day1"],
         "maxHistoryAgeByInterval": { "Minute1": "PT48H", "Minute5": "PT48H", "Minute15": "PT168H", "Hour1": "PT720H", "Hour4": "PT720H", "Day1": "PT720H" },
         "list": true,
-        "listBefore": true
+        "listBefore": true,
+        "subscribe": true
       },
       "mark": {
         "supportedIntervals": ["Minute1", "Hour1", "Day1"],
         "maxHistoryAgeByInterval": { "Minute1": "PT48H", "Hour1": "PT720H", "Day1": "PT720H" },
         "list": true,
-        "listBefore": true
+        "listBefore": true,
+        "subscribe": true
       },
       "index": null
     }
@@ -277,10 +296,10 @@ An illustrative venue header and the summary of a linear perpetual on it. The st
 
 </CodeGroup>
 
-Reading the summary: all three price kinds are available, with sizes on best quotes; statistics cover a rolling 24 hours and never report `PreviousClose`; open interest is counted in contracts; traded and mark candles can be listed and paged back, but there are no index candles on this market, and one-minute history reaches back about two days.
+Reading the summary: all three price kinds can be read and traded and mark prices streamed, but not the index price; best quotes carry sizes; statistics cover a rolling 24 hours and never report `PreviousClose`; open interest is counted in contracts; traded and mark candles can be listed, paged back and streamed, but there are no index candles on this market, and one-minute history reaches back about two days.
 
 ## Increments are not order rules
 
 `increments` is the grid the venue quotes market data on. Book levels and trade prices sit on `increments.price`, and book level sizes on `increments.size`; use them for display precision and for grouping book levels in whole multiples. Trade sizes can be finer, for example a fill of an order sized by notional.
 
-They are not order rules. Never price or size an order from a venue market; use the host's [market order rules](/capabilities/order-rules). See [Market data](/guides/market-data) for reading the data itself.
+They are not order rules. Never price or size an order from a venue market; use the host's [market order rules](/capabilities/order-rules). See [Read market data](/guides/market-data) for reading and streaming the data itself.

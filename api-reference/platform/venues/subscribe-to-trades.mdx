@@ -1,0 +1,14 @@
+---
+title: "Stream public trades"
+description: "Streams one market's public trades: a Reset of the recent trades, as GetRecentTrades returns them, then Updates with new trades. A market the venue does not list returns 422 NotSupported."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/stream/SubscribeToTrades"
+playground: "none"
+---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "stream", "label": "Stream", "description": "The response stays open and carries one JSON message per line until an Ended line."}]} />
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.trades.subscribeToTrades", "always": true}]} market={[]} />

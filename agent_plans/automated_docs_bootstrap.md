@@ -13,7 +13,7 @@ Goals:
 4. Plurex stays the only source of truth for the API contract. The docs repo copies, renders and explains it, and never
    redefines it.
 
-The repos stay separate. `platform-public-api/` (OAS, AAS, AGENTS.md, DESIGN.md) is the contract boundary. The
+The repos stay separate. `platform-public-api/` (OAS, AGENTS.md, DESIGN.md) is the contract boundary. The
 module AGENTS.md files and `agent_plans/` describe behaviour that never appears in the spec.
 
 ## Concepts
@@ -82,7 +82,7 @@ All deterministic, with no agent involvement. They take `--ref` (default `origin
 - `scripts/plurex_range.py`: fetches, resolves the target commit, and emits JSON for the range: per commit the sha,
   subject, body, author date, touched paths with tiers, diffstat and commit tier. With no lock (bootstrap) it emits only
   the target commit and `"mode": "bootstrap"`.
-- `scripts/sync_from_plurex.py --commit <sha>`: copies the OAS and AAS with `git show <sha>:<path>`, so the copy
+- `scripts/sync_from_plurex.py --commit <sha>`: copies the OAS with `git show <sha>:<path>`, so the copy
   depends only on the commit, not on where the checkout sits, then runs `sync-platform-api.py`, and then the three `mint` checks. It does not write the lock.
 - `scripts/write_lock.py --commit <sha> --log <file>`: the final step of a successful refresh.
 - `scripts/check_drift.py`: prints the lock commit, the target commit, commits behind, and counts per tier. This is the
@@ -90,11 +90,10 @@ All deterministic, with no agent involvement. They take `--ref` (default `origin
 
 `sync-platform-api.py` stays as it is. Removed operations are reported, never deleted silently.
 
-### 1.4 AsyncAPI in the docs
+### 1.4 Streams in the docs
 
-Add the AAS (`api-reference/platform/plurex-platform-async-api.yaml`) and render streams. Confirm Mintlify's AsyncAPI
-support for AAS 3.0 and channel naming first. If rendering falls short, write stream pages by hand from the AAS, and
-make them a `contract`-tier responsibility of the refresh.
+Done. Streams are OpenAPI 3.2 operations (`application/jsonl` with `itemSchema`), so `sync-platform-api.py` generates
+their pages like any other, with the playground off. The AsyncAPI document was removed upstream in `1d46584e7`.
 
 ### 1.5 Refresh skill and workflow
 
@@ -142,7 +141,7 @@ There is no lock, so the bootstrap is a **full reconciliation**, not a diff. Pre
 2. **Sync.** Run `sync_from_plurex.py` and record the generated-page delta.
 3. **Source digest** (agent). A structured summary of the public product at the pinned commit: the domains, concepts,
    capabilities, paging, errors, auth, streams, paper, and the supported hosts and venues. It is drawn from the
-   OAS/AAS info and tag descriptions, platform-public-api AGENTS.md and DESIGN.md, the module AGENTS.md files, and the
+   OAS info and tag descriptions, platform-public-api AGENTS.md and DESIGN.md, the module AGENTS.md files, and the
    roadmap (used only to separate shipped from planned). Saved as `refresh-log/bootstrap-digest.md` for later runs to
    use.
 4. **Page audit** (parallel agents, one per authored page or group: `index`, `platform/*`, `api-reference/platform/{overview,quickstart,conventions}`).
@@ -168,5 +167,4 @@ There is no lock, so the bootstrap is a **full reconciliation**, not a diff. Pre
 
 - Is the docs repo public? If so, the refresh logs must not quote internal diffs or plans verbatim, only their public
   meaning. (The log format assumes this until confirmed.)
-- How well Mintlify renders AsyncAPI 3.0 (Phase 1.4).
 - Whether reference SDK examples (Kotlin client) belong in the docs, and whether they come from plurex tests.

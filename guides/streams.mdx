@@ -1,140 +1,95 @@
 ---
-title: "Stream account updates"
-description: "Follow your accounts' orders and balance postings over WebSocket, and keep a correct local copy through disconnects."
+title: "Streams"
+description: "Follow your accounts' orders and balance postings, and a market's order book, trades, prices and candles, as they happen, and keep a correct local copy through reconnects."
 ---
 
-Two WebSocket streams push your accounts' activity as it happens, so you do not have to poll. Both work the same way for real and paper accounts.
+A stream follows one topic, such as one account's orders or one market's order book, and pushes each change as it happens, so you do not have to poll. You open it with an ordinary `POST`, and the response stays open, carrying one JSON message per line. Streams work the same way for real and paper accounts.
 
-| Stream | Address | Reconcile with |
+| Stream | Topic | First line |
 | --- | --- | --- |
-| [Account orders](/api-reference/platform/hosts/subscribe-to-account-orders) | `wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountOrders` | [List open orders](/api-reference/platform/hosts/list-orders) |
-| [Account transactions](/api-reference/platform/hosts/subscribe-to-account-transactions) | `wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountTransactions` | [List account transactions](/api-reference/platform/hosts/list-transactions) |
+| [Account orders](/api-reference/platform/hosts/subscribe-to-account-orders) | One account | The first change. No snapshot: read [List open orders](/api-reference/platform/hosts/list-orders) |
+| [Account transactions](/api-reference/platform/hosts/subscribe-to-account-transactions) | One account | The first posting. No snapshot: read [List account transactions](/api-reference/platform/hosts/list-transactions) |
+| [Order book](/api-reference/platform/venues/subscribe-to-order-books) | One market | `Reset` with the whole book |
+| [Public trades](/api-reference/platform/venues/subscribe-to-trades) | One market | `Reset` with the recent trades |
+| [Prices](/api-reference/platform/venues/subscribe-to-prices) | One market and price kind | `Reset` with the current price |
+| [Best bid and ask](/api-reference/platform/venues/subscribe-to-best-quotes) | One market | `Reset` with the current quote |
+| [Market statistics](/api-reference/platform/venues/subscribe-to-market-statistics) | One market | `Reset` with the current statistics |
+| [Indicative funding](/api-reference/platform/venues/subscribe-to-indicative-fundings) | One perpetual | `Reset` with the current estimate |
+| [Open interest](/api-reference/platform/venues/subscribe-to-open-interests) | One derivative | `Reset` with the current amount |
+| [Candles](/api-reference/platform/venues/subscribe-to-candles) | One market, price kind and interval | `Reset` with the recent candles |
 
-One connection carries one stream type for many accounts. You connect once, then subscribe and unsubscribe accounts with messages, without reconnecting. Each account on a connection is a **topic**, and every message names the topic it belongs to.
+## Check support first
 
-A stream sends only what happens after an account is subscribed. It has no snapshot and does not replay events you missed, so a correct client always pairs it with a REST read. The [reconciliation pattern](#keep-a-correct-local-copy) below shows how.
+A stream that the host, venue or market does not offer fails before it starts, with `422 NotSupported`. Each stream page's **Check support** block names the capability to read:
 
-## Check the host first
+- Account streams: the host's `accountOrders.subscribeToAccountOrders` and `accountTransactions.subscribeToAccountTransactions`, from [List hosts](/api-reference/platform/hosts/list). `accountOrders.changes` and `accountOrders.includesFillDetails` say what the order stream sends.
+- Market data streams: the venue's `subscribeTo…` capabilities, from [List venues](/api-reference/platform/venues/list). Where an entry is `PerMarket`, the market's `marketData` from [List venue markets](/api-reference/platform/venues/list-markets) says whether that market streams it, for example `marketData.prices.mark.subscribe`.
 
-Read the account's host from [List hosts](/api-reference/platform/hosts/list) and check its capabilities before you subscribe. An account whose host does not support the stream is refused with `NotSupported`.
+See [Host capabilities](/capabilities/host-capabilities) and [Venue capabilities](/capabilities/venue-capabilities).
 
-| Capability | What it tells you |
-| --- | --- |
-| `accountOrders.subscribeToAccountOrders` | Whether the order stream exists on this host. |
-| `accountOrders.changes` | Which change types the host sends: `Created`, `FillApplied`, `Cancelled`, `Rejected`. A host may send fewer. |
-| `accountOrders.includesFillDetails` | Whether `FillApplied` events carry the individual execution. When `false`, `fill` is `null`; read executions with [List fills](/api-reference/platform/hosts/list-fills). |
-| `accountTransactions.subscribeToAccountTransactions` | Whether the transaction stream exists on this host. |
-| `accountTransactions.supportedTransactionTypes` | Which posting types the host reports. |
+## Open a stream
 
-See [Host capabilities](/capabilities/host-capabilities) for how to read these entries.
-
-## Connect and subscribe
-
-Send the same `X-API-KEY` and `X-API-SECRET` headers you use for HTTP on the upgrade request. If authentication fails, you get an ordinary HTTP error response with the [error envelope](/api-reference/platform/errors), before any WebSocket is opened. Fix the credentials rather than reconnecting in a loop.
-
-Once connected, send a `Subscribe` message with your own request `id` and the accounts to stream:
-
-```json
-{
-  "type": "Subscribe",
-  "id": "sub-1",
-  "topics": [{ "accountId": "acc_123" }, { "accountId": "acc_456" }]
-}
-```
-
-The server answers each `Subscribe` in two parts:
-
-1. A `Rejected` for each account it refuses, with the same `code` an HTTP request for that account would get: for example `AccountNotFound`, `Forbidden`, or `NotSupported` when the host does not offer the stream.
-2. One `Subscribed` listing the accounts now streaming. Their events follow it.
-
-```json
-{ "type": "Rejected", "id": "sub-1", "topic": { "accountId": "acc_456" }, "code": "Forbidden", "message": "Access denied" }
-```
-
-```json
-{ "type": "Subscribed", "id": "sub-1", "topics": [{ "accountId": "acc_123" }] }
-```
-
-A refused account never closes the connection; the other accounts stream normally. Subscribing an account that is already streaming lists it again in `Subscribed` without opening a second stream for it.
-
-To stop streaming an account, send `Unsubscribe`. The reply is one `Unsubscribed`, after which nothing more arrives for those accounts. Accounts that were not streaming are acknowledged too.
-
-```json
-{ "type": "Unsubscribe", "id": "unsub-1", "topics": [{ "accountId": "acc_123" }] }
-```
-
-```json
-{ "type": "Unsubscribed", "id": "unsub-1", "topics": [{ "accountId": "acc_123" }] }
-```
-
-The request `id` is 1 to 64 characters and is echoed on its replies, so you can match them to your requests.
-
-With [websocat](https://github.com/vi/websocat), connect and then type the `Subscribe` message as one line:
+Send the topic as the JSON body, with the same `X-API-KEY` and `X-API-SECRET` headers as every other operation. With `curl`, `--no-buffer` prints each line as it arrives:
 
 ```bash
-websocat \
+curl --no-buffer --request POST \
+  --url https://api.plurex.io/api/v1/venues/stream/SubscribeToOrderBooks \
+  --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
   --header "X-API-SECRET: $PLUREX_API_SECRET" \
-  "wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountOrders"
+  --data '{
+    "venueId": "bybit",
+    "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" }
+  }'
 ```
 
-With the Python [`websockets`](https://websockets.readthedocs.io/) library, version 14 or later:
+Find venue IDs and instruments with [List venues](/api-reference/platform/venues/list) and [List venue markets](/api-reference/platform/venues/list-markets). An account stream takes `{"accountId": "…"}`.
 
-```python
-import asyncio, json, os
-from websockets.asyncio.client import connect
+Everything that can go wrong before the stream starts is an ordinary error response with the [error envelope](/api-reference/platform/errors): `401 Unauthenticated`, `400 InvalidRequest`, `404` for an unknown venue or account, `403 Forbidden` for an account you cannot access, `422 NotSupported` for an unsupported stream or market. Fix the request rather than retrying it in a loop; only `429` and `5xx` are worth retrying.
 
-HEADERS = {
-    "X-API-KEY": os.environ["PLUREX_API_KEY"],
-    "X-API-SECRET": os.environ["PLUREX_API_SECRET"],
-}
-URL = "wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountOrders"
+A `200` means the subscription is live. The response is `application/jsonl` and stays open: one JSON message per line, until the last line, which is always `Ended`. Close the response to stop the stream.
 
-async def main():
-    async with connect(URL, additional_headers=HEADERS) as ws:
-        await ws.send(json.dumps({
-            "type": "Subscribe",
-            "id": "sub-1",
-            "topics": [{"accountId": os.environ["PLUREX_ACCOUNT_ID"]}],
-        }))
-        async for raw in ws:
-            message = json.loads(raw)
-            if message["type"] == "Event":
-                data = message["data"]
-                print(message["topic"]["accountId"], data["change"]["type"], data["order"]["state"])
-            else:
-                print(message)
+## Read the lines
 
-asyncio.run(main())
-```
+Read the body line by line as it arrives. Every message has a `type`:
 
-WebSocket ping and pong frames keep the connection alive; most client libraries answer pings for you.
-
-<Warning>
-  Browser authentication is not supported. Browsers cannot set custom headers on a WebSocket upgrade, so connect from a server or a native client.
-</Warning>
-
-### Limits
-
-- A connection streams at most 25 accounts at a time. Accounts beyond the limit are refused with `Rejected` and code `InvalidRequest`. Open another connection for more.
-- A connection with no accounts streaming for 30 seconds is closed with code `1008` and reason `No topics`. This includes the time right after you connect, and refused accounts do not count, so subscribe promptly after connecting.
-- Send only `Subscribe` and `Unsubscribe` messages. A message the server cannot decode closes the connection with code `1008`.
-
-## Messages
-
-Every message is one JSON text frame with a `type`. The server sends:
-
-| `type` | When | Fields |
+| `type` | Streams | Meaning |
 | --- | --- | --- |
-| `Subscribed` | Reply to `Subscribe` | `id`, `topics` now streaming |
-| `Rejected` | Before `Subscribed`, once per refused account | `id`, `topic`, `code`, `message` |
-| `Unsubscribed` | Reply to `Unsubscribe` | `id`, `topics` no longer streaming |
-| `Event` | An order change or a posting on a streaming account | `topic`, `timestamp`, `data` |
-| `Ended` | A streaming account stopped streaming | `topic`, `code`, `message` |
+| `Event` | Account streams | One change: an order change, or a new balance posting. |
+| `Reset` | Market data streams | The topic's whole current state. Replace everything you hold for this stream. |
+| `Update` | Market data streams | A change to apply on top of the last `Reset`. |
+| `Ended` | All | The stream stopped. Nothing more follows. |
 
-New message types can be added, so ignore a `type` you do not recognise. Order holds per account, not across accounts: two events for the same account arrive in the order they happened, while events for different accounts can interleave in any order.
+`Event`, `Reset` and `Update` carry `timestamp`, when Plurex sent the message, and `data`, the payload. Its shape is on each stream's page.
 
-In an `Event`, `timestamp` is when Plurex sent the event, and `data` is the payload.
+A **blank line** is a keepalive. One arrives as the stream opens, and again at least every 15 seconds while the stream is quiet. Skip it, but treat a stream that stays silent much longer than that as lost.
+
+New message types and fields can be added. Ignore a `type` you do not recognise.
+
+## Market data streams
+
+A market data stream starts with a `Reset` holding the topic's current state, then sends `Update`s. A `Reset` can arrive again at any time and replaces everything you hold: do not merge it with your copy.
+
+```json
+{"type":"Reset","timestamp":"2026-10-27T09:00:00.120Z","data":{"bids":[{"price":"67250.1","size":"0.42"}],"asks":[{"price":"67250.2","size":"0.08"}],"observedAt":"2026-10-27T09:00:00.101Z","receivedAt":"2026-10-27T09:00:00.115Z"}}
+
+{"type":"Update","timestamp":"2026-10-27T09:00:00.320Z","data":{"bids":[{"price":"67250.1","size":"0.9"}],"asks":[{"price":"67250.2","size":"0"}],"observedAt":"2026-10-27T09:00:00.301Z","receivedAt":"2026-10-27T09:00:00.316Z"}}
+```
+
+How to apply an `Update` depends on the stream:
+
+| Stream | `Reset` | `Update` |
+| --- | --- | --- |
+| Order book | The whole book, best price first. | Only the levels that changed, each with its new total size. Set each level; size `"0"` removes it. Levels not listed are unchanged. |
+| Public trades | The recent trades. They can repeat trades an `Update` already delivered, so replace your trade history and do not add them to running totals. | New trades. |
+| Prices, best bid and ask, statistics, indicative funding, open interest | The current value. | The complete new value. Replace the old one; a field that is now `null` was cleared. |
+| Candles | The recent candles, oldest first, ending with the current one, still forming. Read older candles with [List candles](/api-reference/platform/venues/list-candles). | The current candle alone. The same `startAt` replaces the current candle; a later `startAt` completes it and starts the next. |
+
+Values carry `observedAt`, the venue's time when it reports one, and `receivedAt`, when Plurex received it. See [Read market data](/guides/market-data) for what each value means.
+
+## Account streams
+
+An account stream sends an `Event` per change and **no snapshot**. It does not replay changes from before it opened, so pair it with a read of the current state, as in [Keep a correct local copy](#keep-a-correct-local-copy).
 
 ### Order events
 
@@ -143,38 +98,23 @@ Each order event carries the `change` that happened and the complete `order`, ex
 ```json
 {
   "type": "Event",
-  "topic": { "accountId": "acc_123" },
-  "timestamp": "2026-10-25T09:31:12.408Z",
+  "timestamp": "2026-10-26T08:17:18.732Z",
   "data": {
-    "change": {
-      "type": "FillApplied",
-      "fill": {
-        "orderId": "ord_789",
-        "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
-        "side": "Buy",
-        "executedAt": "2026-10-25T09:31:12.391Z",
-        "price": "60000.0",
-        "size": "0.004",
-        "fees": [{ "asset": "USDT", "value": "0.048" }],
-        "realizedPnl": null,
-        "id": "exec_5521",
-        "role": "Maker"
-      }
-    },
+    "change": { "type": "Cancelled" },
     "order": {
       "type": "Limit",
-      "id": "ord_789",
-      "createdAt": "2026-10-25T09:30:00Z",
+      "id": "BTC-USDT-SPOT|5fee96c0-8063-412d-8b4d-e36e44a8ea2d",
+      "createdAt": "2026-10-26T08:17:17.709Z",
       "side": "Buy",
-      "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
-      "state": "Live",
-      "sizeTraded": "0.004",
-      "averagePrice": "60000.0",
+      "instrument": { "type": "Spot", "base": "BTC", "quote": "USDT" },
+      "state": "Cancelled",
+      "sizeTraded": "0",
+      "averagePrice": null,
       "realizedPnl": null,
-      "totalFees": [{ "asset": "USDT", "value": "0.048" }],
-      "clientOrderId": "grid-buy-0042",
-      "size": "0.010",
-      "price": "60000.0"
+      "totalFees": [],
+      "clientOrderId": "my-order-1",
+      "size": "1",
+      "price": "90"
     }
   }
 }
@@ -183,124 +123,155 @@ Each order event carries the `change` that happened and the complete `order`, ex
 | `change.type` | Meaning |
 | --- | --- |
 | `Created` | The host has the order. |
-| `FillApplied` | The traded size increased. The order carries the cumulative `sizeTraded`, `averagePrice` and `state`. `fill` is the execution, or `null` when the host reports only the cumulative order state. |
+| `FillApplied` | The traded size increased. The order carries the cumulative `sizeTraded`, `averagePrice` and `state`. `fill` is the execution, or `null` when the host reports only the cumulative order state (`includesFillDetails` is `false`); read executions with [List fills](/api-reference/platform/hosts/list-fills). |
 | `Cancelled` | The order was cancelled. |
 | `Rejected` | The host rejected the order. `reason` and `code` are the host's own text and code, or `null`. The `code` is the host's native code, not a Plurex error code. |
 | `Unknown` | A host change with no standard meaning. `nativeType` holds the host's own event type. |
-
-```json
-{
-  "type": "Event",
-  "topic": { "accountId": "acc_123" },
-  "timestamp": "2026-10-25T09:32:40.020Z",
-  "data": {
-    "change": { "type": "Rejected", "reason": "Insufficient margin", "code": "MARGIN_LOW" },
-    "order": {
-      "type": "Market",
-      "id": "ord_812",
-      "createdAt": "2026-10-25T09:32:39.950Z",
-      "side": "Buy",
-      "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
-      "state": "Rejected",
-      "sizeTraded": "0",
-      "averagePrice": null,
-      "realizedPnl": null,
-      "totalFees": [],
-      "clientOrderId": null,
-      "sizing": { "type": "Size", "size": "5.000" }
-    }
-  }
-}
-```
 
 Because every event carries the whole order, you do not need to rebuild state from the change. Store the latest order you receive for each order ID and use `change` to decide what to react to. New change types can be added, so handle an unrecognised `type` the same way as `Unknown`.
 
 ### Transaction events
 
-Each transaction event is one balance posting, with the same `id` that [List account transactions](/api-reference/platform/hosts/list-transactions) returns for it:
+Each transaction event is one new balance posting, with the same `id` that [List account transactions](/api-reference/platform/hosts/list-transactions) returns for it:
 
 ```json
 {
   "type": "Event",
-  "topic": { "accountId": "acc_123" },
-  "timestamp": "2026-10-25T09:31:12.512Z",
+  "timestamp": "2026-10-26T08:20:00.120Z",
   "data": {
-    "id": "txn_40213",
-    "effectiveAt": "2026-10-25T09:31:12.391Z",
-    "amount": { "asset": "USDT", "value": "-0.048" },
+    "id": "trade-fee:7f3a",
+    "effectiveAt": "2026-10-26T08:20:00.104Z",
+    "amount": { "asset": "USDT", "value": "-0.055" },
     "type": "TradingFee",
     "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
-    "orderId": "ord_789",
-    "fillId": "exec_5521",
+    "orderId": "BTC-USDT-PERP|0b6c1e52-2f7e-4c55-9d43-1c1a9b6f2e10",
+    "fillId": "fill-91",
     "positionId": null,
-    "groupId": null,
-    "nativeType": "TRADE",
+    "groupId": "trade:BTC-USDT-PERP:fill-91",
+    "nativeType": "TRADE_FEE",
     "description": null
   }
 }
 ```
 
-`amount` is signed from your side: positive increases the balance, negative decreases it. Transaction events are ordered among themselves but not relative to order events, so a fee can arrive before or after the fill it belongs to. See [Balances, positions and settings](/guides/portfolio#transactions) for posting types and links.
+`amount` is signed from your side: positive increases the balance, negative decreases it. Transaction events are not ordered relative to order events, so a fee can arrive before or after the fill it belongs to. See [Balances, positions and settings](/guides/portfolio#transactions) for posting types and links.
 
-### Ended
-
-`Ended` means one account stopped streaming, for example because the host's own feed ended (`UpstreamFailure`). Nothing more arrives for that account, and the connection stays open for the others:
-
-```json
-{ "type": "Ended", "topic": { "accountId": "acc_123" }, "code": "UpstreamFailure", "message": "Upstream stream ended" }
-```
-
-Subscribe the account again, then read its REST state again, as after a disconnect.
-
-## Keep a correct local copy
-
-The streams promise no snapshot, no replay, no sequence numbers and no resume point. The pattern that stays correct anyway, per account:
+### Keep a correct local copy
 
 <Steps>
-  <Step title="Subscribe first">
-    Connect, send `Subscribe`, and wait for `Subscribed` to list the account. Events for it follow from there; keep reading them while you do the next step.
+  <Step title="Open the stream first">
+    Wait for the `200`. From then on every change arrives as an event; keep reading and queue the events while you do the next step.
   </Step>
   <Step title="Read the current state">
     Page through [List open orders](/api-reference/platform/hosts/list-orders) (or recent [transactions](/api-reference/platform/hosts/list-transactions)) until `nextCursor` is `null`. This is your starting copy.
   </Step>
   <Step title="Apply events on top">
-    Apply the events that arrived during the read, then live ones, in the order they arrive. For orders the newest event for an order ID replaces what you hold; drop an order from your open set once its state is `Filled`, `Cancelled` or `Rejected`. For transactions, add any posting whose `id` you do not have.
+    Apply the queued events, then live ones, in the order they arrive. For orders, the newest event for an order ID replaces what you hold; drop an order from your open set once its state is `Filled`, `Cancelled` or `Rejected`. For transactions, add any posting whose `id` you do not have.
   </Step>
-  <Step title="After Ended or any disconnect, do both again">
-    Events sent while an account was not streaming are gone. Subscribe again (after reconnecting, if the connection closed), then read the REST state again and replace your copy.
+  <Step title="When the stream stops, do both again">
+    Changes made while no stream was open are gone from the stream. Open it again, then read the state again and replace your copy.
   </Step>
 </Steps>
 
-Subscribing before you read is what closes the gap: anything that changes after your REST read also arrives as an event, and because each event carries the complete order, applying an event on top of slightly newer REST data still ends on the latest state.
+Opening the stream before you read is what closes the gap: anything that changes after your read also arrives as an event, and because each event carries the complete order, applying an event on top of slightly newer data still ends on the latest state.
 
-### Keep up with the stream
+For transactions, re-read history a little further back than the newest posting you hold, so a posting that reached the host's history late is not missed. The `listTransactions` capability's `defaultOrdering` says whether history comes newest or oldest first.
 
-Read messages as they arrive. A connection that falls too far behind is closed with code `1013` and reason `Slow consumer`, rather than delaying the stream for everyone. Do slow work, such as REST reads, without pausing the socket: hand messages to a queue as soon as they arrive. Streaming fewer accounts per connection also reduces the load on each.
+## When a stream stops
 
-This sketch keeps the set of open orders correct for several accounts across `Ended` and reconnects. It uses `websockets` 14 or later and `httpx`. A reader task drains the socket into a queue, so the REST reads never hold it back:
+A stream stops in one of two ways.
+
+**With `Ended`.** The last line says why, with a `code` from the [error catalogue](/api-reference/platform/errors), for example `UpstreamFailure` when the venue's or host's own feed ended. `message` is for logs; do not parse it.
+
+```json
+{"type":"Ended","code":"UpstreamFailure","message":"Upstream stream ended"}
+```
+
+**Without `Ended`.** The response ends or fails without an `Ended` line, the connection drops, or the stream falls too far behind (see below). Messages have been lost.
+
+Either way, open the stream again after a short, randomised delay, so that many clients do not reconnect at once, and rebuild from its first message: the new `Reset` for market data, or a fresh read of the current state for an account stream. Back off further if reopening keeps failing, and stop on a `4xx` other than `429`: that needs a fix, not a retry.
+
+## Keep up with the stream
+
+Read lines as they arrive. A stream whose client falls too far behind is cut, without an `Ended` line, rather than delaying it. Hand messages to a queue as soon as you read them, and do slow work, such as REST reads, elsewhere.
+
+Open one stream per topic. Each stream is cut on its own, so a busy order book never delays your order events. Streams work over HTTP/1.1, which holds a connection per stream, and HTTP/2, which shares one connection between all your streams.
+
+## A resilient reader
+
+This sketch keeps a local order book for one market and the set of open orders for one account, across `Ended`, disconnects and resets. It uses [`requests`](https://requests.readthedocs.io/). Each stream runs in its own thread, so a slow REST read never holds a stream back.
 
 ```python
-import asyncio, json, os, uuid
-import httpx
-from websockets.asyncio.client import connect
-from websockets.exceptions import ConnectionClosed, InvalidHandshake, InvalidStatus
+import json, os, queue, random, threading, time
+import requests
 
 API = "https://api.plurex.io/api/v1"
-STREAM = "wss://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountOrders"
-ACCOUNTS = [os.environ["PLUREX_ACCOUNT_ID"]]   # up to 25 per connection
 HEADERS = {
     "X-API-KEY": os.environ["PLUREX_API_KEY"],
     "X-API-SECRET": os.environ["PLUREX_API_SECRET"],
 }
+RETRYABLE = {429, 500, 502, 503, 504}
 TERMINAL = {"Filled", "Cancelled", "Rejected"}
 
-async def read_open_orders(http, account_id):
+
+def follow(path, body, on_open, on_message):
+    """Keep one stream open. Calls on_open() after each 200, then on_message() for every line."""
+    delay = 1
+    while True:
+        try:
+            # The read timeout is the longest silence allowed; a keepalive arrives at least every 15 s.
+            with requests.post(f"{API}/{path}", json=body, headers=HEADERS,
+                               stream=True, timeout=(10, 45)) as response:
+                if response.status_code != 200:
+                    error = response.json()
+                    if response.status_code not in RETRYABLE:
+                        raise RuntimeError(f"{response.status_code} {error['code']}: {error['message']}")
+                else:
+                    on_open()
+                    delay = 1
+                    for line in response.iter_lines():
+                        if not line:
+                            continue                     # keepalive
+                        message = json.loads(line)
+                        if message["type"] == "Ended":
+                            print("stream ended:", message["code"], message["message"])
+                            break
+                        on_message(message)
+                    # Ended, or the body finished without it: either way, reopen.
+        except (requests.ConnectionError, requests.Timeout, requests.exceptions.ChunkedEncodingError):
+            pass                                         # lost: reopen
+        time.sleep(delay * random.uniform(0.5, 1.5))     # randomised, so clients do not reconnect together
+        delay = min(delay * 2, 60)
+
+
+# Market data: a Reset replaces the book, an Update sets or removes levels.
+book = {"bids": {}, "asks": {}}
+
+def on_book(message):
+    if message["type"] == "Reset":
+        for side in ("bids", "asks"):
+            book[side] = {}
+    if message["type"] in ("Reset", "Update"):
+        for side in ("bids", "asks"):
+            for level in message["data"][side]:
+                if level["size"] == "0":
+                    book[side].pop(level["price"], None)
+                else:
+                    book[side][level["price"]] = level["size"]
+
+
+# Account orders: open the stream, read the current state, then apply events on top.
+ACCOUNT_ID = os.environ["PLUREX_ACCOUNT_ID"]
+open_orders = {}
+events = queue.Queue()
+
+def read_open_orders():
     orders, cursor = {}, None
     while True:
-        body = {"accountId": account_id, "query": {"type": "Global"}}
+        body = {"accountId": ACCOUNT_ID, "query": {"type": "Global"}}
         if cursor:
             body["cursor"] = cursor
-        response = await http.post(f"{API}/hosts/query/ListOpenOrders", json=body, headers=HEADERS)
+        response = requests.post(f"{API}/hosts/query/ListOpenOrders", json=body, headers=HEADERS, timeout=10)
         response.raise_for_status()
         page = response.json()
         for order in page["items"]:
@@ -309,101 +280,43 @@ async def read_open_orders(http, account_id):
         if cursor is None:
             return orders
 
-def apply(orders, order):
+def apply(order):
     if order["state"] in TERMINAL:
-        orders.pop(order["id"], None)
+        open_orders.pop(order["id"], None)
     else:
-        orders[order["id"]] = order            # newest event wins
+        open_orders[order["id"]] = order                 # newest event wins
 
-async def subscribe(ws, account_ids, delay=0):
-    await asyncio.sleep(delay)
-    try:
-        await ws.send(json.dumps({
-            "type": "Subscribe",
-            "id": str(uuid.uuid4()),
-            "topics": [{"accountId": account_id} for account_id in account_ids],
-        }))
-    except ConnectionClosed:
-        pass                                   # the main loop reconnects
+def reconcile():
+    while True:
+        item = events.get()
+        if item == "opened":                             # a new stream: rebuild from the current state
+            open_orders.clear()
+            open_orders.update(read_open_orders())
+        elif item["type"] == "Event":
+            apply(item["data"]["order"])                 # events queued during the read apply after it
 
-async def drain(ws, queue):
-    try:
-        async for raw in ws:
-            queue.put_nowait(json.loads(raw))
-        queue.put_nowait(None)                 # normal close
-    except ConnectionClosed as closed:
-        queue.put_nowait(closed)
 
-async def follow_orders():
-    delay = 1
-    async with httpx.AsyncClient(timeout=10) as http:
-        while True:
-            try:
-                async with connect(STREAM, additional_headers=HEADERS) as ws:
-                    queue = asyncio.Queue()
-                    reader = asyncio.create_task(drain(ws, queue))   # keep reading
-                    try:
-                        await subscribe(ws, ACCOUNTS)                # 1. subscribe
-                        open_orders = {}                             # accountId -> {orderId: order}
-                        while (message := await queue.get()) is not None:
-                            if isinstance(message, Exception):
-                                raise message
-                            kind = message.get("type")
-                            if kind == "Subscribed":                 # 2. read state
-                                for topic in message["topics"]:
-                                    account_id = topic["accountId"]
-                                    open_orders[account_id] = await read_open_orders(http, account_id)
-                                delay = 1
-                            elif kind == "Event":                    # 3. apply events
-                                apply(open_orders[message["topic"]["accountId"]], message["data"]["order"])
-                            elif kind == "Ended":                    # 4. subscribe again, then re-read
-                                account_id = message["topic"]["accountId"]
-                                open_orders.pop(account_id, None)
-                                asyncio.create_task(subscribe(ws, [account_id], delay=5))
-                            elif kind == "Rejected":                 # refused: fix, do not loop
-                                raise RuntimeError(f"{message['topic']['accountId']}: {message['code']} {message['message']}")
-                    finally:
-                        reader.cancel()
-            except InvalidStatus as error:
-                if error.response.status_code != 429 and error.response.status_code < 500:
-                    raise          # credentials: fix, do not loop
-            except httpx.HTTPStatusError as error:
-                if error.response.status_code in (400, 401, 403, 404, 422):
-                    raise          # the REST read itself is wrong: fix, do not loop
-            except (ConnectionClosed, InvalidHandshake, OSError, httpx.HTTPError):
-                pass               # 5. reconnect, subscribe and read state again
-            await asyncio.sleep(delay)
-            delay = min(delay * 2, 60)
-
-asyncio.run(follow_orders())
+threading.Thread(target=reconcile, daemon=True).start()
+threading.Thread(target=follow, daemon=True, args=(
+    "hosts/stream/SubscribeToAccountOrders", {"accountId": ACCOUNT_ID},
+    lambda: events.put("opened"), events.put)).start()
+follow("venues/stream/SubscribeToOrderBooks",
+       {"venueId": "bybit", "instrument": {"type": "Perp", "base": "BTC", "quote": "USDT"}},
+       lambda: None, on_book)
 ```
 
-Events that arrive while the sketch reads an account's REST state wait in the queue behind `Subscribed`, so they are applied after it, in order. The loop backs off on network failures, closes, and `429` and `5xx` responses, and stops on errors that need a fix.
-
-For transactions, the same loop works on the transaction stream with `ListTransactions` in place of `ListOpenOrders`. Keep posting IDs you have seen, and after subscribing again re-read history a little further back than the newest posting you hold, so a posting that reached the host's history late is not missed. The `listTransactions` capability's `defaultOrdering` says whether history comes newest or oldest first.
-
-## Close codes
-
-| Code | Meaning | What to do |
-| --- | --- | --- |
-| `1000` | Normal shutdown. | Reconnect if you still need updates, subscribe, then read the REST state again. |
-| `1008` with reason `No topics` | No account was streaming for 30 seconds. | Subscribe promptly after connecting, and keep at least one account streaming or close the connection yourself. |
-| `1008`, any other reason | The server could not decode a message you sent. | Fix the message; send only `Subscribe` and `Unsubscribe`. |
-| `1011` with reason `Stream failed` | The stream itself failed. | Reconnect with a backoff, subscribe, then read the REST state again. |
-| `1013` with reason `Slow consumer` | Your client fell too far behind. | Reconnect, subscribe, then reconcile. Read messages as they arrive, and stream fewer accounts per connection. |
-
-Any other disconnect, such as a network failure, is handled the same way: reconnect, subscribe, then reconcile.
+The order stream's thread only queues what it reads, so it keeps up while `reconcile` pages through open orders. The order book needs nothing on open: its first line is a `Reset`.
 
 ## What a stream does not promise
 
-- No snapshot on subscribe, and no replay of missed events.
-- No sequence numbers or resume tokens. A gap is detected only by `Ended` or a disconnect.
-- No ordering between accounts, or between the order stream and the transaction stream.
+- No snapshot on an account stream, and no replay of missed changes on any stream.
+- No sequence numbers or resume tokens. A gap shows as a fresh `Reset`, an `Ended`, or a stream that stops without one.
+- No ordering between streams, such as between the order stream and the transaction stream.
 - No individual executions when `includesFillDetails` is `false`.
-- No browser authentication.
 
 ## Related
 
+- [Read market data](/guides/market-data): what each market data value means, and reading it once.
 - [Place and manage orders](/guides/orders): order states and how to read an order.
 - [Balances, positions and settings](/guides/portfolio): transactions and balances.
-- [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders) and [Stream account transactions](/api-reference/platform/hosts/subscribe-to-account-transactions): the message reference.
+- [Errors](/api-reference/platform/errors): the error codes a stream can refuse or end with.

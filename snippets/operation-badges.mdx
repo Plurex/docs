@@ -1,5 +1,5 @@
 export const OperationBadges = ({ badges = [] }) => {
-  const colors = { public: "green", optional: "orange", "not-repeat-safe": "red" };
+  const colors = { query: "blue", command: "purple", stream: "yellow", public: "green", optional: "orange", "not-repeat-safe": "red" };
   return (
     <p>
       {badges.map((badge) => (

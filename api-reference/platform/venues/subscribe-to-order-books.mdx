@@ -1,0 +1,14 @@
+---
+title: "Stream an order book"
+description: "Streams one market's order book: a Reset of the whole book, then Updates of the levels that changed. The depth is the venue's own and covers more than the best bid and ask. A market the venue does not list returns 422 NotSupported."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/stream/SubscribeToOrderBooks"
+playground: "none"
+---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "stream", "label": "Stream", "description": "The response stays open and carries one JSON message per line until an Ended line."}]} />
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.orderBook.subscribeToOrderBooks", "always": true}]} market={[]} />

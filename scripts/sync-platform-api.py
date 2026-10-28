@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sync Mintlify's API reference from the canonical Platform OpenAPI and AsyncAPI documents."""
+"""Sync Mintlify's API reference from the canonical Platform OpenAPI document."""
 
 import json
 import re
@@ -11,7 +11,6 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 API = ROOT / "api-reference/platform"
 SOURCE = API / "plurex-platform-api.yaml"
-STREAMS = API / "plurex-platform-async-api.yaml"
 
 # Keep established URLs where their operations still exist.
 SLUGS = {
@@ -34,6 +33,16 @@ SOURCES = {
 
 # Discovery operations are where capabilities are read, so they get no check.
 DISCOVERY = {"List", "ListMarkets"}
+
+# The operation kind is the path segment after the module (/api/v1/hosts/command/SubmitOrder). Its badge comes first.
+KINDS = {
+    "query": ("Query", "Reads state and changes nothing. Always safe to repeat."),
+    "command": ("Command", "Changes state. Safe to repeat unless it has the Not safe to repeat badge."),
+    "stream": (
+        "Stream",
+        "The response stays open and carries one JSON message per line until an Ended line.",
+    ),
+}
 
 # What the header leaves alone do not say: market descriptors, plain header values, and notes on leaves that are not
 # request variants. "resolves" marks market descriptors that settle a PerMarket header leaf. Every path is checked
@@ -103,6 +112,36 @@ EXTRA = {
     },
     "ListTransactions": {
         "header": [("accountTransactions.supportedTransactionTypes", "the posting types the host reports")],
+    },
+    "SubscribeToPrices": {
+        "resolves": True,
+        "market": [("marketData.prices.{kind}.subscribe", "true for each price kind the market streams")],
+    },
+    "SubscribeToBestQuotes": {
+        "resolves": True,
+        "market": [("marketData.bestQuote.subscribe", "true when the market streams its best quote")],
+    },
+    "SubscribeToMarketStatistics": {
+        "resolves": True,
+        "market": [
+            ("marketData.statistics.subscribe", "true when the market streams statistics"),
+            ("marketData.statistics.supportedFields", "which statistics it reports"),
+        ],
+    },
+    "SubscribeToIndicativeFundings": {
+        "resolves": True,
+        "market": [("marketData.indicativeFunding.subscribe", "true when the market streams indicative funding")],
+    },
+    "SubscribeToOpenInterests": {
+        "resolves": True,
+        "market": [("marketData.openInterest.subscribe", "true when the market streams open interest")],
+    },
+    "SubscribeToCandles": {
+        "resolves": True,
+        "market": [
+            ("marketData.candles.{priceKind}.subscribe", "true when the series can be streamed"),
+            ("marketData.candles.{priceKind}.supportedIntervals", "the intervals you can request"),
+        ],
     },
     "SubscribeToAccountOrders": {
         "header": [
@@ -227,7 +266,7 @@ def capability_check(schemas, module, action, operation):
     leaves = capability_leaves(schemas, header_root)
     market_fields = summary_paths(schemas, market_root)
     extra = EXTRA.get(action, {})
-    variants = request_variants(schemas, operation) if operation else {}
+    variants = request_variants(schemas, operation)
     key = lower_camel(action)
 
     header = []
@@ -265,8 +304,6 @@ def capability_check(schemas, module, action, operation):
     props = {"source": source, "header": header, "market": market}
     if extra.get("resolves"):
         props["perMarket"] = True
-    if operation is None:
-        props["stream"] = True
     return props
 
 
@@ -296,9 +333,12 @@ def capability_block(props):
     )
 
 
-def badge_block(tags, operation):
-    """The operation's badge tags, labelled and described as the spec defines them."""
-    badges = [
+def badge_block(tags, kind, operation):
+    """The operation's kind, then its badge tags, labelled and described as the spec defines them."""
+    if kind not in KINDS:
+        raise ValueError(f"Unknown operation kind {kind}")
+    label, description = KINDS[kind]
+    badges = [{"name": kind, "label": label, "description": description}] + [
         {"name": name, "label": tags[name]["summary"], "description": tags[name]["description"]}
         for name in operation["tags"] if tags[name].get("kind") == "badge"
     ]
@@ -310,197 +350,8 @@ def badge_block(tags, operation):
     )
 
 
-# Streams
-
-PAYLOAD_HEADING = "Event data"
-PAYLOAD_ANCHOR = "event-data"
-
-
-def comparable(schema):
-    """A schema without its prose and discriminator, which may differ between the OpenAPI and AsyncAPI files."""
-    if isinstance(schema, dict):
-        return {key: comparable(value) for key, value in schema.items() if key not in {"description", "discriminator"}}
-    if isinstance(schema, list):
-        return [comparable(value) for value in schema]
-    return schema
-
-
-def check_shared(source_schemas, stream_schemas, name):
-    """The embedded payload is rendered from the OpenAPI spec, so it and everything it reaches must match there."""
-    pending = [name]
-    while pending:
-        current = pending.pop()
-        if current not in source_schemas.schemas:
-            raise ValueError(f"Stream schema {current} is missing from {SOURCE.name}")
-        if comparable(source_schemas.schemas[current]) != comparable(stream_schemas.schemas[current]):
-            raise ValueError(f"Schema {current} differs between {SOURCE.name} and {STREAMS.name}")
-        pending += re.findall(r"#/components/schemas/(\w+)", json.dumps(stream_schemas.schemas[current]))
-
-
-def mdx_text(text):
-    text = " ".join(str(text).split())
-    return (
-        text.replace("{", "\\{").replace("}", "\\}").replace("<", "&lt;").replace(">", "&gt;")
-    )
-
-
-def type_label(schemas, schema):
-    inner = schemas.nullable_inner(schema)
-    if inner is not None:
-        return f"{type_label(schemas, inner)} | null"
-    resolved = schemas.resolve(schema)
-    if resolved.get("oneOf"):
-        return "object"
-    kind = resolved.get("type", "object")
-    if isinstance(kind, list):
-        return " | ".join(kind)
-    if kind == "array":
-        return f"{type_label(schemas, resolved['items'])}[]"
-    if resolved.get("format"):
-        return f"{kind}<{resolved['format']}>"
-    return kind
-
-
-def field_description(schemas, schema):
-    inner = schemas.nullable_inner(schema) or schema
-    text = schema.get("description") or inner.get("description") or schemas.resolve(inner).get("description", "")
-    resolved = schemas.resolve(inner)
-    enum = resolved.get("enum")
-    if enum and len(enum) == 1 and f"Always {enum[0]}" not in text:
-        text = f"{text} Always `{enum[0]}`.".strip()
-    elif enum and len(enum) > 1:
-        text = f"{text} One of: {', '.join(f'`{value}`' for value in enum)}.".strip()
-    return text
-
-
-def render_fields(schemas, schema, indent, depth, linked):
-    """ResponseFields for the properties of an object schema."""
-    resolved = schemas.resolve(schema)
-    required = set(resolved.get("required", []))
-    return "".join(
-        render_field(schemas, name, child, name in required, indent, depth, linked)
-        for name, child in resolved.get("properties", {}).items()
-    )
-
-
-def render_field(schemas, name, schema, required, indent, depth, linked):
-    pad = " " * indent
-    attributes = f'name="{name}" type="{type_label(schemas, schema)}"' + (" required" if required else "")
-    body = mdx_text(field_description(schemas, schema))
-    target = linked_schema(schemas, schema, linked)
-    if target:
-        body += f" Its fields are under [{PAYLOAD_HEADING}](#{PAYLOAD_ANCHOR}) below."
-    children = render_children(schemas, schema, indent + 2, depth + 1, linked)
-    return f"{pad}<ResponseField {attributes}>\n{pad}  {body}\n{children}{pad}</ResponseField>\n"
-
-
-def render_children(schemas, schema, indent, depth, linked):
-    if depth > 8:
-        return ""
-    pad = " " * indent
-    inner = schemas.nullable_inner(schema) or schema
-    resolved = schemas.resolve(inner)
-    if resolved.get("type") == "array":
-        return render_children(schemas, resolved["items"], indent, depth, linked)
-    if linked_schema(schemas, schema, linked):
-        return ""
-    if resolved.get("oneOf"):
-        raise ValueError(f"Stream message field holds an unnamed union: {schema}")
-    if resolved.get("type") == "object" and resolved.get("properties"):
-        fields = render_fields(schemas, inner, indent + 2, depth, linked)
-        return f'{pad}<Expandable title="properties">\n{fields}{pad}</Expandable>\n'
-    return ""
-
-
-def has_union(schemas, schema, seen=frozenset()):
-    """Whether a union appears anywhere below this schema."""
-    name = schemas.name(schema)
-    if name in seen:
-        return False
-    seen = seen | {name} if name else seen
-    resolved = schemas.resolve(schema)
-    if resolved.get("oneOf"):
-        return True
-    children = [*resolved.get("anyOf", []), *resolved.get("properties", {}).values()]
-    if "items" in resolved:
-        children.append(resolved["items"])
-    return any(has_union(schemas, child, seen) for child in children if child.get("type") != "null")
-
-
-def linked_schema(schemas, schema, linked):
-    """The named schema a field points to instead of expanding inline, recorded in `linked`, or None.
-
-    A schema with a union anywhere below it is the stream's payload. Mintlify renders it at the end of the page from
-    the OpenAPI spec (`openapi-schema`), because its union tabs read better than nested expandables.
-    """
-    inner = schemas.nullable_inner(schema) or schema
-    resolved = schemas.resolve(inner)
-    if resolved.get("type") == "array":
-        return linked_schema(schemas, resolved["items"], linked)
-    name = schemas.name(inner)
-    if name is None or not has_union(schemas, inner):
-        return None
-    linked.add(name)
-    return name
-
-
-def render_message(schemas, message, linked):
-    lines = [f"### {message.get('title', message['name'])}", ""]
-    description = message.get("description") or message.get("summary", "")
-    if description:
-        lines += [mdx_text(description), ""]
-    lines.append(render_fields(schemas, message["payload"], 0, 0, linked))
-    for example in message.get("examples", [])[:1]:
-        lines += ["```json Example", json.dumps(example["payload"], indent=2), "```", ""]
-    return "\n".join(lines)
-
-
-def stream_page(streams, key, channel, server_operation, control_operation, capability):
-    """The page body and the payload schema Mintlify renders after it."""
-    schemas = Schemas(streams)
-    linked = set()
-    messages = streams["components"]["messages"]
-
-    def operation_messages(operation):
-        return [messages[ref["$ref"].rsplit("/", 1)[1]] for ref in operation["messages"]]
-
-    server = next(iter(streams["servers"].values()))
-    url = f"{server['protocol']}://{server['host']}{channel['address']}"
-    security = next(iter(streams["components"]["securitySchemes"].values()))
-    sections = [
-        capability,
-        "## Connect",
-        "",
-        f"```text\n{url}\n```",
-        "",
-        f"{mdx_text(security.get('description', ''))} Send them on the WebSocket upgrade request, then subscribe "
-        "accounts with the messages below. See [Stream account updates](/guides/streams) for the protocol, limits, "
-        "close codes and how to reconcile.",
-        "",
-        "## Messages you send",
-        "",
-        mdx_text(control_operation.get("description", "")),
-        "",
-        *[render_message(schemas, message, linked) for message in operation_messages(control_operation)],
-        "## Messages you receive",
-        "",
-        *[render_message(schemas, message, linked) for message in operation_messages(server_operation)],
-    ]
-    if len(linked) != 1:
-        raise ValueError(f"Stream {key} must carry exactly one payload schema, found {sorted(linked)}")
-    (payload,) = linked
-    sections += [
-        f"## {PAYLOAD_HEADING}",
-        "",
-        "The `data` object each event carries.",
-        "",
-    ]
-    return "\n".join(section for section in sections if section is not None), payload
-
-
 def sync():
     source = yaml.safe_load(SOURCE.read_text())
-    streams = yaml.safe_load(STREAMS.read_text())
     schemas = Schemas(source)
     tags = {tag["name"]: tag for tag in source["tags"]}
     pages_by_tag = {}
@@ -522,46 +373,17 @@ def sync():
                 "description": operation.get("description", operation["summary"]),
                 "openapi": f"/{SOURCE.relative_to(ROOT)} {method.upper()} {path}",
             }
+            kind = path.split("/")[4]
+            # A stream's response never finishes, so the playground could not show it.
+            if kind == "stream":
+                metadata["playground"] = "none"
             blocks = [
                 block for block in (
-                    badge_block(tags, operation),
+                    badge_block(tags, kind, operation),
                     capability_block(capability_check(schemas, module, action, operation)),
                 ) if block
             ]
             pages.append((ROOT / f"{page}.mdx", frontmatter(metadata) + "".join("\n" + block for block in blocks)))
-
-    # One MDX page per channel, rendered from the AsyncAPI document: Mintlify's AsyncAPI view does not show nested
-    # unions or nullable references. Frames are expanded inline; Mintlify renders the event payload after them from the
-    # OpenAPI spec. The page takes its title and description from the operation the server sends.
-    # AsyncAPI operations carry the domain tag, then the OpenAPI nav leaf, so each stream sits beside its REST
-    # operations.
-    stream_schemas = Schemas(streams)
-    for key, channel in streams["channels"].items():
-        operations = [
-            operation for operation in streams["operations"].values()
-            if operation["channel"]["$ref"] == f"#/channels/{key}"
-        ]
-        server_operations = [operation for operation in operations if operation["action"] == "send"]
-        control_operations = [operation for operation in operations if operation["action"] == "receive"]
-        if len(server_operations) != 1 or len(control_operations) != 1:
-            raise ValueError(f"Expected one server and one control operation for stream {key}")
-        operation = server_operations[0]
-        parts = channel["address"].split("/")
-        module, action = parts[3], parts[5]
-        page = f"api-reference/platform/{module}/{slug_for(action)}"
-        leaf = operation["tags"][1]["name"]
-        if tags.get(leaf, {}).get("kind") != "nav":
-            raise ValueError(f"Stream {key} has no OpenAPI navigation tag")
-        pages_by_tag.setdefault(leaf, []).append(page)
-        metadata = {
-            "title": operation["summary"],
-            "description": operation.get("description", operation["summary"]),
-        }
-        capability = capability_block(capability_check(schemas, module, action, None))
-        body, payload = stream_page(streams, key, channel, operation, control_operations[0], capability)
-        check_shared(schemas, stream_schemas, payload)
-        metadata["openapi-schema"] = f"/{SOURCE.relative_to(ROOT)} {payload}"
-        pages.append((ROOT / f"{page}.mdx", frontmatter(metadata) + "\n" + body))
 
     def group(name):
         tag = tags[name]
@@ -584,7 +406,7 @@ def sync():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
     config_path.write_text(json.dumps(config, indent=2) + "\n")
-    print(f"Synced {len(pages)} operation and stream pages and API navigation from {SOURCE.relative_to(ROOT)} and {STREAMS.relative_to(ROOT)}")
+    print(f"Synced {len(pages)} operation pages and API navigation from {SOURCE.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

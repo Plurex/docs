@@ -6,7 +6,7 @@ openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/q
 
 import { OperationBadges } from "/snippets/operation-badges.mdx";
 
-<OperationBadges badges={[{"name": "public", "label": "No API key", "description": "Public market data and discovery; no authentication needed."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "batch", "label": "Batch", "description": "Takes a list of identifiers or instruments and handles them in one call."}]} />
+<OperationBadges badges={[{"name": "query", "label": "Query", "description": "Reads state and changes nothing. Always safe to repeat."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "batch", "label": "Batch", "description": "Takes a list of identifiers or instruments and handles them in one call."}]} />
 
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 

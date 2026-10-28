@@ -1,11 +1,11 @@
 ---
 title: "Read market data"
-description: "Discover venues and markets, read order books, trades, prices and statistics in batches, judge freshness and page back through candles."
+description: "Discover venues and markets, read order books, trades, prices and statistics, follow them live with streams, and page back through candles."
 ---
 
-Venue operations are public market data. They need no API key, so you can try every example here with `curl` alone. Market data describes what is trading on a venue; to place orders, read the matching host market instead (see [Venues](/concepts/venues) for the model).
+Venue operations are market data. Like every operation, they need an API key: send `X-API-KEY` and `X-API-SECRET` on each request (see [Authentication](/authentication)). Market data describes what is trading on a venue; to place orders, read the matching host market instead (see [Venues](/concepts/venues) for the model).
 
-Each venue lists what it supports in its capabilities, and each market says which reads it offers in `marketData`. Check them before calling; [Venue capabilities](/capabilities/venue-capabilities) explains both levels.
+Each venue lists what it supports in its capabilities, and each market says which reads and streams it offers in `marketData`. Check them before calling; [Venue capabilities](/capabilities/venue-capabilities) explains both levels.
 
 ## Discover venues and markets
 
@@ -14,6 +14,8 @@ Each venue lists what it supports in its capabilities, and each market says whic
 ```bash
 curl --request POST https://api.plurex.io/api/v1/venues/query/List \
   --header 'Content-Type: application/json' \
+  --header "X-API-KEY: $PLUREX_API_KEY" \
+  --header "X-API-SECRET: $PLUREX_API_SECRET" \
   --data '{}'
 ```
 
@@ -31,7 +33,7 @@ Both lists are paged: follow `nextCursor` until it is `null`. Each market gives:
 | `instrument` | The value to send in every market-data request. |
 | `increments` | The grid the venue quotes on: group book levels by `price` and format sizes by `size`. These are not order rules. |
 | `contractDetails` | What one contract is. Book and trade sizes are in native contracts. |
-| `marketData` | Which reads this market supports, and on what terms. |
+| `marketData` | Which reads and streams this market supports, and on what terms. |
 
 ## Order book
 
@@ -40,6 +42,8 @@ Both lists are paged: follow `nextCursor` until it is `null`. Each market gives:
 ```bash
 curl --request POST https://api.plurex.io/api/v1/venues/query/GetOrderBook \
   --header 'Content-Type: application/json' \
+  --header "X-API-KEY: $PLUREX_API_KEY" \
+  --header "X-API-SECRET: $PLUREX_API_SECRET" \
   --data '{"venueId": "bybit", "instrument": {"type": "Perp", "base": "BTC", "quote": "USDT"}}'
 ```
 
@@ -98,6 +102,8 @@ An instrument without a value does not fail the batch. It comes back as `Unavail
 ```bash
 curl --request POST https://api.plurex.io/api/v1/venues/query/GetPrices \
   --header 'Content-Type: application/json' \
+  --header "X-API-KEY: $PLUREX_API_KEY" \
+  --header "X-API-SECRET: $PLUREX_API_SECRET" \
   --data '{
     "venueId": "bybit",
     "kind": "Mark",
@@ -232,9 +238,11 @@ Send each `nextCursor` with the same venue, price kind, interval and query until
 
 ```python
 from datetime import datetime
+import os
 import requests
 
 URL = "https://api.plurex.io/api/v1/venues/query/ListCandles"
+HEADERS = {"X-API-KEY": os.environ["PLUREX_API_KEY"], "X-API-SECRET": os.environ["PLUREX_API_SECRET"]}
 
 def parse(timestamp):
     return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
@@ -243,7 +251,7 @@ def candles_back_to(start_at, query, venue_id="bybit", price_kind="Traded", inte
     """Yield closed candles newest first, stopping before start_at (an aware datetime)."""
     body = {"venueId": venue_id, "priceKind": price_kind, "interval": interval, "query": query}
     while True:
-        response = requests.post(URL, json=body, timeout=10)
+        response = requests.post(URL, json=body, headers=HEADERS, timeout=10)
         response.raise_for_status()
         page = response.json()
         for candle in page["items"]:
@@ -257,9 +265,86 @@ def candles_back_to(start_at, query, venue_id="bybit", price_kind="Traded", inte
 
 Paging past the first page needs the series' `listBefore`, and how far back you can go is bounded by `maxHistoryAgeByInterval`. Stop when `nextCursor` is `null`.
 
+## Follow market data live
+
+Each read above has a stream that follows one market as it changes. Stream when you follow a market continuously: a book you trade against, a live tape, a chart's forming candle. Use the reads for a one-off value, or for a snapshot of many instruments at once, since a batch read takes up to 50 instruments and a stream follows one.
+
+Every market data stream starts with a **Reset** holding the current state, then sends **Updates**. A Reset can arrive again at any time; it replaces everything you hold for that stream. The last line is **Ended**. [Streams](/guides/streams) covers how to open a stream, keepalives, how it ends and how to reopen it.
+
+| Stream | Reset | Update | Check support |
+| --- | --- | --- | --- |
+| [Stream an order book](/api-reference/platform/venues/subscribe-to-order-books) | The whole book | The levels that changed | Always supported |
+| [Stream public trades](/api-reference/platform/venues/subscribe-to-trades) | The recent trades | New trades | Always supported |
+| [Stream a price](/api-reference/platform/venues/subscribe-to-prices) | The current price of one `kind` | The complete new value | `marketData.prices.<kind>.subscribe` |
+| [Stream the best bid and ask](/api-reference/platform/venues/subscribe-to-best-quotes) | The current best bid and ask | The complete new value | `marketData.bestQuote.subscribe` |
+| [Stream market statistics](/api-reference/platform/venues/subscribe-to-market-statistics) | The current statistics | The complete new values | `marketData.statistics.subscribe` |
+| [Stream indicative funding](/api-reference/platform/venues/subscribe-to-indicative-fundings) | The current estimate | The complete new value | `marketData.indicativeFunding.subscribe` |
+| [Stream open interest](/api-reference/platform/venues/subscribe-to-open-interests) | The current amount | The complete new value | `marketData.openInterest.subscribe` |
+| [Stream candles](/api-reference/platform/venues/subscribe-to-candles) | The recent candles, ending with the forming one | The forming candle | `marketData.candles.<priceKind>.subscribe` |
+
+The venue's capabilities say whether it offers each stream at all (`PerMarket` sends you to the market entry). A market the venue does not list, or one whose entry says `false`, returns `422 NotSupported` before the stream starts.
+
+### Keep a book
+
+An order book Update lists only the levels that changed, each with its new total size. Set each level to that size and remove a level whose size is `0`; levels not listed are unchanged. On a Reset, drop your book and start again from its levels.
+
+```json
+{"type":"Reset","timestamp":"2026-10-27T09:00:00.120Z","data":{"bids":[{"price":"67250.1","size":"0.42"}],"asks":[{"price":"67250.2","size":"0.08"}],"observedAt":"2026-10-27T09:00:00.101Z","receivedAt":"2026-10-27T09:00:00.115Z"}}
+{"type":"Update","timestamp":"2026-10-27T09:00:00.320Z","data":{"bids":[{"price":"67250.1","size":"0.9"}],"asks":[{"price":"67250.2","size":"0"}],"observedAt":"2026-10-27T09:00:00.301Z","receivedAt":"2026-10-27T09:00:00.316Z"}}
+```
+
+After these two lines the book has a bid of 0.9 at 67250.1 and no ask at 67250.2.
+
+```python
+import json
+import os
+from decimal import Decimal
+
+import requests
+
+URL = "https://api.plurex.io/api/v1/venues/stream/SubscribeToOrderBooks"
+HEADERS = {"X-API-KEY": os.environ["PLUREX_API_KEY"], "X-API-SECRET": os.environ["PLUREX_API_SECRET"]}
+
+def follow_book(venue_id, instrument, on_book):
+    """Keep one market's book until the stream ends. Returns the Ended line, or None if it was lost."""
+    body = {"venueId": venue_id, "instrument": instrument}
+    # The read timeout only needs to outlast the keepalive lines.
+    with requests.post(URL, json=body, headers=HEADERS, stream=True, timeout=(10, 60)) as response:
+        response.raise_for_status()
+        bids, asks = {}, {}
+        for line in response.iter_lines():
+            if not line:
+                continue  # keepalive
+            message = json.loads(line)
+            if message["type"] == "Ended":
+                return message
+            if message["type"] == "Reset":
+                bids, asks = {}, {}
+            elif message["type"] != "Update":
+                continue  # a message type added later
+            for side, book in (("bids", bids), ("asks", asks)):
+                for level in message["data"][side]:
+                    price, size = Decimal(level["price"]), Decimal(level["size"])
+                    if size == 0:
+                        book.pop(price, None)
+                    else:
+                        book[price] = size
+            on_book(bids, asks)
+    return None
+```
+
+Whether `follow_book` returns an Ended line or `None`, the book you hold is no longer current: open the stream again as [Streams](/guides/streams) describes.
+
+### Trades, values and candles
+
+- **Trades.** A trades Reset is the recent trades, as Get recent trades returns them, and it can repeat trades an Update already delivered. Replace the history you hold with it; do not add it to running totals such as traded volume. Updates carry only new trades, oldest first.
+- **Prices, quotes, statistics, funding and open interest.** Each Update carries the complete value, so a field that is now `null` was cleared. A stream value carries `observedAt` and `receivedAt`, with the same meanings as in a read, but no `confirmedAt`.
+- **Candles.** The Reset is the recent candles, oldest first, ending with the candle still forming. Each Update is the forming candle: one with the same `startAt` replaces it, and one with a later `startAt` completes it and starts the next. Updates never move back in time. Read older candles with List candles. A series that streams does so at every interval in its `supportedIntervals`.
+
 ## Related
 
 - [Venues](/concepts/venues): venues, venue markets and how they relate to hosts.
 - [Venue capabilities](/capabilities/venue-capabilities): reading venue and market support before you call.
+- [Streams](/guides/streams): opening, reading, ending and reopening any stream.
 - [Instruments](/concepts/instruments): instrument types, canonical symbols and native contract sizes.
 - [API conventions](/api-reference/platform/conventions): paging, decimals and timestamps.

@@ -24,7 +24,7 @@ Where hosts differ in what they *support*, rather than what they report, the dif
 
 ## The host header
 
-[List hosts](/api-reference/platform/hosts/list) is public and returns one `HostHeader` per host, real and paper:
+[List hosts](/api-reference/platform/hosts/list) returns one `HostHeader` per host, real and paper:
 
 | Field | Meaning |
 | --- | --- |
@@ -37,7 +37,7 @@ Where hosts differ in what they *support*, rather than what they report, the dif
 
 ## Host markets
 
-[List host markets](/api-reference/platform/hosts/list-markets) is public and returns the markets you can trade on a host. Each `HostMarketSummary` has:
+[List host markets](/api-reference/platform/hosts/list-markets) returns the markets you can trade on a host. Each `HostMarketSummary` has:
 
 - `venueId`, `symbol` and `instrument`, which join it to the [venue market](/concepts/venues-and-hosts#joining-a-venue-market-to-a-host-market);
 - `contractDetails`, which says what one contract is (see [Instruments and sizing](/concepts/instruments));

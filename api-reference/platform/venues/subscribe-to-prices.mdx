@@ -1,0 +1,14 @@
+---
+title: "Stream a price"
+description: "Streams one market's price of one kind (traded, mark or index): a Reset with the current value, then an Update whenever it changes. A market or kind the venue does not stream returns 422 NotSupported."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/stream/SubscribeToPrices"
+playground: "none"
+---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "stream", "label": "Stream", "description": "The response stays open and carries one JSON message per line until an Ended line."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}]} />
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.prices.traded.subscribeToPrices", "when": {"field": "kind", "value": "Traded"}, "support": true}, {"path": "capabilities.prices.mark.subscribeToPrices", "when": {"field": "kind", "value": "Mark"}, "support": true}, {"path": "capabilities.prices.index.subscribeToPrices", "when": {"field": "kind", "value": "Index"}, "support": true}]} market={[{"path": "marketData.prices.<kind>.subscribe", "note": "true for each price kind the market streams"}]} perMarket />

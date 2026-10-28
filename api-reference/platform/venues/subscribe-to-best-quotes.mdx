@@ -1,0 +1,14 @@
+---
+title: "Stream the best bid and ask"
+description: "Streams one market's best bid and ask: a Reset with the current quote, then an Update whenever it changes. A market the venue does not stream returns 422 NotSupported."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/stream/SubscribeToBestQuotes"
+playground: "none"
+---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "stream", "label": "Stream", "description": "The response stays open and carries one JSON message per line until an Ended line."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}]} />
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.bestQuote.subscribeToBestQuotes", "support": true}]} market={[{"path": "marketData.bestQuote.subscribe", "note": "true when the market streams its best quote"}]} perMarket />

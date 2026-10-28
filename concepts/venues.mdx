@@ -1,17 +1,17 @@
 ---
 title: "Venues"
-description: "How Plurex models public market data: venue markets, order books, trades, observations, freshness and candles."
+description: "How Plurex models market data: venue markets, order books, trades, observations, freshness, candles and streams."
 ---
 
-A venue is an exchange where markets trade and prices form. Every venue operation is public market data and needs no API key. This page explains the model behind that data, so you know exactly what each value means and how fresh it is. For step-by-step recipes, see [Market data](/guides/market-data).
+A venue is an exchange where markets trade and prices form. Every venue operation is market data, and like every operation it needs an API key. This page explains the model behind that data, so you know exactly what each value means and how fresh it is. For step-by-step recipes, see [Market data](/guides/market-data).
 
 ## Venues and their capabilities
 
 [List venues](/api-reference/platform/venues/list) returns each venue's `id` and its `capabilities`: every market-data operation the venue offers, with its support.
 
-- `GetOrderBook` and `GetRecentTrades` are supported on every venue.
-- The other reads are usually `PerMarket`: the venue offers them, and each market's `marketData` entry says whether that market does.
-- `NotSupported` means the venue does not offer the read: single-market reads (order book, recent trades, candles) return `422 NotSupported`, and the batch observation reads return an `Unavailable` result with code `NotSupported` for each instrument. For example, a venue that publishes no index prices declares `prices.index.getPrices` as `NotSupported`.
+- `GetOrderBook` and `GetRecentTrades`, and their streams, are supported on every venue.
+- The other reads and streams are usually `PerMarket`: the venue offers them, and each market's `marketData` entry says whether that market does.
+- `NotSupported` means the venue does not offer the read: single-market reads (order book, recent trades, candles) and streams return `422 NotSupported`, and the batch observation reads return an `Unavailable` result with code `NotSupported` for each instrument. For example, a venue that publishes no index prices declares `prices.index.getPrices` as `NotSupported`.
 
 See [Venue capabilities](/capabilities/venue-capabilities) for the full structure and how to resolve support for one market.
 
@@ -27,7 +27,7 @@ Each `VenueMarketSummary` describes one market:
 | `instrument` | The structured instrument you send to every market-data operation. |
 | `increments` | The grid the venue quotes market data on: `price` for book levels and trade prices, `size` for book level sizes in native contracts. **Not order rules.** |
 | `contractDetails` | What one contract is. Every size in market data is in native contracts. See [Instruments and sizing](/concepts/instruments). |
-| `marketData` | Which reads this market supports, and on what terms. |
+| `marketData` | Which reads and streams this market supports, and on what terms. |
 
 A BTC/USDT linear perpetual on a venue that reports all three price kinds might look like this (values are illustrative; read the live summary):
 
@@ -256,11 +256,18 @@ Each market declares its candle series per price kind in `marketData.candles`:
 | `supportedIntervals` | The intervals you may request. |
 | `list` | `ByInstrument` is available. |
 | `listBefore` | `ByInstrumentBefore` is available, and so is paging past the first page. |
+| `subscribe` | The candle stream is available, at every supported interval. |
 | `maxHistoryAgeByInterval` | How far back history reaches per interval, as an ISO 8601 duration. An interval without an entry has no declared limit. |
 
 Read these from the live summary rather than hard-coding them. A price kind, interval or variant the market does not list returns `422 NotSupported`.
 
 `volume` and `turnover` are `AssetValue`s, each naming its asset, because a bare number is ambiguous: on an inverse market the volume may be counted in the quote asset. Either is `null` when the venue does not report it.
+
+## Streams
+
+Each read has a stream that follows one market: its order book, trades, a price kind, best quote, statistics, indicative funding, open interest or a candle series. A stream starts with a **Reset** holding the current state, then sends **Updates**; a Reset can come again at any time and replaces everything you hold. Each market says whether it streams a value with the `subscribe` flag in its `marketData` entry.
+
+Stream values carry `observedAt` and `receivedAt`, with the meanings above, but no `confirmedAt`. See [Read market data](/guides/market-data#follow-market-data-live) for applying Updates and [Streams](/guides/streams) for opening and reopening a stream.
 
 ## Related
 

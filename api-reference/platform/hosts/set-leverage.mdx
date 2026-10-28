@@ -6,7 +6,7 @@ openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/co
 
 import { OperationBadges } from "/snippets/operation-badges.mdx";
 
-<OperationBadges badges={[{"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}]} />
+<OperationBadges badges={[{"name": "command", "label": "Command", "description": "Changes state. Safe to repeat unless it has the Not safe to repeat badge."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}]} />
 
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 

@@ -1,0 +1,14 @@
+---
+title: "Stream indicative funding"
+description: "Streams one perpetual's indicative funding rate: a Reset with the current estimate, then an Update whenever it changes. The rate that settles can differ. A market the venue does not stream returns 422 NotSupported."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/stream/SubscribeToIndicativeFundings"
+playground: "none"
+---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "stream", "label": "Stream", "description": "The response stays open and carries one JSON message per line until an Ended line."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}]} />
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.indicativeFunding.subscribeToIndicativeFundings", "support": true}]} market={[{"path": "marketData.indicativeFunding.subscribe", "note": "true when the market streams indicative funding"}]} perMarket />

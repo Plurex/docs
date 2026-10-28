@@ -1,4 +1,4 @@
-export const CapabilityCheck = ({ source = "host", header = [], market = [], none = false, stream = false, perMarket = false }) => {
+export const CapabilityCheck = ({ source = "host", header = [], market = [], none = false, perMarket = false }) => {
   const isHost = source === "host";
   const noun = isHost ? "host" : "venue";
   const list = `/api-reference/platform/${noun}s/list`;
@@ -32,12 +32,7 @@ export const CapabilityCheck = ({ source = "host", header = [], market = [], non
             <p>
               <code>Supported</code>: go ahead.{" "}
               {perMarket ? <><code>PerMarket</code>: check the market below. </> : null}
-              <code>NotSupported</code>:{" "}
-              {stream ? (
-                <>the account is <code>Rejected</code> with <code>NotSupported</code>.</>
-              ) : (
-                <>the call fails with <code>422 NotSupported</code>.</>
-              )}
+              <code>NotSupported</code>: the call fails with <code>422 NotSupported</code>.
             </p>
           ) : null}
           {market.length > 0 ? (

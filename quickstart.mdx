@@ -32,12 +32,14 @@ export PLUREX_API_SECRET="your-api-secret"
 
 <Steps>
   <Step title="Find a paper host">
-    Host discovery is public, so this call needs no key:
+    List the hosts:
 
     ```bash
     curl --request POST \
       --url https://api.plurex.io/api/v1/hosts/query/List \
       --header 'Content-Type: application/json' \
+      --header "X-API-KEY: $PLUREX_API_KEY" \
+      --header "X-API-SECRET: $PLUREX_API_SECRET" \
       --data '{}'
     ```
 
@@ -75,6 +77,8 @@ export PLUREX_API_SECRET="your-api-secret"
     curl --request POST \
       --url https://api.plurex.io/api/v1/hosts/query/ListMarkets \
       --header 'Content-Type: application/json' \
+      --header "X-API-KEY: $PLUREX_API_KEY" \
+      --header "X-API-SECRET: $PLUREX_API_SECRET" \
       --data "{\"hostId\": \"$PLUREX_HOST_ID\", \"base\": \"BTC\", \"quote\": \"USDT\", \"types\": [\"Spot\"]}"
     ```
 
@@ -251,8 +255,8 @@ Every step after creating and funding the account works the same on a connected 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Stream account updates" icon="bolt" href="/guides/streams">
-    Follow order changes and transactions live instead of polling.
+  <Card title="Streams" icon="bolt" href="/guides/streams">
+    Follow order changes, transactions and market data live instead of polling.
   </Card>
   <Card title="Read capabilities" icon="list-check" href="/capabilities/overview">
     Learn what each host and market supports before you call it.

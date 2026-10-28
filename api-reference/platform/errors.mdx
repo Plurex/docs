@@ -19,7 +19,7 @@ Every error, at every HTTP status, has the same shape. Use `code` in your progra
 | `code` | The specific reason, from the catalogue below. Each code always comes with the same HTTP status. |
 | `message` | Human-readable detail. Its wording can change; do not parse it. |
 
-The envelope is used for unknown paths (`404 NotFound`), wrong methods (`405 MethodNotAllowed`) and stream connections refused before the WebSocket upgrade, as well as for every operation's own errors. On an open stream, the same codes arrive in `Rejected` and `Ended` messages; see [Stream account updates](/guides/streams).
+The envelope is used for unknown paths (`404 NotFound`), wrong methods (`405 MethodNotAllowed`) and streams refused before they open, as well as for every operation's own errors. Once a stream is open, its last line is an `Ended` message carrying one of the same codes; see [Streams](/guides/streams).
 
 ## Error codes
 
@@ -67,7 +67,7 @@ The two statuses separate a malformed request from a request the host will not c
 
 ### Order of checks
 
-Operations that need an API key check authentication before they read the body. A request with missing or invalid credentials gets `401 Unauthenticated` even if its body is also invalid, so fix credentials first. Public operations have no authentication step.
+Every operation checks authentication before it reads the body. A request with missing or invalid credentials gets `401 Unauthenticated` even if its body is also invalid, so fix credentials first.
 
 ## Retries by operation
 
@@ -99,10 +99,10 @@ When an outcome is unclear, read the state back before acting again:
 - **Already closed is not cancelled.** `OrderAlreadyClosed` means the order finished, possibly by filling. Read it to find out.
 - **An acknowledgement is not a final state.** A cancel `Ack` or a `Cancelled` batch result means the host accepted the cancel. Confirm with `GetOrder` or the [order stream](/guides/streams).
 - **Read the right source for each question.** Final order state: `GetOrder` or the order stream. What is still working: `ListOpenOrders`. Executions: `ListFills`. Balance postings: `ListTransactions`. Accounts: `accounts/query/List`.
-- **After a stream disconnect or `Ended`**, subscribe again and read the REST state again; streams do not replay missed events.
+- **After a stream ends, with or without `Ended`**, open it again and rebuild: a market data stream starts again with a `Reset`; for an account stream, read the state again with the matching query. Streams do not replay missed messages.
 
 ## Related
 
 - [API conventions](/api-reference/platform/conventions): envelopes, paging, decimals and compatibility.
 - [Place and manage orders](/guides/orders): recovering from an unclear order submission.
-- [Stream account updates](/guides/streams): reconnecting and reconciling streams.
+- [Streams](/guides/streams): reconnecting and reconciling streams.

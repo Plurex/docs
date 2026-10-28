@@ -4,6 +4,10 @@ description: "Cancels one open order. Ack means the host accepted the cancel; so
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/command/CancelOrder"
 ---
 
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "command", "label": "Command", "description": "Changes state. Safe to repeat unless it has the Not safe to repeat badge."}]} />
+
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 
 <CapabilityCheck source="host" header={[{"path": "capabilities.orders.cancelOrder.byId", "when": {"field": "command.type", "value": "ById"}, "always": true}, {"path": "capabilities.orders.cancelOrder.byClientOrderId", "when": {"field": "command.type", "value": "ByClientOrderId"}, "support": true}, {"path": "capabilities.orders.cancelOrder.byClientOrderIdForInstrument", "when": {"field": "command.type", "value": "ByClientOrderIdForInstrument"}, "support": true}]} market={[]} />

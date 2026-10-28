@@ -254,7 +254,7 @@ Results come in the order the `listTransactions` capability's `defaultOrdering` 
 
 Because IDs are stable, deduplicate by `id`. To stay complete:
 
-- Combine history with the [transaction stream](/guides/streams) where `subscribeToAccountTransactions` is supported: connect, read history, then add streamed postings you do not have.
+- Combine history with the [transaction stream](/guides/streams) where `subscribeToAccountTransactions` is supported: open the stream, read history, then add streamed postings you do not have.
 - After a disconnect, or on each polling pass, re-read recent history back past the newest posting you already hold, and add any IDs you have not seen. Overlap with what you already hold instead of stopping at the first known ID, so a posting that appears late is still picked up.
 - Do not rebuild a ledger from wallet balances, fills or orders. Postings are the record of what changed a balance.
 
@@ -263,4 +263,4 @@ Because IDs are stable, deduplicate by `id`. To stay complete:
 - [Instruments](/concepts/instruments): native contract sizes and canonical symbols.
 - [Host capabilities](/capabilities/host-capabilities): market settings and transaction capabilities.
 - [Order rules](/capabilities/order-rules): `positionEffect`, `reduceOnly` and the other order flags.
-- [Stream account updates](/guides/streams): live order and transaction events.
+- [Streams](/guides/streams): live order and transaction events.

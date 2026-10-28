@@ -5,7 +5,7 @@ description: "The core model behind Plurex: venues are where markets trade and p
 
 Plurex is one API across many exchanges. To make that work without hiding how they differ, it splits every trading venue into two concerns that most exchange APIs mix together:
 
-- A **venue** is where markets trade and prices form. Venue operations are public market data: what is trading and at what price.
+- A **venue** is where markets trade and prices form. Venue operations are market data: what is trading and at what price.
 - A **host** is the institution that holds trading accounts and executes orders on a venue's markets. Host operations cover executing trades, and everything about your account: orders, fills, balances, positions, margin, market settings and transactions.
 
 Read market data from the venue. Trade through the host. A venue market tells you what is trading; the matching host market tells you how you can trade it.
@@ -41,7 +41,7 @@ See [Tenants and accounts](/concepts/accounts) for ownership and the account lif
 
 Many exchanges are both a venue and a host: Bybit runs the market and also holds your Bybit account. Plurex still models them separately, because the two concerns answer different questions and do not always come from the same place.
 
-**The concerns differ.** Market data is public, shared by everyone and changes by the millisecond. Account data is private, belongs to one account and is governed by the institution that holds it. Keeping them apart means market data needs no API key, and account operations identify everything from the `accountId` (with your API key), never from a venue.
+**The concerns differ.** Market data is the same for everyone and changes by the millisecond. Account data is private, belongs to one account and is governed by the institution that holds it. Keeping them apart means market data is named by venue and instrument, and account operations identify everything from the `accountId`, never from a venue.
 
 **Hosts can trade venues they do not run.** The model allows a host that trades a venue it does not operate, as a broker does. Today the case you will meet is the paper host: it executes nothing for real, and simulates its model host against the venue's live order book. The market data comes from the venue, and the account and order handling come from the host.
 
@@ -95,6 +95,8 @@ Do not hard-code these lists. Discover venues and hosts at runtime, and filter t
 ```bash
 curl --request POST https://api.plurex.io/api/v1/hosts/query/List \
   --header 'Content-Type: application/json' \
+  --header "X-API-KEY: $PLUREX_API_KEY" \
+  --header "X-API-SECRET: $PLUREX_API_SECRET" \
   --data '{}'
 ```
 

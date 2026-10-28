@@ -216,7 +216,7 @@ There is no separate partly-filled state and no `updatedAt`. Compare `sizeTraded
 | Everything still working | [List open orders](/api-reference/platform/hosts/list-orders) | `Global` or `ByInstrument`. Paged. |
 | Finished orders | [List closed orders](/api-reference/platform/hosts/list-closed-orders) | Filled, cancelled and rejected orders: `Global` or `ByInstrument`, optionally from a `Before` or `After` time. Paged. |
 | Individual executions | [List fills](/api-reference/platform/hosts/list-fills) | `ByOrderId`, `ByInstrument` or `Global`. Paged. |
-| Changes as they happen | [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders) | See [Stream account updates](/guides/streams). |
+| Changes as they happen | [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders) | See [Streams](/guides/streams). |
 
 Look up by client order ID:
 
@@ -355,6 +355,8 @@ This flow places a limit order on a paper or real account, confirms it, cancels 
     ```bash
     curl --request POST https://api.plurex.io/api/v1/hosts/query/ListMarkets \
       --header 'Content-Type: application/json' \
+      --header "X-API-KEY: $PLUREX_API_KEY" \
+      --header "X-API-SECRET: $PLUREX_API_SECRET" \
       --data '{"hostId": "bybit", "base": "BTC", "quote": "USDT", "types": ["Perp"]}'
     ```
 
@@ -416,5 +418,5 @@ This flow places a limit order on a paper or real account, confirms it, cancels 
 
 - [Order rules](/capabilities/order-rules): every rule a market publishes and how to meet it.
 - [Host capabilities](/capabilities/host-capabilities): which operations and variants a host supports.
-- [Stream account updates](/guides/streams): follow orders without polling.
+- [Streams](/guides/streams): follow orders without polling.
 - [Errors](/api-reference/platform/errors): every error code and the retry rules for each operation.

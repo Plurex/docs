@@ -6,20 +6,21 @@ point of view of someone using it.
 
 ## Who owns what
 
-- **The specs own the reference.** `api-reference/platform/plurex-platform-api.yaml` (OpenAPI 3.2) and
-  `plurex-platform-async-api.yaml` (AsyncAPI 3.0) are byte-for-byte copies from `platform-public-api/` in plurex. Their
-  operation, schema and field descriptions are the endpoint reference. Never edit the copies; fix wording upstream.
+- **The spec owns the reference.** `api-reference/platform/plurex-platform-api.yaml` (OpenAPI 3.2) is a byte-for-byte
+  copy from `platform-public-api/` in plurex. Its operation, schema and field descriptions are the endpoint reference.
+  Never edit the copy; fix wording upstream.
 - **Endpoint pages are generated.** `scripts/sync-platform-api.py` writes every page under
   `api-reference/platform/{venues,hosts,accounts,paper}/` and the whole "API reference" tab navigation
-  (including stream pages, placed beside their REST operations). Never hand-edit them; put explanation in authored pages.
-  - REST pages reference the OpenAPI spec. Stream pages are rendered to MDX from the AsyncAPI spec, because Mintlify's
-    AsyncAPI view does not show nested unions or nullable references. Each stream page also embeds its event payload
-    (`openapi-schema` frontmatter), which Mintlify renders from the OpenAPI spec after the page body.
+  (including stream pages, placed beside their query operations). Never hand-edit them; put explanation in authored
+  pages.
+  - Every page references its OpenAPI operation. Streams are `POST` operations whose `200` is `application/jsonl` with
+    an `itemSchema` message union; their pages set `playground: "none"`, because the response never finishes.
   - Every host and venue page carries a "Check support" block (`snippets/capability-check.mdx`). Header leaves are
     derived from the spec; market descriptors and extra notes come from the `EXTRA` table in the script, which fails
     the sync when a path no longer exists. Change the block's wording in the snippet, and its content in `EXTRA`.
-  - Every REST page shows the operation's badges (`snippets/operation-badges.mdx`), from the spec's `kind: badge`
-    tags: label from the tag `summary`, hover text from its `description`.
+  - Every operation page shows the operation's badges (`snippets/operation-badges.mdx`). The first is its kind
+    (Query, Command or Stream), from the path segment after the module, worded in the script's `KINDS` table. The
+    rest come from the spec's `kind: badge` tags: label from the tag `summary`, hover text from its `description`.
 - **Authored pages own the meaning.** Welcome, concepts, capabilities, guides, paper trading, the web app and the API
   reference's overview, conventions and errors pages explain how the platform is meant to be used. Link to endpoint
   pages for exact shapes instead of restating schemas field by field.
@@ -43,7 +44,7 @@ record the disagreement as spec feedback for plurex instead of papering over it.
   discover hosts and venues with the List operations.
 - Never claim per-host behaviour that the reader can read from capabilities; teach them to read the capability.
 - Do not document: the Bearer/OTP authentication path, internal `/api/internal` routes, the reference Kotlin client
-  (unpublished), market-data streams, idempotency keys, request IDs, per-key scopes, organisations or teams, invite
+  (unpublished), idempotency keys, request IDs, per-key scopes, organisations or teams, invite
   codes, the app dashboard or subscription screens, paper "fidelity" grades or per-market fidelity, internal paper
   matching policy names.
 
@@ -73,13 +74,13 @@ per-market fidelity and substitution tables.
 ## Voice and style
 
 - Keep it to the point: say what a thing is, what it does and what it returns, then only what changes how the reader
-  uses it. Cut anything a badge, a schema, a capability or the conventions page already says. Badges (No API key,
-  Check capabilities, Paged, Batch, Not safe to repeat) are not restated in prose. Wordy spec descriptions are fixed
+  uses it. Cut anything a badge, a schema, a capability or the conventions page already says. Badges (Query,
+  Command, Stream, Check capabilities, Paged, Batch, Not safe to repeat) are not restated in prose. Wordy spec descriptions are fixed
   upstream (see `agent_plans/spec_feedback_for_plurex.md`), not around them.
 - Second person, active voice, present tense. Lead with what the reader can do and why it matters.
 - Trading meaning first, then what a caller needs: which operation, what to check, how to retry and reconcile.
 - Be direct about limits. Where hosts differ, say so and point to the capability that says how.
-- British English spelling (behaviour, recognise, cancelled), matching the specs. Enum values and field names stay
+- British English spelling (behaviour, recognise, cancelled), matching the spec. Enum values and field names stay
   exactly as the spec spells them.
 - Short paragraphs. Use tables for comparisons, `<Steps>` for procedures, `<Note>`, `<Tip>`, `<Warning>` sparingly.
 - Code: JSON bodies and `curl` with `--request POST`, `--header 'Content-Type: application/json'`, credentials from
@@ -119,7 +120,7 @@ API reference tab: `api-reference/platform/{overview,conventions,errors}` then t
 ## Refreshing from plurex
 
 The plan is in `agent_plans/automated_docs_bootstrap.md`. Until the refresh tooling exists: update `.upstream/plurex`,
-copy both spec files from `platform-public-api/` at the target commit, run `scripts/sync-platform-api.py` (see
+copy the spec from `platform-public-api/` at the target commit, run `scripts/sync-platform-api.py` (see
 README), review authored pages against the changes, and update `upstream.lock.json`.
 
 ## Git

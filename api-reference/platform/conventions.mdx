@@ -5,11 +5,11 @@ description: "Understand request and response formats, paging, unions, batches, 
 
 ## Requests
 
-Every operation is a `POST` with a JSON body and `Content-Type: application/json`, to a path of the form `/api/v1/{domain}/{query|command}/{Action}`. IDs such as `accountId`, `hostId` and `venueId` go in the body, never in the path. See [Commands, queries and streams](/api-reference/platform/overview#commands-queries-and-streams) for the three kinds of operation.
+Every operation is a `POST` with a JSON body and `Content-Type: application/json`, to a path of the form `/api/v1/{domain}/{query|command|stream}/{Action}`. IDs such as `accountId`, `hostId` and `venueId` go in the body, never in the path. See [Commands, queries and streams](/api-reference/platform/overview#commands-queries-and-streams) for the three kinds of operation.
 
 Every operation needs a body, even a list with no filters: send `{}` for the first page. Request bodies are strict: unknown fields, unknown enum values and wrong types return `400 InvalidRequest`. Send only the fields the specification defines.
 
-Account operations need both the `X-API-KEY` and `X-API-SECRET` headers. Venue operations, [List hosts](/api-reference/platform/hosts/list) and [List host markets](/api-reference/platform/hosts/list-markets) are public. See [Authentication](/authentication).
+Every operation and stream needs both the `X-API-KEY` and `X-API-SECRET` headers. See [Authentication](/authentication).
 
 ## Responses
 
@@ -86,7 +86,7 @@ Every error uses one envelope with a stable `code`. Commands document whether th
 
 ## Streams
 
-Account order and transaction changes also arrive over WebSocket streams, described by the AsyncAPI document: [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders) and [Stream account transactions](/api-reference/platform/hosts/subscribe-to-account-transactions). One connection carries one stream type for up to 25 accounts, which you subscribe and unsubscribe with messages. A stream has no snapshot and does not replay missed events, so pair it with a REST read; see [Stream account updates](/guides/streams).
+A stream operation follows one topic, such as one market's order book or one account's orders. Its `200` response stays open and carries one JSON message per line (`application/jsonl`), and every message has a `type`. Market data streams start with a `Reset` and then send `Update`s; account streams send an `Event` per change. Every stream ends with an `Ended` line. Streams do not replay missed messages; see [Streams](/guides/streams) for how to read, reconnect and reconcile.
 
 ## Compatibility
 

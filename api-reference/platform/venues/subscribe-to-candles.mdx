@@ -1,0 +1,14 @@
+---
+title: "Stream candles"
+description: "Streams one market's candles of one price kind at one interval: a Reset of the recent candles, then an Update of the current candle as it forms and as each new one starts. A market, price kind or interval the venue does not stream returns 422 NotSupported."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/stream/SubscribeToCandles"
+playground: "none"
+---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "stream", "label": "Stream", "description": "The response stays open and carries one JSON message per line until an Ended line."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}]} />
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.candles.subscribeToCandles", "support": true}]} market={[{"path": "marketData.candles.<priceKind>.subscribe", "note": "true when the series can be streamed"}, {"path": "marketData.candles.<priceKind>.supportedIntervals", "note": "the intervals you can request"}]} perMarket />

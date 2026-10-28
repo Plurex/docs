@@ -91,29 +91,37 @@
               {
                 "group": "Order books",
                 "pages": [
-                  "api-reference/platform/venues/get-order-book"
+                  "api-reference/platform/venues/get-order-book",
+                  "api-reference/platform/venues/subscribe-to-order-books"
                 ]
               },
               {
                 "group": "Public trades",
                 "pages": [
-                  "api-reference/platform/venues/get-recent-trades"
+                  "api-reference/platform/venues/get-recent-trades",
+                  "api-reference/platform/venues/subscribe-to-trades"
                 ]
               },
               {
                 "group": "Prices and market statistics",
                 "pages": [
                   "api-reference/platform/venues/get-prices",
+                  "api-reference/platform/venues/subscribe-to-prices",
                   "api-reference/platform/venues/get-best-quotes",
+                  "api-reference/platform/venues/subscribe-to-best-quotes",
                   "api-reference/platform/venues/get-market-statistics",
+                  "api-reference/platform/venues/subscribe-to-market-statistics",
                   "api-reference/platform/venues/get-indicative-fundings",
-                  "api-reference/platform/venues/get-open-interests"
+                  "api-reference/platform/venues/subscribe-to-indicative-fundings",
+                  "api-reference/platform/venues/get-open-interests",
+                  "api-reference/platform/venues/subscribe-to-open-interests"
                 ]
               },
               {
                 "group": "Candles",
                 "pages": [
-                  "api-reference/platform/venues/list-candles"
+                  "api-reference/platform/venues/list-candles",
+                  "api-reference/platform/venues/subscribe-to-candles"
                 ]
               }
             ]
@@ -134,12 +142,12 @@
                   "api-reference/platform/hosts/get-order",
                   "api-reference/platform/hosts/get-orders",
                   "api-reference/platform/hosts/list-orders",
+                  "api-reference/platform/hosts/subscribe-to-account-orders",
                   "api-reference/platform/hosts/list-closed-orders",
                   "api-reference/platform/hosts/submit-order",
                   "api-reference/platform/hosts/cancel-order",
                   "api-reference/platform/hosts/cancel-orders",
-                  "api-reference/platform/hosts/cancel-all-orders",
-                  "api-reference/platform/hosts/subscribe-to-account-orders"
+                  "api-reference/platform/hosts/cancel-all-orders"
                 ]
               },
               {

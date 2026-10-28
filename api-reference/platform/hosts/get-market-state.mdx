@@ -4,6 +4,10 @@ description: "Gets the account's balances, position, collateral and leverage for
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/query/GetAccountMarketState"
 ---
 
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "query", "label": "Query", "description": "Reads state and changes nothing. Always safe to repeat."}]} />
+
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 
 <CapabilityCheck source="host" none />
