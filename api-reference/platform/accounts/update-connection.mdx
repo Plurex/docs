@@ -1,6 +1,6 @@
 ---
 title: "Update account credentials"
-description: "Replaces the account's exchange or broker credentials."
+description: "Replaces the account's exchange or broker credentials: 422 InvalidProviderCredentials if the provider rejects them, 422 ProviderAccessDenied if they lack the access the account needs."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/accounts/command/UpdateConnection"
 ---
 

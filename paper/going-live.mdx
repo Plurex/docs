@@ -77,8 +77,8 @@ capabilities before relying on:
   in each order type's options);
 - [Get position mode](/api-reference/platform/hosts/get-position-mode) on perpetuals where the live host reports none;
 - the transaction stream (`accountTransactions.subscribeToAccountTransactions`);
-- fill details on the order stream (`accountOrders.includesFillDetails`); without them, read executions with
-  [List fills](/api-reference/platform/hosts/list-fills);
+- the order stream (`accountOrders.subscribeToAccountOrders`); without it, poll
+  [List open orders](/api-reference/platform/hosts/list-orders) and [Get an order](/api-reference/platform/hosts/get-order);
 - the scope of a position mode change (`settings.positionMode.setEffectScope`); live, a change may apply to more than
   one market or the whole account.
 
@@ -158,7 +158,9 @@ def post(path, body, headers=None):
 
 
 def supported(support):
-    return support["type"] in ("Supported", "PerMarket")
+    # Host-wide entries are Supported or NotSupported; market-level entries
+    # (PerMarket) also need the market summary's own flag.
+    return support["type"] == "Supported"
 
 
 def load_profile(host_id, instrument):
@@ -185,8 +187,8 @@ def load_profile(host_id, instrument):
         # Set leverage only where the market has a settable leverage
         "can_set_leverage": bool(market["settings"]["leverage"]
                                  and market["settings"]["leverage"]["setEffectScope"]),
-        # Stream fills where details arrive with order events; otherwise poll ListFills
-        "fills_on_stream": caps["accountOrders"]["includesFillDetails"],
+        # Stream order changes where supported; otherwise poll open orders
+        "stream_orders": supported(caps["accountOrders"]["subscribeToAccountOrders"]),
         # Stream transactions where supported; otherwise poll ListTransactions
         "stream_transactions": supported(caps["accountTransactions"]["subscribeToAccountTransactions"]),
         # Stops: pick a reference price the market offers, rather than assuming one
@@ -199,6 +201,9 @@ def choose_reference(policy, preferred=("Mark", "LastTrade", "Index")):
         return None  # omit trigger.reference; the host uses policy["price"]
     return next((p for p in preferred if p in policy["prices"]), policy["prices"][0])
 ```
+
+Read executions with [List fills](/api-reference/platform/hosts/list-fills) on both: the order stream reports that an
+order filled, not each execution's details.
 
 Run `load_profile` for the paper host while you forward test and for the model host when you go live. If a decision
 your strategy depends on comes out differently, you find out at start-up rather than from a rejected order.

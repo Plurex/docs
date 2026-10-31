@@ -28,7 +28,7 @@ Plurex takes the opposite approach. It is fully self-describing and unambiguous,
 - **Unambiguous data.** Every value is either reported by the host or venue, or explicitly `null`. Plurex never estimates, backfills or relabels data. A mark price is never presented as a traded price, and an average price is never calculated from fills.
 - **Exact numbers.** Prices, sizes and balances are exact decimal strings. Sizes are always in the market's native contracts, and Plurex validates exactly the rules it publishes, without rounding for you.
 
-So instead of branching on which exchange you are talking to, your strategy branches on what the host says it can do: whether to send a `clientOrderId`, how to find an order after a timeout, whether to read fills from the order stream or poll for them. One integration handles every host and venue, including ones you add later.
+So instead of branching on which exchange you are talking to, your strategy branches on what the host says it can do: whether to send a `clientOrderId`, how to find an order after a timeout, whether a market lets you set its leverage. One integration handles every host and venue, including ones you add later.
 
 ## High-fidelity paper trading, at scale
 

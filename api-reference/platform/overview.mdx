@@ -41,10 +41,10 @@ A stream's `200` response stays open and carries one JSON message per line (`app
 
 | Domain | Operations |
 | --- | --- |
-| [`venues`](/api-reference/platform/venues/list) | Market data: venues, markets, order books, trades, prices, quotes, statistics, funding, open interest and candles, as queries and streams |
+| [`venues`](/api-reference/platform/venues/list) | Market data: venues, markets, L1 and L2 order books, trades, prices, statistics, indicative funding, funding history, open interest and candles, as queries and streams |
 | [`hosts`](/api-reference/platform/hosts/list) | Hosts and their markets, then trading on an account: orders, fills, balances, positions, margin, settings and transactions |
 | [`accounts`](/api-reference/platform/accounts/connect) | Connect, list and manage your accounts |
-| [`paper`](/api-reference/platform/paper/create) | Create, fund and draw down paper accounts, and choose their fee tier |
+| [`paper`](/api-reference/platform/paper/create) | Create, fund and draw down paper accounts, and read and choose their fee tiers |
 
 ## Authentication
 
@@ -68,8 +68,8 @@ Each operation page shows its badges below the request line, starting with its k
 | Stream | The response stays open and carries one JSON message per line until an `Ended` line. See [Streams](/guides/streams). |
 | Check capabilities | Not every host or venue supports this operation. Check its [capabilities](/capabilities/overview) first, or expect `422 NotSupported`. |
 | Paged | Returns pages. Follow `nextCursor` until it is `null`. |
-| Batch | Takes a list of identifiers or instruments and handles them in one call. Each operation says what it returns for each item. |
-| Not safe to repeat | Repeating the call repeats its effect. If the outcome is unclear, check before retrying. Commands without this badge are safe to repeat. |
+| Batch | Takes a list of identifiers and handles them in one call. Each operation says what it returns for each item. |
+| Not safe to repeat | Repeating the call repeats its effect; if the outcome is unclear, check before retrying. Commands without this badge are safe to repeat. |
 
 ## Read next
 

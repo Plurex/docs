@@ -1,0 +1,13 @@
+---
+title: "Get the L2 order book"
+description: "The current L2 order book of one market: each price level with the total size resting there. An unknown market returns 422 NotSupported."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/GetOrderBookL2"
+---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "query", "label": "Query", "description": "Reads state and changes nothing. Always safe to repeat."}]} />
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.orderBookL2.getOrderBookL2", "always": true}]} market={[]} />

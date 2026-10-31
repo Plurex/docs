@@ -1,0 +1,13 @@
+---
+title: "List funding periods"
+description: "Finalized funding rates for one perpetual, newest first across every page. A market the venue does not serve returns 422 NotSupported."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/ListFundingPeriods"
+---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "query", "label": "Query", "description": "Reads state and changes nothing. Always safe to repeat."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}, {"name": "paged", "label": "Paged", "description": "Returns pages; follow nextCursor until null."}]} />
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.fundingPeriods.listFundingPeriods.byInstrument", "when": {"field": "query.type", "value": "ByInstrument"}, "support": true}]} market={[{"path": "marketData.fundingPeriods.list", "note": "true when the market has funding history"}]} perMarket />

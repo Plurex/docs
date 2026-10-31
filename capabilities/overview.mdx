@@ -23,7 +23,7 @@ Capabilities come in two levels: the **header** of each host or venue, and the *
 | --- | --- | --- | --- |
 | Host header | `HostHeader.capabilities` | [List hosts](/api-reference/platform/hosts/list) | Order queries and commands, fills, market settings, the order stream and transactions |
 | Host market | `HostMarketSummary.orderTypes`, `.settings`, `.contractDetails` | [List host markets](/api-reference/platform/hosts/list-markets) | Which order types the market accepts, each input's rules and options, leverage and position mode |
-| Venue header | `VenueHeader.capabilities` | [List venues](/api-reference/platform/venues/list) | Order book, trades, prices, best quotes, statistics, funding, open interest and candles, each as a read and a stream |
+| Venue header | `VenueHeader.capabilities` | [List venues](/api-reference/platform/venues/list) | L2 and L1 order books, trades, prices, statistics, indicative funding and open interest, each as a read and a stream, plus candles and funding history |
 | Venue market | `VenueMarketSummary.marketData` | [List venue markets](/api-reference/platform/venues/list-markets) | Which market-data reads and streams the market supports, and on what terms |
 
 A venue market tells you what is trading. The matching host market tells you how you can trade it: the order types it accepts and their order rules. A host market names its venue in `venueId`, so you can join it to the venue market with the same `instrument`.
@@ -38,7 +38,7 @@ flowchart TD
 
 ### The header: area, operation, variant, support
 
-A header capability is a tree. Its first level is an **area** (`orders`, `fills`, `marketSettings`, `prices`, `candles`), under which are **operations** and, where an operation has them, its **variants**. Each leaf is a **support** value. A few areas add a level (`prices` has one entry per price kind) or skip one (`marketSettings.getMarketLeverage` has no variants), and the stream areas also carry plain values such as `changes` and `includesFillDetails`:
+A header capability is a tree. Its first level is an **area** (`orders`, `fills`, `marketSettings`, `prices`, `candles`), under which are **operations** and, where an operation has them, its **variants**. Each leaf is a **support** value. A few areas add a level (`prices` has one entry per price kind) or skip one (`marketSettings.getMarketLeverage` has no variants), and `accountTransactions` also carries a plain value, `supportedTransactionTypes`:
 
 ```json
 "orders": {
@@ -58,23 +58,29 @@ Market summaries do not repeat the support values. They use **descriptors**:
 
 - A descriptor that is `null` means the market does not support that thing at all. For example, `orderTypes.market: null` means no market orders on this market, and `settings.leverage: null` means the market has no leverage setting.
 - A non-null descriptor carries the terms you need: increments, minimums, time-in-force sets, candle intervals, the statistics window.
-- Inside a descriptor, each operation has its own flag: `get` for a read, `list` and `listBefore` for candles, and `setEffectScope` (non-null when the setting can be changed). A non-null descriptor can still have one of its flags `false`, so check the specific flag.
+- Inside a descriptor, each operation has its own flag: `get` for a read, `subscribe` for a stream, `list` and `listBefore` for candles, `list` for funding history, and `setEffectScope` (non-null when the setting can be changed). A non-null descriptor can still have one of its flags `false`, so check the specific flag.
 
 Order types are a special case: they have no header entry. Whether a market accepts `Market`, `TriggerLimit` or `TriggerMarket` orders is read only from that market's `orderTypes`.
 
 ## Support values
 
-Every support leaf is an `OperationSupport`, or a `CursorQueryCapability` for variants that return pages. Both are unions on `type`.
+Every support leaf is a union on `type`. Which union a leaf uses depends on who decides support:
+
+| Union | Used for | Its `type` values |
+| --- | --- | --- |
+| `OperationSupport` | Operations and variants the host or venue offers on all of its markets or on none | `Supported`, `NotSupported` |
+| `CursorQueryCapability` | Paged host variants: open and closed orders, fills, transactions | `Supported` (with `defaultOrdering`), `NotSupported` |
+| `MarketSupport` | Operations that belong to a market: market settings, and every venue read and stream except the L2 order book and trades, including candles and funding history | `PerMarket`, `NotSupported` |
 
 | `type` | Meaning | What to do |
 | --- | --- | --- |
 | `Supported` | Supported on every market the host or venue lists, for every input. | Call it. |
-| `PerMarket` | Supported on some markets. Used only for operations that take an instrument. | Read the market summary for the instrument. |
+| `PerMarket` | The host or venue offers it, and each market says whether that market supports it. | Read the market summary for the instrument. |
 | `NotSupported` | Not supported. Calls return `422 NotSupported`. | Do not call it; use another variant or operation. |
 
-`Supported` is a statement about the whole host or venue: it means every market the host lists, not every instrument that exists. `PerMarket` promises nothing about any particular market until you read that market's summary.
+`Supported` is a statement about the whole host or venue: it means every market the host lists, not every instrument that exists. `PerMarket` promises nothing about any particular market until you read that market's summary. A `MarketSupport` leaf is never `Supported`, and an `OperationSupport` leaf is never `PerMarket`.
 
-Paged variants (open and closed orders, fills, transactions, candles) use `CursorQueryCapability`. Its `Supported` case also states `defaultOrdering`: `Chronological` or `ReverseChronological`. That is the order results come in, within and across pages. Pages are read live, so items can change while you page.
+`CursorQueryCapability`'s `Supported` case also states `defaultOrdering`: `Chronological` or `ReverseChronological`. That is the order results come in, within and across pages. Pages are read live, so items can change while you page. Candles and funding periods have no `defaultOrdering`: they always come newest first.
 
 ```json
 "listOpenOrders": {
@@ -95,7 +101,7 @@ A minimal trading loop works on every host and every venue. These entries are al
 | --- | --- |
 | Every host market | Limit orders: `orderTypes.limit` is never `null` |
 | Every host | `orders.getOrder.byId`, `orders.cancelOrder.byId` |
-| Every venue | `orderBook.getOrderBook`, `orderBook.subscribeToOrderBooks`, `trades.getRecentTrades`, `trades.subscribeToTrades` |
+| Every venue | `orderBookL2.getOrderBookL2`, `orderBookL2.subscribeToOrderBookL2s`, `trades.getRecentTrades`, `trades.subscribeToTrades` |
 
 Some operations have no capability entry because every host offers them: [SubmitOrder](/api-reference/platform/hosts/submit-order) itself (the market's `orderTypes` say which order types it accepts), [ListWallets](/api-reference/platform/hosts/list-wallets), [ListOpenPositions](/api-reference/platform/hosts/list-positions), [ListAccountMarginStates](/api-reference/platform/hosts/list-margin-states), [GetAccountMarketState](/api-reference/platform/hosts/get-market-state), and the List and ListMarkets discovery operations.
 
@@ -136,9 +142,12 @@ Which descriptor answers which operation:
 | SubmitOrder | `orderTypes.limit`, `.market`, `.triggerLimit`, `.triggerMarket` | The order type's entry is non-null (`limit` always is) |
 | GetMarketLeverage / SetMarketLeverage | `settings.leverage` | Non-null and `get` is `true` / `setEffectScope` is non-null |
 | GetMarketPositionMode / SetMarketPositionMode | `settings.positionMode` | Non-null and `get` is `true` / `setEffectScope` is non-null |
-| GetPrices (per price kind) | `marketData.prices.traded`, `.mark`, `.index` | Non-null and `get` is `true` |
-| GetBestQuotes, GetMarketStatistics, GetIndicativeFundings, GetOpenInterests | `marketData.bestQuote`, `.statistics`, `.indicativeFunding`, `.openInterest` | Non-null and `get` is `true` |
+| GetPrice (per price kind) | `marketData.prices.traded`, `.mark`, `.index` | Non-null and `get` is `true` |
+| GetOrderBookL1, GetMarketStatistics, GetIndicativeFunding, GetOpenInterest | `marketData.orderBookL1`, `.statistics`, `.indicativeFunding`, `.openInterest` | Non-null and `get` is `true` |
+| The matching streams (SubscribeToPrices, SubscribeToOrderBookL1s and so on) | The same descriptor | Non-null and `subscribe` is `true` |
 | ListCandles (per price kind) | `marketData.candles.traded`, `.mark`, `.index` | Non-null, `list` (for `ByInstrument`) or `listBefore` (for `ByInstrumentBefore`) is `true`, and the interval is in `supportedIntervals` |
+| SubscribeToCandles (per price kind) | `marketData.candles.traded`, `.mark`, `.index` | Non-null, `subscribe` is `true`, and the interval is in `supportedIntervals` |
+| ListFundingPeriods | `marketData.fundingPeriods` | Non-null and `list` is `true` |
 
 The same idea as a Python sketch, for host market settings:
 
@@ -169,7 +178,7 @@ def can_get_order_by_client_id(host):
 Use `Decimal` (or your language's exact decimal type) for every comparison. Values arrive as JSON strings such as `"0.01"`; binary floating point will misjudge whole multiples.
 
 <Note>
-Today, market settings in the host header are always `PerMarket` or `NotSupported`, because settings are described per market. Venue market-data reads and streams other than the order book and trades are likewise `PerMarket` or `NotSupported`. Write your resolver for the general case anyway; it costs nothing.
+Market settings in the host header, and venue market data other than the L2 order book and trades, are `MarketSupport` leaves: `PerMarket` or `NotSupported`. For them, `PerMarket` is the answer that means "check the market".
 </Note>
 
 ## NotSupported and Rejected
@@ -178,12 +187,12 @@ Both are HTTP `422`, and they mean different things.
 
 | Code | Means | Typical causes | What to do |
 | --- | --- | --- | --- |
-| `NotSupported` | The host or venue does not offer this operation, variant or order type, or (for venue reads, venue streams and market settings) does not list the market. | A header entry is `NotSupported`; a market descriptor is `null` or its flag is `false`; a candle interval or price kind the market does not list. | Do not retry unchanged. Choose another variant or skip the market, and refresh capabilities. |
+| `NotSupported` | The host or venue does not offer this operation, variant or order type, or does not list the market. | A header entry is `NotSupported`; a market descriptor is `null` or its flag is `false`; a candle interval or price kind the market does not list. | Do not retry unchanged. Choose another variant or skip the market, and refresh capabilities. |
 | `Rejected` | The operation is offered, but the inputs break the market's rules, or the host rejected the command. | A price off the increment, a size below `min`, `postOnly` where `supportsPostOnly` is `false`, a leverage off the grid. | Fix the inputs. The error `message` describes the problem. |
 
-Submit orders only for markets the host lists in [List host markets](/api-reference/platform/hosts/list-markets); do not expect `NotSupported` for an order on an unlisted market.
+Submit orders only for markets the host lists in [List host markets](/api-reference/platform/hosts/list-markets); an order on a market the host does not list returns `422 NotSupported`.
 
-Batch market-data reads never fail as a whole because one market lacks support. [GetPrices](/api-reference/platform/venues/get-prices) and the other batch reads return one result per instrument, and an unsupported instrument comes back as `{"type": "Unavailable", "code": "NotSupported", ...}`. See [Venue capabilities](/capabilities/venue-capabilities#batch-reads-and-single-market-reads).
+Venue market-data reads such as [GetPrice](/api-reference/platform/venues/get-price) take one instrument. A market the venue does not list, or that does not support the read, returns `422 NotSupported`. See [Venue capabilities](/capabilities/venue-capabilities).
 
 The full list of codes is in [Errors](/api-reference/platform/errors).
 

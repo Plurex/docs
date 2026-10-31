@@ -61,13 +61,13 @@ For example, [List host markets](/api-reference/platform/hosts/list-markets) on 
 | `symbol` | `"BTC-USDT-PERP"` |
 | `instrument` | `{ "type": "Perp", "base": "BTC", "quote": "USDT" }` |
 
-To read its mark price, send the same `venueId` and `instrument` to [Get prices](/api-reference/platform/venues/get-prices):
+To read its mark price, send the same `venueId` and `instrument` to [Get a price](/api-reference/platform/venues/get-price):
 
 ```json
 {
   "venueId": "bybit",
   "kind": "Mark",
-  "instruments": [{ "type": "Perp", "base": "BTC", "quote": "USDT" }]
+  "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" }
 }
 ```
 
@@ -80,9 +80,9 @@ The `symbol` is identical on both summaries, so it works as a display name and a
 | Answers | What is trading, and at what price? | How do I trade here, and what are my positions and balances? |
 | Discover | [List venues](/api-reference/platform/venues/list) | [List hosts](/api-reference/platform/hosts/list) |
 | Markets | [Venue markets](/api-reference/platform/venues/list-markets): instrument, contract details, increments and which market data each market reports | [Host markets](/api-reference/platform/hosts/list-markets): instrument, contract details, order types, order rules and settings such as leverage and position mode |
-| Data and actions | Order books, recent trades, prices by kind, best quotes, statistics, indicative funding, open interest, candles | Orders, fills, wallets, positions, margin, per-market account state, leverage, position mode, transactions, account streams |
+| Data and actions | L2 and L1 order books, recent trades, prices by kind, statistics, indicative funding, open interest, candles, funding history | Orders, fills, wallets, positions, margin, per-market account state, leverage, position mode, transactions, account streams |
 | Capabilities | `VenueCapabilities` on each venue | `ExecutionHostCapabilities` on each host |
-| API key | Never needed | Not needed to list hosts and host markets; needed for every account operation |
+| API key | Needed for every operation | Needed for every operation |
 
 Each venue and host declares what it supports. When hosts differ, the difference is in their capabilities and market summaries, not hidden behind a lowest common denominator or papered over with guesses. Read them before you call. See [Capabilities](/capabilities/overview).
 
@@ -116,7 +116,7 @@ Paper and real hosts publish their own capabilities, so check the real host's be
 
 <CardGroup cols={2}>
   <Card title="Venues" href="/concepts/venues">
-    Venue markets, order books, observations, freshness and candles.
+    Venue markets, order books, observations, freshness, candles and funding history.
   </Card>
   <Card title="Hosts" href="/concepts/hosts">
     Host markets, orders, fills, portfolio, market settings and transactions.

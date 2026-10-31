@@ -1,6 +1,6 @@
 ---
 title: "Stream a price"
-description: "Streams one market's price of one kind (traded, mark or index): a Reset with the current value, then an Update whenever it changes. A market or kind the venue does not stream returns 422 NotSupported."
+description: "Streams one market's price of one kind: a Reset with the current value, then an Update on each change. A market or kind the venue does not stream returns 422 NotSupported."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/stream/SubscribeToPrices"
 playground: "none"
 ---

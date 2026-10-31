@@ -17,7 +17,7 @@ Successful responses use one of three shapes:
 
 | Shape | Used for | Example |
 | --- | --- | --- |
-| `{ "data": ... }` | A single result, or an unpaged list such as a batch | `{"data": {"id": "ord_789", ...}}` |
+| `{ "data": ... }` | A single result, or an unpaged list such as a batch lookup | `{"data": {"id": "ord_789", ...}}` |
 | `{ "items": [...], "nextCursor": ... }` | A page of a paged list | `{"items": [...], "nextCursor": null}` |
 | `{}` (`Ack`) | A command with nothing to return, such as a cancel | `{}` |
 
@@ -40,21 +40,20 @@ For example, the next request to [List accounts](/api-reference/platform/account
 
 Cursors are opaque. A cursor sent with a different query or account returns `400 InvalidRequest`.
 
-Pages are read live, not from a snapshot, so items can change while you page. For host lists, the variant's capability entry gives its `defaultOrdering` (`Chronological` or `ReverseChronological`), which holds within and across pages. Candles are always newest first: they exclude the candle still forming and need the market's `listBefore` to page beyond the first page (see [Read market data](/guides/market-data#candles)).
+Pages are read live, not from a snapshot, so items can change while you page. For host lists, the variant's capability entry gives its `defaultOrdering` (`Chronological` or `ReverseChronological`), which holds within and across pages. Candles are always newest first: they exclude the candle still forming and need the market's `listBefore` to page beyond the first page (see [Read market data](/guides/market-data#candles)). [Funding periods](/api-reference/platform/venues/list-funding-periods) are always newest first too.
 
 ## Capabilities and variants
 
-Read [venues](/api-reference/platform/venues/list), [hosts](/api-reference/platform/hosts/list) and their market summaries before choosing operations. Each entry is an `OperationSupport`: `Supported` (on every market), `PerMarket` (check the market's summary) or `NotSupported`. Calling an unsupported operation or variant returns `422 NotSupported`. See [Capabilities](/capabilities/overview).
+Read [venues](/api-reference/platform/venues/list), [hosts](/api-reference/platform/hosts/list) and their market summaries before choosing operations. Each entry is `Supported` (on every market) or `NotSupported`. Operations that belong to a market, such as market settings and most venue market data, are `PerMarket` (check the market's summary) or `NotSupported` instead. Calling an unsupported operation or variant returns `422 NotSupported`. See [Capabilities](/capabilities/overview).
 
 Unions use a `type` discriminator. Operations with several access patterns take them as variants in a `query` or `command` field, for example `GetOrder` with `ById`, `ByClientOrderId` or `ByClientOrderIdForInstrument`. `SubmitOrder` takes an `order` whose `type` is `Limit`, `Market`, `TriggerLimit` or `TriggerMarket`. Each variant has its own required fields and its own capability entry; all variants of one operation return the same shape.
 
 ## Batches
 
-Batch operations take a list and return one result per item, but they report missing items differently:
+Batch operations take a list of identifiers, but they report missing items differently:
 
 | Operations | Input | Missing or failed items |
 | --- | --- | --- |
-| [Get prices](/api-reference/platform/venues/get-prices), [best quotes](/api-reference/platform/venues/get-best-quotes), [market statistics](/api-reference/platform/venues/get-market-statistics), [indicative fundings](/api-reference/platform/venues/get-indicative-fundings), [open interests](/api-reference/platform/venues/get-open-interests) | 1 to 50 distinct instruments on one venue | One result per instrument, in request order. A missing value is an `Unavailable` result with an error code; one instrument cannot fail the batch. |
 | [Get orders](/api-reference/platform/hosts/get-orders) | Order IDs or client order IDs | Unknown identifiers are left out of the result. |
 | [Cancel orders](/api-reference/platform/hosts/cancel-orders) | Order IDs or client order IDs | One result per identifier, `Cancelled` or `Failed` with a code. The call can partly succeed; inspect every result. |
 
@@ -86,7 +85,7 @@ Every error uses one envelope with a stable `code`. Commands document whether th
 
 ## Streams
 
-A stream operation follows one topic, such as one market's order book or one account's orders. Its `200` response stays open and carries one JSON message per line (`application/jsonl`), and every message has a `type`. Market data streams start with a `Reset` and then send `Update`s; account streams send an `Event` per change. Every stream ends with an `Ended` line. Streams do not replay missed messages; see [Streams](/guides/streams) for how to read, reconnect and reconcile.
+A stream operation follows one topic, such as one market's order book or one account's orders. Its `200` response stays open and carries one JSON message per line (`application/jsonl`), and every message has a `type`. Market data streams start with a `Reset` and then send `Update`s. The account order stream starts with a `Reset` of the open orders, then sends an `Update` per change. The account transaction stream sends an `Event` per posting, with no snapshot. Every stream ends with an `Ended` line. Streams do not replay missed messages; see [Streams](/guides/streams) for how to read, reconnect and reconcile.
 
 ## Compatibility
 

@@ -1,0 +1,14 @@
+---
+title: "Stream the L2 order book"
+description: "Streams one market's L2 order book: a Reset of the whole book, then Updates of the changed levels. An unlisted market returns 422 NotSupported."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/stream/SubscribeToOrderBookL2s"
+playground: "none"
+---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "stream", "label": "Stream", "description": "The response stays open and carries one JSON message per line until an Ended line."}]} />
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.orderBookL2.subscribeToOrderBookL2s", "always": true}]} market={[]} />

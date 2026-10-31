@@ -110,6 +110,8 @@ then connect again.
 
 | Error | Meaning | What to do |
 | --- | --- | --- |
+| `422 InvalidProviderCredentials` | The exchange rejected the key: it is invalid, expired or revoked | Check both halves and that the key is active, or create a new key |
+| `422 ProviderAccessDenied` | The exchange accepted the key, but it lacks the access Plurex needs | Grant the permissions listed above at the exchange, or create a new key that has them |
 | `429 RateLimited` | The exchange rate-limited the check | Wait and try again, after checking as below |
 | `500`, `502`, `503` or `504` | Plurex or the exchange could not complete the request | Check as below, then retry; if the same key keeps failing, check it as above |
 
@@ -139,7 +141,7 @@ history stay the same.
 }
 ```
 
-The new key is checked with the exchange in the same way, and the call is safe to repeat with the same values.
+The new key is checked with the exchange in the same way, with the same two errors, and the call is safe to repeat with the same values.
 Plurex does not check that the new key belongs to the same exchange account, so use a key for that account; otherwise
 the account's orders, balances and history will come from a different exchange account.
 
@@ -147,7 +149,7 @@ the account's orders, balances and history will come from a different exchange a
 
 Delete the account in **Accounts** or with [Delete an account](/api-reference/platform/accounts/delete). Deleting
 breaks the history records of trading activity that used the account, and it cannot be undone. A repeat after a
-successful delete returns an error, because the account no longer exists; confirm with
+successful delete returns `404 AccountNotFound`, because the account no longer exists; confirm with
 [List accounts](/api-reference/platform/accounts/list) that it is gone.
 
 Deleting the account in Plurex does not delete the API key at the exchange. Revoke it there too if you no longer need

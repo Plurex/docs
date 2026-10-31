@@ -1,6 +1,6 @@
 ---
 title: "Cancel all orders"
-description: "Cancels every open order on the account, or on one instrument. Success means none remain open; orders already closed count as cancelled. Any other failure returns 502 CancelAllFailed: check ListOpenOrders for what is still open."
+description: "Cancels every open order on the account, or on one instrument; success means none remain open, and orders already closed count as cancelled. Otherwise it returns 502 CancelAllFailed: check ListOpenOrders."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/command/CancelAllOrders"
 ---
 

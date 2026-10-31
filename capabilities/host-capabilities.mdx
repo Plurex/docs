@@ -48,12 +48,12 @@ capabilities
 │  └─ listFills         byOrderId · global · byInstrument                           (paged)
 ├─ marketSettings       getMarketLeverage · setMarketLeverage
 │                       · getMarketPositionMode · setMarketPositionMode
-├─ accountOrders        subscribeToAccountOrders · changes · includesFillDetails
+├─ accountOrders        subscribeToAccountOrders
 └─ accountTransactions  listTransactions (paged) · subscribeToAccountTransactions
                         · supportedTransactionTypes
 ```
 
-Leaves marked paged are `CursorQueryCapability` values. `changes`, `includesFillDetails` and `supportedTransactionTypes` are plain values described below. Every other leaf is an `OperationSupport`. Both are explained in [Support values](/capabilities/overview#support-values).
+Leaves marked paged are `CursorQueryCapability` values, and the `marketSettings` leaves are `MarketSupport` values. `supportedTransactionTypes` is a plain value described below. Every other leaf is an `OperationSupport`. All three are explained in [Support values](/capabilities/overview#support-values).
 
 ## orders
 
@@ -82,7 +82,7 @@ Single and batch operations are separate because hosts support them differently:
 
 The `...ForInstrument` variants exist because some hosts can find a `clientOrderId` only within one instrument. If your host supports only that variant, store each order's instrument next to its `clientOrderId`.
 
-`submitOrder.clientOrderId` gates a field rather than a variant. When it is `NotSupported`, send no `clientOrderId` (omit it or send `null`), and plan to identify orders by the order ID that SubmitOrder returns. Which order types and options a market accepts is on its market summary, not here.
+`submitOrder.clientOrderId` gates a field rather than a variant. When it is `NotSupported`, send no `clientOrderId` (omit it or send `null`): an order that carries one returns `422 NotSupported`. Plan to identify orders by the order ID that SubmitOrder returns. Which order types and options a market accepts is on its market summary, not here.
 
 ## fills
 
@@ -103,19 +103,17 @@ If `byOrderId` is not supported, read an order's executions with `byInstrument` 
 | [GetMarketPositionMode](/api-reference/platform/hosts/get-position-mode) | [`getMarketPositionMode`](/api-reference/platform/hosts/get-position-mode) | `settings.positionMode` non-null and its `get` is `true` |
 | [SetMarketPositionMode](/api-reference/platform/hosts/set-position-mode) | [`setMarketPositionMode`](/api-reference/platform/hosts/set-position-mode) | `settings.positionMode` non-null and its `setEffectScope` non-null |
 
-Settings are described per market, so these leaves are `PerMarket` or `NotSupported`. An operation applies to a market only when that market's settings entry is also non-null. The market's entry also gives the accepted leverage grid, the position modes, and how far a change reaches. See [Settings](/capabilities/order-rules#settings).
+Settings belong to a market, so these leaves are `MarketSupport` values: `PerMarket` or `NotSupported`, never `Supported`. With `PerMarket`, an operation applies to a market only when that market's settings entry is non-null and allows it. The market's entry also gives the accepted leverage grid, the position modes, and how far a change reaches. See [Settings](/capabilities/order-rules#settings).
 
 ## accountOrders
 
-The order stream, [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders), follows one account's order changes as they happen.
+The order stream, [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders), starts with the account's open orders and then follows each change as it happens.
 
 | Field | Meaning |
 | --- | --- |
 | [`subscribeToAccountOrders`](/api-reference/platform/hosts/subscribe-to-account-orders) | Whether the host offers the order stream. When it is `NotSupported`, opening the stream returns `422 NotSupported`. |
-| [`changes`](/api-reference/platform/hosts/subscribe-to-account-orders) | The `OrderStreamChangeType` values the stream sends: `Created`, `FillApplied`, `Cancelled`, `Rejected`. Empty when the stream is not supported. |
-| [`includesFillDetails`](/api-reference/platform/hosts/subscribe-to-account-orders) | Whether `FillApplied` events carry the individual execution in `fill`. |
 
-When `includesFillDetails` is `false`, a `FillApplied` event still carries the order with its cumulative `sizeTraded`, `averagePrice` and `state`, but its `fill` is `null`. Call [ListFills](/api-reference/platform/hosts/list-fills) for the executions themselves, including their prices and fees. Read this flag from the host you are connected to; do not assume a value for any host. See [Streams](/guides/streams).
+Every host that supports the stream sends every change type: `Opened`, `Filled`, `Cancelled`, `Rejected` and `Other`. A `Filled` update carries the order with its cumulative `sizeTraded`, `averagePrice` and `state`, not the execution: call [ListFills](/api-reference/platform/hosts/list-fills) for executions, including their prices and fees. See [Streams](/guides/streams#account-orders).
 
 ## accountTransactions
 
@@ -136,7 +134,7 @@ Every paged leaf that is `Supported` says how results are ordered, in `defaultOr
 - `ReverseChronological`: newest first, within and across pages.
 - `Chronological`: oldest first.
 
-The `Before` and `After` variants of ListClosedOrders start from a time you give in `before` or `after`. Use them to resume reconciliation from a known point instead of paging from the newest order. Pages are read live, so items can change while you page; a cursor is valid only with the same variant, account and filters.
+The `Before` and `After` variants of ListClosedOrders start from a time you give in `before` or `after`. Use them to resume reconciliation from a known point instead of paging from the newest order. The boundary is approximate, so start a little early and deduplicate by order ID. Pages are read live, so items can change while you page; a cursor is valid only with the same variant, account and filters.
 
 ## Example
 
@@ -205,9 +203,7 @@ An illustrative header for a real host. The structure is exact; the support valu
       "setMarketPositionMode": { "type": "PerMarket" }
     },
     "accountOrders": {
-      "subscribeToAccountOrders": { "type": "Supported" },
-      "changes": ["Created", "FillApplied", "Cancelled", "Rejected"],
-      "includesFillDetails": false
+      "subscribeToAccountOrders": { "type": "Supported" }
     },
     "accountTransactions": {
       "listTransactions": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
@@ -218,7 +214,7 @@ An illustrative header for a real host. The structure is exact; the support valu
 }
 ```
 
-Reading it: you can look up orders by `clientOrderId` with or without the instrument; batch reads and cancels are available, but a batch can partly succeed, so check every result; leverage and position mode depend on the market; executions do not arrive on the order stream, so use ListFills; and transactions must be polled, because there is no transaction stream.
+Reading it: you can look up orders by `clientOrderId` with or without the instrument; batch reads and cancels are available, but a batch can partly succeed, so check every result; leverage and position mode depend on the market; the order stream is available, with executions read from ListFills; and transactions must be polled, because there is no transaction stream.
 
 ## How hosts differ
 
@@ -229,7 +225,6 @@ The patterns below all occur among real and paper hosts. They are why your code 
 | [`getOrder.byClientOrderId`](/api-reference/platform/hosts/get-order) | `NotSupported` on a host that supports `byClientOrderIdForInstrument` | Keep the instrument with every `clientOrderId`, and use the `ForInstrument` variant. |
 | [`getOrders.*`](/api-reference/platform/hosts/get-orders) | Some batch variants supported, others not, independently of the single variants | Fall back to single GetOrder calls per identifier. |
 | [`listFills.byOrderId`](/api-reference/platform/hosts/list-fills) | `NotSupported` while `byInstrument` is supported | List by instrument and filter on `orderId`. |
-| [`accountOrders.includesFillDetails`](/api-reference/platform/hosts/subscribe-to-account-orders) | `true` on some hosts, `false` on others | When `false`, read executions with ListFills. |
 | [`subscribeToAccountTransactions`](/api-reference/platform/hosts/subscribe-to-account-transactions) | `NotSupported` while `listTransactions` is supported | Poll ListTransactions. |
 | `supportedTransactionTypes` | Different sets per host; on a paper host, the set can grow while it runs | Never wait for a type the host does not list; re-read capabilities periodically. |
 | `marketSettings.*` | `PerMarket` for leverage and `NotSupported` for position mode on one host, and the reverse on another | Check the header leaf and the market's `settings` entry. |
@@ -237,7 +232,7 @@ The patterns below all occur among real and paper hosts. They are why your code 
 
 ## Worked example: find an order after a SubmitOrder timeout
 
-[SubmitOrder](/api-reference/platform/hosts/submit-order) is not safe to repeat. If it times out or returns a 5xx, the order may or may not exist, and resubmitting blindly may place it twice. Capabilities tell you in advance how you will find it.
+[SubmitOrder](/api-reference/platform/hosts/submit-order) is not safe to repeat. If it times out or returns a 429 or 5xx, the order may or may not exist, and resubmitting blindly may place it twice. Capabilities tell you in advance how you will find it.
 
 <Steps>
   <Step title="Before submitting, decide whether to send a clientOrderId">
@@ -250,7 +245,7 @@ The patterns below all occur among real and paper hosts. They are why your code 
     `404 OrderNotFound`, or no match in a listing, does not prove the order was never placed: it can be not yet visible. Repeat the lookup a few times with backoff before you conclude.
   </Step>
   <Step title="Only then resubmit, with the same clientOrderId">
-    If an open order already holds that `clientOrderId`, SubmitOrder returns `409 DuplicateClientOrderId`; look the order up again rather than send another. An order that has already filled or been cancelled may not block the ID, so a resubmission can place a new order: never rely on `409` in place of the lookup, and give every new order its own `clientOrderId`.
+    If the host holds another order with that `clientOrderId`, SubmitOrder returns `409 DuplicateClientOrderId`; look the order up again rather than send another. An order that has already filled or been cancelled may not block the ID, so a resubmission can place a new order: never rely on `409` in place of the lookup, and give every new order its own `clientOrderId`.
   </Step>
 </Steps>
 
@@ -294,4 +289,4 @@ curl --request POST https://api.plurex.io/api/v1/hosts/query/GetOrder \
   }'
 ```
 
-If the host supports the order stream, open it before you submit: a `Created` event for your `clientOrderId` answers the question without any lookup. If you need to cancel instead of find, the same choice applies to `cancelOrder.byClientOrderId` and `cancelOrder.byClientOrderIdForInstrument`. See [Orders](/guides/orders) for the full order lifecycle.
+If the host supports the order stream, open it before you submit: an `Opened` or `Rejected` update for your `clientOrderId` answers the question without any lookup. If you need to cancel instead of find, the same choice applies to `cancelOrder.byClientOrderId` and `cancelOrder.byClientOrderIdForInstrument`. See [Orders](/guides/orders) for the full order lifecycle.

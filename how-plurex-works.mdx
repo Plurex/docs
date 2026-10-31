@@ -27,7 +27,7 @@ Plurex models trading with four ideas. Each one answers a different question.
 
 | Concept | Question it answers | Examples of what it covers |
 | --- | --- | --- |
-| [Venue](/concepts/venues) | What is trading, and at what price? | Markets, order books, public trades, prices, statistics, funding, open interest, candles |
+| [Venue](/concepts/venues) | What is trading, and at what price? | Markets, order books, public trades, prices, statistics, funding rates, open interest, candles |
 | [Host](/concepts/hosts) | How do I execute trades, and what are my positions and balances? | Order types and rules, orders, fills, balances, positions, margin, leverage, transactions |
 | [Account](/concepts/accounts) | Which of my accounts am I acting on? | A connected exchange account, or a paper account |
 | [Tenant](/concepts/accounts) | Who owns the accounts and API keys? | Accounts and API keys |
@@ -42,7 +42,7 @@ Every operation is one of three kinds:
 
 - A **query** reads state, such as listing markets or getting an order. Queries are always safe to repeat.
 - A **command** changes state, such as submitting or cancelling an order. Each command says whether it is safe to repeat, because in trading a retry can mean a second order.
-- A **stream** follows one topic and sends you its changes as they happen: a market's order book, trades, prices or candles, or an account's orders and transactions.
+- A **stream** follows one topic and sends you its changes as they happen: a market's order book, trades, prices or candles, or an account's orders and transactions. Most streams start with the current state, such as the whole order book or the account's open orders; the account transaction stream sends only new transactions.
 
 Every operation, streams included, is an HTTP `POST` request with a JSON body, sent to a path that names the operation, such as `/api/v1/hosts/command/SubmitOrder`. There are no `GET`, `PUT` or `DELETE` resources, and IDs never go in the path. This is deliberate:
 
@@ -107,7 +107,7 @@ Plurex doesn't run backtests. Use whatever research tools you like for that. Plu
 ## What Plurex is not
 
 - **Not a strategy framework.** Plurex places and tracks orders and serves market data. Your strategy logic lives in your code.
-- **Not a backtester or historical data store.** Candle history is limited: each market declares how far back each interval reaches where a limit applies (`maxHistoryAgeByInterval`).
+- **Not a backtester or historical data store.** Candle history is limited: before the start of the history available, a page of candles is empty.
 - **Not a lowest common denominator.** If one host offers something another doesn't, Plurex exposes it and declares where it is available, so you don't lose a host's strengths to keep your code portable.
 
 ## Next steps

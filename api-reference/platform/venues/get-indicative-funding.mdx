@@ -1,0 +1,13 @@
+---
+title: "Get indicative funding"
+description: "The current indicative funding rate for one perpetual; the rate that settles can differ. A market the venue does not serve returns 422 NotSupported."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/GetIndicativeFunding"
+---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "query", "label": "Query", "description": "Reads state and changes nothing. Always safe to repeat."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}]} />
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.indicativeFunding.getIndicativeFunding", "support": true}]} market={[{"path": "marketData.indicativeFunding.get", "note": "true when the market serves indicative funding"}]} perMarket />

@@ -52,7 +52,7 @@ host without any action from you, and markets the model host stops listing stop 
 
 A paper host publishes its own [capabilities](/capabilities/host-capabilities). It supports every order query and
 cancel variant, fill lookup, transaction history and account stream whatever its model host offers, so in places it offers more than the
-model host (for example `clientOrderId` lookups, time in force options or fill details on the order stream). Its one
+model host (for example `clientOrderId` lookups, time in force options or the transaction stream). Its one
 gap is leverage control. Read the paper host's capabilities while you paper trade, and the model
 host's before you go live.
 
@@ -72,8 +72,12 @@ Once created, a paper account is an ordinary account. It uses:
 - the account operations [List](/api-reference/platform/accounts/list), [Get](/api-reference/platform/accounts/get),
   [Rename](/api-reference/platform/accounts/rename) and [Delete](/api-reference/platform/accounts/delete).
 
+A paper `clientOrderId` must be 1 to 64 characters of letters, digits, `-`, `_`, `.` or `:`; any other value returns
+`422 Rejected`. A live host applies its own rules. Paper returns `409 DuplicateClientOrderId` only while an open order on the account holds the ID; once
+that order closes, the ID can be used again, and a lookup by client order ID returns the newest order with it.
+
 The only operations specific to paper are [Create a paper account](/api-reference/platform/paper/create),
-[Deposit](/api-reference/platform/paper/deposit), [Withdraw](/api-reference/platform/paper/withdraw) and the three
+[Deposit](/api-reference/platform/paper/deposit), [Withdraw](/api-reference/platform/paper/withdraw) and the four
 [fee tier operations](/paper/fees-and-funding).
 
 ## Create and fund an account
@@ -91,12 +95,12 @@ The only operations specific to paper are [Create a paper account](/api-referenc
     }
     ```
 
-    The response is the new account, with `isPaper: true`. It starts with no balances and with the default fee tier;
-    see [Fees and funding](/paper/fees-and-funding) to choose another.
+    The response is the new account, with `isPaper: true`. It starts with no balances and with the paper host's default
+    fee tier, unless you pass a tier ID as `feeTier`; see [Fees and funding](/paper/fees-and-funding#choose-a-tier).
 
     Creating an account is not safe to repeat: a repeat creates a second account. If the outcome is unclear, check
-    [List accounts](/api-reference/platform/accounts/list) before retrying. If your plan's paper-account limit is
-    reached, the call returns `422 AccountLimit`.
+    [List accounts](/api-reference/platform/accounts/list) before retrying. When your tenant can create no more paper
+    accounts, the call returns `422 AccountLimit`.
   </Step>
   <Step title="Deposit simulated funds">
     Call [Deposit](/api-reference/platform/paper/deposit) with the account ID, a positive amount and the asset. The
@@ -175,11 +179,15 @@ at that level's price and with its own taker fee. Large orders therefore see rea
 several fills per order, as it will live.
 
 - **Market order protection.** When paper accepts a market order, it fixes the worst price the order may trade at: a
-  little beyond the deepest level its size needs in the book at that moment. Size that cannot fill within that price
-  is cancelled. A market order is rejected with `422 Rejected` when the opposite side of the book is empty.
-- **Depth you take is used up.** Your orders never reach the venue, so its book still shows liquidity you took. For a
-  short time after a fill, paper matches your later orders against the book less the depth your account took, so a
-  remainder or a quick second order cannot take the same liquidity twice.
+  little beyond the deepest level its size needs in the book at that moment, less depth your account has already
+  taken. Size that cannot fill within that price is cancelled. A market order is rejected with `422 Rejected` when the
+  opposite side of the book is empty.
+- **Depth you take is used up.** Your orders never reach the venue, so its book still shows liquidity you took. Paper
+  matches your later orders against the book less the depth your account took at each level, so a remainder or a
+  quick second order cannot take the same liquidity twice. Liquidity you took that is still on the venue can only
+  shrink, so what paper holds back at a level never exceeds the least the book has shown there since your fill. It is
+  all released when the level leaves the book, and the rest after a short time, so a level that refills is available
+  to you again.
 
 Then, by time in force:
 
@@ -202,7 +210,8 @@ side of the book. Your place in the queue then moves as the market does:
 - Your own resting orders share liquidity in price and time priority: best price first, then oldest.
 
 A resting order always fills at its own limit price, as maker, and is charged the maker rate. It can fill over many
-trades; each fill arrives on the order stream with its details.
+trades. The [order stream](/guides/streams) sends a `Filled` update as the traded size grows; read each execution's
+price, size and fee with [List fills](/api-reference/platform/hosts/list-fills).
 
 ### Time in force and order options
 
@@ -227,8 +236,8 @@ Which options each market accepts is in its order rules. Read them from
 - **Configurable latency.** Paper adds no artificial delay, and you cannot set one. Your orders still see real
   latency: they travel through Plurex and are matched against live market data as it arrives, just as a live order
   travels to the exchange.
-- **Market impact beyond your own fills.** Paper removes the depth your account takes, for a short time, but does not
-  model how other traders react to your orders.
+- **Market impact beyond your own fills.** Paper holds back the depth your account takes while the book still shows
+  it, but does not model how other traders react to your orders.
 - **Hidden liquidity and venue-specific queue rules.** Queue position is estimated from visible size and public
   trades.
 - **Venue limits beyond the order rules.** Paper applies the market's published order rules, not an exchange's price
@@ -315,8 +324,8 @@ the opposite leg. Paper rejects an order without it with `422 Rejected`.
 ### Leverage
 
 [Get leverage](/api-reference/platform/hosts/get-leverage) and [Set leverage](/api-reference/platform/hosts/set-leverage)
-are not supported on paper hosts, every paper market's `settings.leverage` is `null`, and market state reports the
-leverage setting as `Disabled`.
+are not supported on paper hosts, every paper market's `settings.leverage` is `null`, and
+[Get market state](/api-reference/platform/hosts/get-market-state) reports `currentLeverageSetting` as `null`.
 
 ## What paper does not simulate
 

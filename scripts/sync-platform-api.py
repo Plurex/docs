@@ -45,8 +45,8 @@ KINDS = {
 }
 
 # What the header leaves alone do not say: market descriptors, plain header values, and notes on leaves that are not
-# request variants. "resolves" marks market descriptors that settle a PerMarket header leaf. Every path is checked
-# against the spec, so a renamed field fails the sync.
+# request variants. Market descriptors settle a PerMarket (MarketSupport) header leaf. Every path is checked against
+# the spec, so a renamed field fails the sync.
 EXTRA = {
     "SubmitOrder": {
         "notes": {"orders.submitOrder.clientOrderId": "when you send a clientOrderId"},
@@ -58,52 +58,42 @@ EXTRA = {
         ],
     },
     "GetMarketLeverage": {
-        "resolves": True,
         "market": [("settings.leverage.get", "true when this market's leverage can be read")],
     },
     "SetMarketLeverage": {
-        "resolves": True,
         "market": [
             ("settings.leverage.setEffectScope", "non-null when this market's leverage can be set"),
             ("settings.leverage.min", "with max and step, the values you can set"),
         ],
     },
     "GetMarketPositionMode": {
-        "resolves": True,
         "market": [("settings.positionMode.get", "true when this market's position mode can be read")],
     },
     "SetMarketPositionMode": {
-        "resolves": True,
         "market": [
             ("settings.positionMode.setEffectScope", "non-null when this market's position mode can be set"),
             ("settings.positionMode.values", "the modes you can set"),
         ],
     },
-    "GetPrices": {
-        "resolves": True,
+    "GetPrice": {
         "market": [("marketData.prices.{kind}.get", "true for each price kind the market serves")],
     },
-    "GetBestQuotes": {
-        "resolves": True,
-        "market": [("marketData.bestQuote.get", "true when the market serves a best quote")],
+    "GetOrderBookL1": {
+        "market": [("marketData.orderBookL1.get", "true when the market serves a best bid and ask")],
     },
     "GetMarketStatistics": {
-        "resolves": True,
         "market": [
             ("marketData.statistics.get", "true when the market serves statistics"),
             ("marketData.statistics.supportedFields", "which statistics it reports"),
         ],
     },
-    "GetIndicativeFundings": {
-        "resolves": True,
+    "GetIndicativeFunding": {
         "market": [("marketData.indicativeFunding.get", "true when the market serves indicative funding")],
     },
-    "GetOpenInterests": {
-        "resolves": True,
+    "GetOpenInterest": {
         "market": [("marketData.openInterest.get", "true when the market serves open interest")],
     },
     "ListCandles": {
-        "resolves": True,
         "market": [
             ("marketData.candles.{priceKind}.list", "true when the series can be listed with ByInstrument"),
             ("marketData.candles.{priceKind}.listBefore", "true when it can be listed with ByInstrumentBefore"),
@@ -114,39 +104,30 @@ EXTRA = {
         "header": [("accountTransactions.supportedTransactionTypes", "the posting types the host reports")],
     },
     "SubscribeToPrices": {
-        "resolves": True,
         "market": [("marketData.prices.{kind}.subscribe", "true for each price kind the market streams")],
     },
-    "SubscribeToBestQuotes": {
-        "resolves": True,
-        "market": [("marketData.bestQuote.subscribe", "true when the market streams its best quote")],
+    "SubscribeToOrderBookL1s": {
+        "market": [("marketData.orderBookL1.subscribe", "true when the market streams its best bid and ask")],
     },
     "SubscribeToMarketStatistics": {
-        "resolves": True,
         "market": [
             ("marketData.statistics.subscribe", "true when the market streams statistics"),
             ("marketData.statistics.supportedFields", "which statistics it reports"),
         ],
     },
     "SubscribeToIndicativeFundings": {
-        "resolves": True,
         "market": [("marketData.indicativeFunding.subscribe", "true when the market streams indicative funding")],
     },
     "SubscribeToOpenInterests": {
-        "resolves": True,
         "market": [("marketData.openInterest.subscribe", "true when the market streams open interest")],
     },
+    "ListFundingPeriods": {
+        "market": [("marketData.fundingPeriods.list", "true when the market has funding history")],
+    },
     "SubscribeToCandles": {
-        "resolves": True,
         "market": [
             ("marketData.candles.{priceKind}.subscribe", "true when the series can be streamed"),
             ("marketData.candles.{priceKind}.supportedIntervals", "the intervals you can request"),
-        ],
-    },
-    "SubscribeToAccountOrders": {
-        "header": [
-            ("accountOrders.changes", "the change types the host sends"),
-            ("accountOrders.includesFillDetails", "whether FillApplied events carry the execution"),
         ],
     },
     "SubscribeToAccountTransactions": {
@@ -199,7 +180,7 @@ class Schemas:
 
 
 def capability_leaves(schemas, root):
-    """Map each header capability path to its kind: always, support, cursor or value."""
+    """Map each header capability path to its kind: always, support, market, cursor or value."""
     leaves = {}
 
     def walk(schema, path):
@@ -209,6 +190,9 @@ def capability_leaves(schemas, root):
             return
         if name == "OperationSupport":
             leaves[path] = "support"
+            return
+        if name == "MarketSupport":
+            leaves[path] = "market"
             return
         if name == "CursorQueryCapability":
             leaves[path] = "cursor"
@@ -270,6 +254,7 @@ def capability_check(schemas, module, action, operation):
     key = lower_camel(action)
 
     header = []
+    per_market = False
     for path, kind in leaves.items():
         segments = path.split(".")
         if key not in segments[1:]:
@@ -280,8 +265,10 @@ def capability_check(schemas, module, action, operation):
             item["when"] = variants[others[0]]
         if kind == "always":
             item["always"] = True
-        elif kind in ("support", "cursor"):
+        elif kind in ("support", "market", "cursor"):
             item["support"] = True
+        if kind == "market":
+            per_market = True
         note = extra.get("notes", {}).get(path)
         if note:
             item["note"] = note
@@ -302,7 +289,7 @@ def capability_check(schemas, module, action, operation):
     if not header and not market:
         return {"source": source, "none": True}
     props = {"source": source, "header": header, "market": market}
-    if extra.get("resolves"):
+    if per_market:
         props["perMarket"] = True
     return props
 

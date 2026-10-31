@@ -1,6 +1,6 @@
 ---
 title: "Read market data"
-description: "Discover venues and markets, read order books, trades, prices and statistics, follow them live with streams, and page back through candles."
+description: "Discover venues and markets, read order books, trades, prices and statistics, follow them live with streams, and page back through candles and funding history."
 ---
 
 Venue operations are market data. Like every operation, they need an API key: send `X-API-KEY` and `X-API-SECRET` on each request (see [Authentication](/authentication)). Market data describes what is trading on a venue; to place orders, read the matching host market instead (see [Venues](/concepts/venues) for the model).
@@ -35,12 +35,14 @@ Both lists are paged: follow `nextCursor` until it is `null`. Each market gives:
 | `contractDetails` | What one contract is. Book and trade sizes are in native contracts. |
 | `marketData` | Which reads and streams this market supports, and on what terms. |
 
-## Order book
+## Order books
 
-[Get order book](/api-reference/platform/venues/get-order-book) returns the current book at the depth the venue feed provides. Both sides list the best price first.
+A market's order book comes at two levels. The L2 book is every price level with the total size resting there, and every listed market has it. The L1 book is only the top of book, the best bid and ask; check `marketData.orderBookL1` before you read it.
+
+[Get the L2 order book](/api-reference/platform/venues/get-order-book-l2) returns the current book. Both sides list the best price first.
 
 ```bash
-curl --request POST https://api.plurex.io/api/v1/venues/query/GetOrderBook \
+curl --request POST https://api.plurex.io/api/v1/venues/query/GetOrderBookL2 \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
   --header "X-API-SECRET: $PLUREX_API_SECRET" \
@@ -59,6 +61,19 @@ curl --request POST https://api.plurex.io/api/v1/venues/query/GetOrderBook \
       { "price": "64012.5", "size": "0.812" },
       { "price": "64012.7", "size": "2.000" }
     ],
+    "asOf": "2026-10-25T09:30:00.250Z"
+  }
+}
+```
+
+[Get the L1 order book](/api-reference/platform/venues/get-order-book-l1) takes the same request and returns the best bid and ask, each with its `price` and the total `size` there. A side is `null` when the venue reports nothing on it.
+
+```json
+{
+  "data": {
+    "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+    "bid": { "price": "64012.4", "size": "1.204" },
+    "ask": { "price": "64012.5", "size": "0.812" },
     "asOf": "2026-10-25T09:30:00.250Z"
   }
 }
@@ -85,74 +100,49 @@ curl --request POST https://api.plurex.io/api/v1/venues/query/GetOrderBook \
 
 `takerSide` is the aggressor's side, or `null` when the venue does not report it. Trades carry no ID, so do not try to deduplicate them by identity across reads.
 
-## Prices, quotes and statistics in batches
+## Prices, statistics, funding and open interest
 
-Five reads take a batch of 1 to 50 distinct instruments on one venue and return one result per instrument, in request order:
+Four observation reads each take one `venueId` and one `instrument`, and return that market's current value with its timestamps:
 
 | Operation | Returns | Market entry to check |
 | --- | --- | --- |
-| [Get prices](/api-reference/platform/venues/get-prices) | The price of one `kind`: `Traded`, `Mark` or `Index` | `marketData.prices.traded`, `.mark` or `.index` |
-| [Get best quotes](/api-reference/platform/venues/get-best-quotes) | Best bid and ask | `marketData.bestQuote` (`supportsSizes` says whether sizes are given) |
+| [Get a price](/api-reference/platform/venues/get-price) | The price of one `kind`: `Traded`, `Mark` or `Index` | `marketData.prices.traded`, `.mark` or `.index` |
 | [Get market statistics](/api-reference/platform/venues/get-market-statistics) | Open, high, low, previous close and volumes over the market's window | `marketData.statistics` |
-| [Get indicative fundings](/api-reference/platform/venues/get-indicative-fundings) | Indicative funding rate and next funding time, for perpetuals | `marketData.indicativeFunding` |
-| [Get open interests](/api-reference/platform/venues/get-open-interests) | Open interest, for derivatives | `marketData.openInterest` |
-
-An instrument without a value does not fail the batch. It comes back as `Unavailable` with the code a single read would have returned: `NotSupported` when the market does not offer this read, `NotFound` when the venue reported no value, and `UpstreamFailure` when the venue read failed.
+| [Get indicative funding](/api-reference/platform/venues/get-indicative-funding) | Indicative funding rate and next funding time, for perpetuals | `marketData.indicativeFunding` |
+| [Get open interest](/api-reference/platform/venues/get-open-interest) | Open interest, for derivatives | `marketData.openInterest` |
 
 ```bash
-curl --request POST https://api.plurex.io/api/v1/venues/query/GetPrices \
+curl --request POST https://api.plurex.io/api/v1/venues/query/GetPrice \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
   --header "X-API-SECRET: $PLUREX_API_SECRET" \
   --data '{
     "venueId": "bybit",
     "kind": "Mark",
-    "instruments": [
-      {"type": "Perp", "base": "BTC", "quote": "USDT"},
-      {"type": "Perp", "base": "ETH", "quote": "USDT"},
-      {"type": "Spot", "base": "BTC", "quote": "USDT"}
-    ]
+    "instrument": {"type": "Perp", "base": "BTC", "quote": "USDT"}
   }'
 ```
 
 ```json
 {
-  "data": [
-    {
-      "type": "Observed",
-      "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
-      "value": { "price": "64013.1" },
-      "observedAt": "2026-10-25T09:30:00.120Z",
-      "confirmedAt": "2026-10-25T09:30:01Z",
-      "receivedAt": "2026-10-25T09:30:00.135Z"
-    },
-    {
-      "type": "Observed",
-      "instrument": { "type": "Perp", "base": "ETH", "quote": "USDT" },
-      "value": { "price": "2521.43" },
-      "observedAt": "2026-10-25T09:30:00.090Z",
-      "confirmedAt": null,
-      "receivedAt": "2026-10-25T09:30:00.140Z"
-    },
-    {
-      "type": "Unavailable",
-      "instrument": { "type": "Spot", "base": "BTC", "quote": "USDT" },
-      "code": "NotSupported",
-      "message": "Mark price is not reported for BTC-USDT-SPOT"
-    }
-  ]
+  "data": {
+    "value": { "price": "64013.1" },
+    "observedAt": "2026-10-25T09:30:00.120Z",
+    "confirmedAt": "2026-10-25T09:30:01Z",
+    "receivedAt": "2026-10-25T09:30:00.135Z"
+  }
 }
 ```
 
-Match results to your request by position or by `instrument`, and handle each `Unavailable` result on its own. Price kinds are never relabelled: a market without a mark price returns `Unavailable` for `Mark`, not its traded price.
+A market the venue does not list, or one whose entry is `null` or whose `get` is `false`, returns `422 NotSupported`. Price kinds are never relabelled: a market without a mark price returns `422 NotSupported` for `Mark`, not its traded price. To read many markets, send one request per market, choosing them from their `marketData` first (see [Venue capabilities](/capabilities/venue-capabilities#unsupported-markets)).
 
 ### Judge freshness
 
-Each `Observed` result carries three times:
+Each observation carries three times:
 
 | Field | Meaning |
 | --- | --- |
-| `confirmedAt` | The latest venue time at which a continuous live feed covered the value, even if it did not change. `null` without a live feed. |
+| `confirmedAt` | The latest venue time at which the value was confirmed current, even if it did not change. `null` when it has not been confirmed. |
 | `observedAt` | The venue's time for the value. `null` when the venue gives none. |
 | `receivedAt` | When Plurex received the value. |
 
@@ -161,9 +151,8 @@ Judge freshness by `confirmedAt`, falling back to `observedAt`. A value can be o
 ### Read the terms of each value
 
 - **Statistics windows differ by venue.** Read `marketData.statistics.window`: `Rolling` with an ISO 8601 `length` such as `PT24H`, or `CalendarDay` in a named `timeZone`. Two venues' 24-hour figures need not cover the same period. Fields outside `supportedFields` are always `null`.
-- **Indicative funding is an estimate.** The rate that settles can differ from the one you read.
+- **Indicative funding is an estimate.** The rate that settles can differ from the one you read; read settled rates from the [funding history](#funding-history).
 - **Open interest has a unit.** `unit` is `Contracts`, `BaseAsset` or `QuoteAsset`, and is also listed in `marketData.openInterest.unit`. Convert before comparing venues.
-- **Best quote sizes** are `null` when the market's `supportsSizes` is `false`.
 
 ## Candles
 
@@ -174,16 +163,16 @@ Before you call, read the market's `marketData.candles` entry for the price kind
 ```json
 {
   "supportedIntervals": ["Minute1", "Minute5", "Minute15", "Hour1", "Hour4", "Day1"],
-  "maxHistoryAgeByInterval": { "Minute1": "PT48H", "Minute5": "PT48H", "Minute15": "PT168H", "Hour1": "PT720H", "Hour4": "PT720H", "Day1": "PT720H" },
   "list": true,
-  "listBefore": true
+  "listBefore": true,
+  "subscribe": true
 }
 ```
 
 - The interval must be in `supportedIntervals`. Intervals are aligned to whole multiples from the Unix epoch, in UTC.
 - `list` allows `ByInstrument`, which starts from the latest closed candle.
 - `listBefore` allows `ByInstrumentBefore`, which starts from candles that end at or before `before`, and is needed to page past the first page with either variant.
-- `maxHistoryAgeByInterval` gives how far back history reaches per interval, as an ISO 8601 duration. An interval without an entry has no declared limit. These values are examples; read them from the market.
+- `subscribe` allows the candle stream. These values are examples; read them from the market.
 
 ```json
 {
@@ -263,30 +252,59 @@ def candles_back_to(start_at, query, venue_id="bybit", price_kind="Traded", inte
         body["cursor"] = page["nextCursor"]
 ```
 
-Paging past the first page needs the series' `listBefore`, and how far back you can go is bounded by `maxHistoryAgeByInterval`. Stop when `nextCursor` is `null`.
+Paging past the first page needs the series' `listBefore`. History does not reach back forever: before the start of the history available, a page is empty. Stop when `nextCursor` is `null`.
+
+## Funding history
+
+[List funding periods](/api-reference/platform/venues/list-funding-periods) returns the finalised funding rates of one perpetual, newest first across every page. Check that the market's `marketData.fundingPeriods` is non-null and its `list` is `true`; any other market returns `422 NotSupported`.
+
+```bash
+curl --request POST https://api.plurex.io/api/v1/venues/query/ListFundingPeriods \
+  --header 'Content-Type: application/json' \
+  --header "X-API-KEY: $PLUREX_API_KEY" \
+  --header "X-API-SECRET: $PLUREX_API_SECRET" \
+  --data '{
+    "venueId": "bybit",
+    "query": {"type": "ByInstrument", "instrument": {"type": "Perp", "base": "BTC", "quote": "USDT"}}
+  }'
+```
+
+```json
+{
+  "items": [
+    { "fundingTime": "2026-10-25T08:00:00Z", "rate": "0.0001" },
+    { "fundingTime": "2026-10-25T00:00:00Z", "rate": "-0.000025" }
+  ],
+  "nextCursor": "eyJjb250aW51YXRpb24iOiJjdXJzb3ItMiJ9"
+}
+```
+
+Each `FundingPeriod` is one funding that has settled: `fundingTime` is when it applied, and `rate` is the fraction of position value paid. A positive rate means longs pay shorts; a negative rate means shorts pay longs. These are the venue's rates; your account's own funding payments are in its [transactions](/guides/portfolio#transactions).
+
+Page back in time as you do for candles: send each `nextCursor` with the same `venueId` and `query` until it is `null` or you reach the oldest funding time you need. A funding period carries no interval: read the funding times rather than assuming a schedule.
 
 ## Follow market data live
 
-Each read above has a stream that follows one market as it changes. Stream when you follow a market continuously: a book you trade against, a live tape, a chart's forming candle. Use the reads for a one-off value, or for a snapshot of many instruments at once, since a batch read takes up to 50 instruments and a stream follows one.
+Each read above has a stream that follows one market as it changes. Stream when you follow a market continuously: a book you trade against, a live tape, a chart's forming candle. Use the reads for a one-off value. Each stream follows one market, so open one stream per market you follow.
 
 Every market data stream starts with a **Reset** holding the current state, then sends **Updates**. A Reset can arrive again at any time; it replaces everything you hold for that stream. The last line is **Ended**. [Streams](/guides/streams) covers how to open a stream, keepalives, how it ends and how to reopen it.
 
 | Stream | Reset | Update | Check support |
 | --- | --- | --- | --- |
-| [Stream an order book](/api-reference/platform/venues/subscribe-to-order-books) | The whole book | The levels that changed | Always supported |
+| [Stream the L2 order book](/api-reference/platform/venues/subscribe-to-order-book-l2s) | The whole book | The levels that changed | Always supported |
+| [Stream the L1 order book](/api-reference/platform/venues/subscribe-to-order-book-l1s) | The best bid and ask | The complete new top of book | `marketData.orderBookL1.subscribe` |
 | [Stream public trades](/api-reference/platform/venues/subscribe-to-trades) | The recent trades | New trades | Always supported |
 | [Stream a price](/api-reference/platform/venues/subscribe-to-prices) | The current price of one `kind` | The complete new value | `marketData.prices.<kind>.subscribe` |
-| [Stream the best bid and ask](/api-reference/platform/venues/subscribe-to-best-quotes) | The current best bid and ask | The complete new value | `marketData.bestQuote.subscribe` |
 | [Stream market statistics](/api-reference/platform/venues/subscribe-to-market-statistics) | The current statistics | The complete new values | `marketData.statistics.subscribe` |
 | [Stream indicative funding](/api-reference/platform/venues/subscribe-to-indicative-fundings) | The current estimate | The complete new value | `marketData.indicativeFunding.subscribe` |
 | [Stream open interest](/api-reference/platform/venues/subscribe-to-open-interests) | The current amount | The complete new value | `marketData.openInterest.subscribe` |
 | [Stream candles](/api-reference/platform/venues/subscribe-to-candles) | The recent candles, ending with the forming one | The forming candle | `marketData.candles.<priceKind>.subscribe` |
 
-The venue's capabilities say whether it offers each stream at all (`PerMarket` sends you to the market entry). A market the venue does not list, or one whose entry says `false`, returns `422 NotSupported` before the stream starts.
+The venue's capabilities say whether it offers each stream at all: `PerMarket` sends you to the market entry, and `NotSupported` means no market streams it. Funding history has no stream. A market the venue does not list, or one whose entry says `false`, returns `422 NotSupported` before the stream starts.
 
 ### Keep a book
 
-An order book Update lists only the levels that changed, each with its new total size. Set each level to that size and remove a level whose size is `0`; levels not listed are unchanged. On a Reset, drop your book and start again from its levels.
+An L2 order book Update lists only the levels that changed, each with its new total size. Set each level to that size and remove a level whose size is `0`; levels not listed are unchanged. On a Reset, drop your book and start again from its levels.
 
 ```json
 {"type":"Reset","timestamp":"2026-10-27T09:00:00.120Z","data":{"bids":[{"price":"67250.1","size":"0.42"}],"asks":[{"price":"67250.2","size":"0.08"}],"observedAt":"2026-10-27T09:00:00.101Z","receivedAt":"2026-10-27T09:00:00.115Z"}}
@@ -302,7 +320,7 @@ from decimal import Decimal
 
 import requests
 
-URL = "https://api.plurex.io/api/v1/venues/stream/SubscribeToOrderBooks"
+URL = "https://api.plurex.io/api/v1/venues/stream/SubscribeToOrderBookL2s"
 HEADERS = {"X-API-KEY": os.environ["PLUREX_API_KEY"], "X-API-SECRET": os.environ["PLUREX_API_SECRET"]}
 
 def follow_book(venue_id, instrument, on_book):
@@ -335,10 +353,12 @@ def follow_book(venue_id, instrument, on_book):
 
 Whether `follow_book` returns an Ended line or `None`, the book you hold is no longer current: open the stream again as [Streams](/guides/streams) describes.
 
-### Trades, values and candles
+### Top of book, trades, values and candles
+
+- **L1 order book.** Every Reset and Update carries the complete top of book: replace the `bid` and `ask` you hold. A side that is now `null` was cleared.
 
 - **Trades.** A trades Reset is the recent trades, as Get recent trades returns them, and it can repeat trades an Update already delivered. Replace the history you hold with it; do not add it to running totals such as traded volume. Updates carry only new trades, oldest first.
-- **Prices, quotes, statistics, funding and open interest.** Each Update carries the complete value, so a field that is now `null` was cleared. A stream value carries `observedAt` and `receivedAt`, with the same meanings as in a read, but no `confirmedAt`.
+- **Prices, statistics, funding and open interest.** Each Update carries the complete value, so a field that is now `null` was cleared. A stream value carries `observedAt` and `receivedAt`, with the same meanings as in a read, but no `confirmedAt`.
 - **Candles.** The Reset is the recent candles, oldest first, ending with the candle still forming. Each Update is the forming candle: one with the same `startAt` replaces it, and one with a later `startAt` completes it and starts the next. Updates never move back in time. Read older candles with List candles. A series that streams does so at every interval in its `supportedIntervals`.
 
 ## Related

@@ -1,0 +1,14 @@
+---
+title: "Stream the L1 order book"
+description: "Streams one market's top of book: a Reset with the current best bid and ask, then an Update with the complete top of book on each change. A market the venue does not stream returns 422 NotSupported."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/stream/SubscribeToOrderBookL1s"
+playground: "none"
+---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "stream", "label": "Stream", "description": "The response stays open and carries one JSON message per line until an Ended line."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}]} />
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.orderBookL1.subscribeToOrderBookL1s", "support": true}]} market={[{"path": "marketData.orderBookL1.subscribe", "note": "true when the market streams its best bid and ask"}]} perMarket />

@@ -17,7 +17,7 @@ Plurex aggregates hosts that report different things. Its models follow one rule
 | `Fill.id` | The host has no execution ID. | Invent one. |
 | `Fill.role` | The host does not say whether you were maker or taker. | Guess from price or timing. |
 | `Position.entryPrice` | The host does not report it. | Compute it from your fills. |
-| `Position.markPrice`, `unrealizedPnl` | The host does not report them, or the leg is flat. | Value the position at a price it chose. |
+| `Position.markPrice`, `unrealizedPnl` | The host does not report them; `unrealizedPnl` also when the leg is empty. | Value the position at a price it chose. |
 | `AccountTransaction.orderId`, `fillId`, `positionId` | The host does not report the link reliably. | Match postings to orders by time or amount. |
 
 Where hosts differ in what they *support*, rather than what they report, the difference is declared in their capabilities and market summaries. See [Capabilities](/capabilities/overview).
@@ -133,7 +133,7 @@ Four reads describe what the account holds. All need an API key; none needs anyt
 
 ### Positions
 
-A `MarketPosition` always has both a `long` and a `short` leg, each with a `size` in native contracts and, when the host reports them, an `entryPrice`, the `markPrice` the leg is valued at, and its `unrealizedPnl` at that price in the settlement asset. In `Netting` mode the market holds one net position, so at most one leg is non-zero. In `Hedging` mode both can be open at once:
+A `MarketPosition` always has both a `long` and a `short` leg, each with a `size` in native contracts and, when the host reports them, an `entryPrice`, the `markPrice` the leg is valued at, and its `unrealizedPnl` at that price in the settlement asset. `size` is never negative: the leg gives the direction, and an empty leg has size `"0"`. In `Netting` mode the market holds one net position, so at most one leg is non-empty. In `Hedging` mode both can be open at once:
 
 ```json
 {
@@ -179,7 +179,7 @@ Leverage and position mode are **settings of a market on your account**, not fie
 | `Disabled` | The control exists and leverage is off for this account, so orders are not leveraged. |
 | `Unknown` | The host cannot report the setting truthfully; `message` says why. |
 
-`settings.leverage: null` means the market has no leverage control, so you cannot get or set it. `Disabled` from Get market leverage means the control exists and is off. A `Derivative` market state always includes `currentLeverageSetting`; on a market with no leverage control (for example on a paper host) it reads `Disabled`, meaning orders are not leveraged. [Set market leverage](/api-reference/platform/hosts/set-leverage) and [Set market position mode](/api-reference/platform/hosts/set-position-mode) return the resulting setting and are safe to repeat with the same values. When `setEffectScope` is wider than `Market`, re-read the other markets it affects rather than assume.
+`settings.leverage: null` means the market has no leverage control, so you cannot get or set it. `Disabled` from Get market leverage means the control exists and is off. In a `Derivative` market state, `currentLeverageSetting` is `null` when the market has no leverage control. [Set market leverage](/api-reference/platform/hosts/set-leverage) and [Set market position mode](/api-reference/platform/hosts/set-position-mode) return the resulting setting and are safe to repeat with the same values. When `setEffectScope` is wider than `Market`, re-read the other markets it affects rather than assume.
 
 ## Transactions
 
@@ -187,8 +187,10 @@ Leverage and position mode are **settings of a market on your account**, not fie
 
 - `amount` is signed from your point of view: positive increases the balance, negative decreases it.
 - `type` classifies the posting: `TradingFee`, `FundingPayment`, `BorrowInterest`, `Financing`, `LiquidationFee`, `Settlement`, `Rebate`, `Deposit`, `Withdrawal`, `Transfer`, `Conversion`, `Adjustment` or `Other`. A host lists the types it reports in `accountTransactions.supportedTransactionTypes`.
+- `TradingFee` is the fee charged on a fill. A maker rebate paid on a fill is also a `TradingFee`, a negative fee, so its posting credits the balance. `Rebate` is a rebate paid separately from fills, such as a referral or programme rebate.
 - `nativeType` keeps the host's own classification. `Other` is used only for a real posting whose host meaning has no standard type.
 - `id` is stable within the account and identical in history and in the [transaction stream](/api-reference/platform/hosts/subscribe-to-account-transactions), so you can merge the two without duplicates.
+- `positionId` is the host's ID for the position the posting belongs to, when the host reports it.
 - `groupId` links postings that come from one host record, such as the settlement and fee of one execution.
 
 ```json

@@ -1,6 +1,6 @@
 ---
 title: "Stream account orders"
-description: "Streams every change to one account's orders: created, filled, cancelled, rejected. Each Event carries the change and the complete order, as GetOrder returns it; reconcile with ListOpenOrders after the stream opens. accountOrders.changes lists the changes the host sends."
+description: "Streams one account's orders, starting with a Reset of its open orders, then an Update per change the host reports, each carrying the complete order. Intermediate states may be merged; a terminal state is final. After an Ended line, subscribe again for a fresh Reset."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/stream/SubscribeToAccountOrders"
 playground: "none"
 ---
@@ -11,4 +11,4 @@ import { OperationBadges } from "/snippets/operation-badges.mdx";
 
 import { CapabilityCheck } from "/snippets/capability-check.mdx";
 
-<CapabilityCheck source="host" header={[{"path": "capabilities.accountOrders.subscribeToAccountOrders", "support": true}, {"path": "capabilities.accountOrders.changes", "note": "the change types the host sends"}, {"path": "capabilities.accountOrders.includesFillDetails", "note": "whether FillApplied events carry the execution"}]} market={[]} />
+<CapabilityCheck source="host" header={[{"path": "capabilities.accountOrders.subscribeToAccountOrders", "support": true}]} market={[]} />

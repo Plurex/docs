@@ -30,8 +30,7 @@ export const CapabilityCheck = ({ source = "host", header = [], market = [], non
           </ul>
           {gated ? (
             <p>
-              <code>Supported</code>: go ahead.{" "}
-              {perMarket ? <><code>PerMarket</code>: check the market below. </> : null}
+              {perMarket ? <><code>PerMarket</code>: check the market below.</> : <><code>Supported</code>: go ahead.</>}{" "}
               <code>NotSupported</code>: the call fails with <code>422 NotSupported</code>.
             </p>
           ) : null}

@@ -1,6 +1,6 @@
 ---
 title: "Stream open interest"
-description: "Streams one derivative's open interest, in the unit its market declares: a Reset with the current amount, then an Update whenever it changes. A market the venue does not stream returns 422 NotSupported."
+description: "Streams one derivative's open interest: a Reset with the current amount, then an Update on each change. A market the venue does not stream returns 422 NotSupported."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/stream/SubscribeToOpenInterests"
 playground: "none"
 ---

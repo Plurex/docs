@@ -91,8 +91,10 @@
               {
                 "group": "Order books",
                 "pages": [
-                  "api-reference/platform/venues/get-order-book",
-                  "api-reference/platform/venues/subscribe-to-order-books"
+                  "api-reference/platform/venues/get-order-book-l2",
+                  "api-reference/platform/venues/subscribe-to-order-book-l2s",
+                  "api-reference/platform/venues/get-order-book-l1",
+                  "api-reference/platform/venues/subscribe-to-order-book-l1s"
                 ]
               },
               {
@@ -105,15 +107,13 @@
               {
                 "group": "Prices and market statistics",
                 "pages": [
-                  "api-reference/platform/venues/get-prices",
+                  "api-reference/platform/venues/get-price",
                   "api-reference/platform/venues/subscribe-to-prices",
-                  "api-reference/platform/venues/get-best-quotes",
-                  "api-reference/platform/venues/subscribe-to-best-quotes",
                   "api-reference/platform/venues/get-market-statistics",
                   "api-reference/platform/venues/subscribe-to-market-statistics",
-                  "api-reference/platform/venues/get-indicative-fundings",
+                  "api-reference/platform/venues/get-indicative-funding",
                   "api-reference/platform/venues/subscribe-to-indicative-fundings",
-                  "api-reference/platform/venues/get-open-interests",
+                  "api-reference/platform/venues/get-open-interest",
                   "api-reference/platform/venues/subscribe-to-open-interests"
                 ]
               },
@@ -122,6 +122,12 @@
                 "pages": [
                   "api-reference/platform/venues/list-candles",
                   "api-reference/platform/venues/subscribe-to-candles"
+                ]
+              },
+              {
+                "group": "Funding history",
+                "pages": [
+                  "api-reference/platform/venues/list-funding-periods"
                 ]
               }
             ]
@@ -209,6 +215,7 @@
                 "group": "Paper fees",
                 "pages": [
                   "api-reference/platform/paper/set-fee-tier",
+                  "api-reference/platform/paper/get-host-fee-tiers",
                   "api-reference/platform/paper/get-fee-settings",
                   "api-reference/platform/paper/get-effective-fee-rates"
                 ]
@@ -288,6 +295,34 @@
     {
       "source": "/api-reference/platform/quickstart",
       "destination": "/quickstart"
+    },
+    {
+      "source": "/api-reference/platform/venues/get-best-quotes",
+      "destination": "/api-reference/platform/venues/get-order-book-l1"
+    },
+    {
+      "source": "/api-reference/platform/venues/get-indicative-fundings",
+      "destination": "/api-reference/platform/venues/get-indicative-funding"
+    },
+    {
+      "source": "/api-reference/platform/venues/get-open-interests",
+      "destination": "/api-reference/platform/venues/get-open-interest"
+    },
+    {
+      "source": "/api-reference/platform/venues/get-order-book",
+      "destination": "/api-reference/platform/venues/get-order-book-l2"
+    },
+    {
+      "source": "/api-reference/platform/venues/get-prices",
+      "destination": "/api-reference/platform/venues/get-price"
+    },
+    {
+      "source": "/api-reference/platform/venues/subscribe-to-best-quotes",
+      "destination": "/api-reference/platform/venues/subscribe-to-order-book-l1s"
+    },
+    {
+      "source": "/api-reference/platform/venues/subscribe-to-order-books",
+      "destination": "/api-reference/platform/venues/subscribe-to-order-book-l2s"
     }
   ]
 }

@@ -60,8 +60,8 @@ These operations tell you what an account holds and how its markets are configur
 }
 ```
 
-- Sizes are in native contracts, not base units. Convert with the market's `contractDetails`; see [Instruments](/concepts/instruments).
-- A leg with no exposure has size `"0"`. In `Hedging` mode both legs can be open at once.
+- Sizes are in native contracts, not base units, and never negative: the leg, `long` or `short`, gives the direction. Convert with the market's `contractDetails`; see [Instruments](/concepts/instruments).
+- A leg with no exposure has size `"0"`. In `Netting` mode at most one leg is open; in `Hedging` mode both legs can be open at once.
 - Each leg's `markPrice` is the price it is valued at, and `unrealizedPnl` is its profit or loss if it closed at that
   price, in the settlement asset. Use `size` to tell whether a leg is open, rather than relying on these being `null`.
 - `entryPrice`, `markPrice`, `unrealizedPnl` and `mode` are `null` when the host does not report them. A host can
@@ -99,7 +99,8 @@ These operations tell you what an account holds and how its markets are configur
 
 <Tabs>
   <Tab title="Derivative">
-    Leverage setting, collateral and the position:
+    Leverage setting, collateral and the position. `currentLeverageSetting` is `null` when the market has no
+    leverage:
 
     ```json
     {
@@ -157,7 +158,7 @@ These operations tell you what an account holds and how its markets are configur
 
 Leverage is a setting on a market, never a field on an order. Whether you can read or change it depends on two levels:
 
-1. The host's `capabilities.marketSettings.getMarketLeverage` and `setMarketLeverage` must not be `NotSupported`.
+1. The host's `capabilities.marketSettings.getMarketLeverage` and `setMarketLeverage` must be `PerMarket`, not `NotSupported`.
 2. The market's `settings.leverage` (from [List host markets](/api-reference/platform/hosts/list-markets)) must be non-null. Inside it, `get` says whether you can read it, and `setEffectScope` is `null` when it cannot be set.
 
 ```json
@@ -174,7 +175,9 @@ Leverage is a setting on a market, never a field on an order. Whether you can re
 | `Disabled` | The market has a leverage control and it is off for this account, so orders are not leveraged. |
 | `Unknown` | The host cannot report the setting truthfully. `message` says why. |
 
-`Disabled` is different from a `null` `settings.leverage`, which means the market has no leverage control at all.
+`Disabled` is different from a `null` `settings.leverage`, which means the market has no leverage control at all. On
+such a market, [Get market account state](/api-reference/platform/hosts/get-market-state) reports
+`currentLeverageSetting` as `null`.
 
 ### Set it
 
@@ -242,11 +245,26 @@ Position mode and an order's `positionEffect` are independent. Whether you may s
 How to read a posting:
 
 - **`amount` is signed** from your side: positive increases the balance, negative decreases it. A fee you pay is negative; a deposit is positive.
-- **`type`** classifies the posting: `TradingFee`, `FundingPayment`, `BorrowInterest`, `Financing`, `LiquidationFee`, `Settlement`, `Rebate`, `Deposit`, `Withdrawal`, `Transfer`, `Conversion`, `Adjustment` or `Other`. `nativeType` keeps the host's own label. The host's `supportedTransactionTypes` lists the types it reports. Treat a type you do not recognise as `Other`.
-- **Links** to an `instrument`, order, fill or position are present only when the host reports them reliably; otherwise they are `null`.
-- **`groupId`** links postings that come from one host record, such as the legs of a conversion and its fee, when the host reports it.
+- **`type`** classifies the posting (see the table below). `nativeType` keeps the host's own label. The host's `supportedTransactionTypes` lists the types it reports. Treat a type you do not recognise as `Other`.
+- **Links** to an `instrument`, order (`orderId`), fill (`fillId`) or position (`positionId`, the host's own ID for the position) are present only when the host reports them; otherwise they are `null`.
+- **`groupId`** links postings that come from one host record, such as a fill's settlement and its fee, when the host reports it.
 - **`id`** is stable: it never changes and is the same ID the [transaction stream](/guides/streams#transaction-events) sends.
 - **`effectiveAt`** is when the posting took effect.
+
+| `type` | Posting |
+| --- | --- |
+| `TradingFee` | A fee charged on a fill. When the fill earns a maker rebate, the fee is negative, so the posting's `amount` is positive. |
+| `Rebate` | A rebate paid separately from fills, such as a referral or programme rebate. |
+| `FundingPayment` | A perpetual funding payment, paid or received. |
+| `BorrowInterest` | Interest on borrowed assets. |
+| `Financing` | A financing charge. |
+| `LiquidationFee` | A fee charged on liquidation. |
+| `Settlement` | A contract settlement, such as realised profit or loss. |
+| `Deposit`, `Withdrawal` | A deposit to or withdrawal from the account. |
+| `Transfer` | A transfer in or out. |
+| `Conversion` | An asset conversion. |
+| `Adjustment` | A balance adjustment. |
+| `Other` | No standard type; read `nativeType`. |
 
 Results come in the order the `listTransactions` capability's `defaultOrdering` states, `Chronological` or `ReverseChronological`, across all pages.
 

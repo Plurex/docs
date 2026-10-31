@@ -126,7 +126,7 @@ With `HostSelected`, `price` tells you which reference the host uses; `null` mea
 
 ## Settings
 
-`settings` describes the market's account settings. Each is `null` when the setting does not exist on this market. The host header must also allow the operation; see [Host capabilities](/capabilities/host-capabilities#marketsettings).
+`settings` describes the market's account settings. Each is `null` when the setting does not exist on this market. The host header's leaf for the operation must also be `PerMarket`; see [Host capabilities](/capabilities/host-capabilities#marketsettings).
 
 ### Leverage
 
@@ -141,7 +141,7 @@ With `HostSelected`, `price` tells you which reference the host uses; `null` mea
 
 A valid leverage `L` satisfies `min ≤ L ≤ max` and `(L − min) / step` is a whole number. The grid starts at `min`, not at zero. Off-grid values return `422 Rejected`.
 
-Leverage is a market setting, not an order field. `settings.leverage: null` means the market has no leverage control at all. That is different from GetMarketLeverage returning `Disabled`, which means the control exists and leverage is off for the account.
+Leverage is a market setting, not an order field. `settings.leverage: null` means the market has no leverage control at all. That is different from GetMarketLeverage returning `Disabled`, which means the control exists and leverage is off for the account. On a market with no leverage control, the `currentLeverageSetting` in [Get market account state](/api-reference/platform/hosts/get-market-state) is `null`.
 
 ### Position mode
 

@@ -68,7 +68,8 @@ See [Authentication](/authentication) for how to use them.
 get:
 
 - the live **order book** and **trade feed**;
-- a candlestick **chart**;
+- a live candlestick **chart** with volume: pick an interval and, where the market has them, the last, mark or index
+  price; pan and zoom through history, and label times in UTC or your local time zone;
 - **manual orders**: Limit, Market, Trigger Limit and Trigger Market, sized in contracts or by notional as the market
   allows, with time in force, post-only, reduce-only and position effect where the market offers them. The form
   checks your order against the market's order rules, the same rules the API enforces;
@@ -91,5 +92,6 @@ Each section can be refreshed on demand.
 ## Through the API
 
 The app covers setup and manual trading. To automate a strategy, use the [API](/quickstart): it works on the same
-accounts. Some settings, such as a paper account's fee tier, are set only through the API, with
-[Set fee tier](/api-reference/platform/paper/set-fee-tier).
+accounts. Some settings, such as a paper account's fee tier, are set only through the API: pass `feeTier` when you
+[create the paper account](/api-reference/platform/paper/create), or call
+[Set fee tier](/api-reference/platform/paper/set-fee-tier) later. See [Fees and funding](/paper/fees-and-funding).

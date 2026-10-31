@@ -1,6 +1,6 @@
 ---
 title: "Stream indicative funding"
-description: "Streams one perpetual's indicative funding rate: a Reset with the current estimate, then an Update whenever it changes. The rate that settles can differ. A market the venue does not stream returns 422 NotSupported."
+description: "Streams one perpetual's indicative funding rate: a Reset with the current estimate, then an Update on each change. A market the venue does not stream returns 422 NotSupported."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/stream/SubscribeToIndicativeFundings"
 playground: "none"
 ---

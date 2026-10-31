@@ -68,14 +68,15 @@ Operations that create or list accounts work across your tenant, so they take a 
 - [Create a paper account](/api-reference/platform/paper/create)
 
 Account operations act on one account and take an `accountId`. Plurex checks that the account belongs to the tenant
-your key acts for. Venue and host discovery operations take neither, but still need the key.
+your key acts for; an account your key cannot read returns `404 AccountNotFound`, exactly as if it did not exist. Venue and host discovery operations take neither, but still need the key.
 
 ## Authentication errors
 
 | Status | Code | Meaning | What to do |
 | --- | --- | --- | --- |
 | 401 | `Unauthenticated` | A header is missing, or the key or secret is wrong | Check both headers and that the key has not been deleted |
-| 403 | `Forbidden` | The key is valid but has no access to that account or operation | Check the `accountId` or `tenantId` belongs to your tenant |
+| 403 | `Forbidden` | The key is valid but has no access to that tenant or operation | Check the `tenantId` is your tenant's |
+| 404 | `AccountNotFound` | The account does not exist, or your key cannot read it | Check the `accountId` with [List accounts](/api-reference/platform/accounts/list) |
 
 Authentication is checked before the request body, so a request with bad credentials returns 401 even if its body is
 also invalid. See [Errors](/api-reference/platform/errors) for every error code.

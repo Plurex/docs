@@ -1,0 +1,13 @@
+---
+title: "Get a price"
+description: "The current price of one kind (traded, mark or index) for one market. A market or kind the venue does not serve returns 422 NotSupported."
+openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/GetPrice"
+---
+
+import { OperationBadges } from "/snippets/operation-badges.mdx";
+
+<OperationBadges badges={[{"name": "query", "label": "Query", "description": "Reads state and changes nothing. Always safe to repeat."}, {"name": "optional", "label": "Check capabilities", "description": "Not every host or venue supports this operation; check its capabilities first or expect 422 NotSupported."}]} />
+
+import { CapabilityCheck } from "/snippets/capability-check.mdx";
+
+<CapabilityCheck source="venue" header={[{"path": "capabilities.prices.traded.getPrice", "when": {"field": "kind", "value": "Traded"}, "support": true}, {"path": "capabilities.prices.mark.getPrice", "when": {"field": "kind", "value": "Mark"}, "support": true}, {"path": "capabilities.prices.index.getPrice", "when": {"field": "kind", "value": "Index"}, "support": true}]} market={[{"path": "marketData.prices.<kind>.get", "note": "true for each price kind the market serves"}]} perMarket />

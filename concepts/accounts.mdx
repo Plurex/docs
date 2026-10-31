@@ -70,7 +70,7 @@ Before connecting, Plurex checks the key with the host:
 
 - **The key must allow reading and trading.** Plurex needs to read your orders, balances and positions, and to place and cancel orders.
 - **Bybit keys must belong to a Unified Trading Account.**
-- **A refused key creates no account.** Connect verifies the key with the exchange and refuses it if the exchange rejects it or the key cannot read and trade. Retrying with the same key will not help: fix the key's permissions at the exchange, or create a new key, then connect again.
+- **A refused key creates no account.** Connect verifies the key with the exchange. `422 InvalidProviderCredentials` means the exchange rejected the key: it is invalid, expired or revoked. `422 ProviderAccessDenied` means the key works but lacks the access the account needs, such as trading. Retrying with the same key will not help: fix the key's permissions at the exchange, or create a new key, then connect again. [Update credentials](/api-reference/platform/accounts/update-connection) checks a new key the same way.
 
 To connect through the web app instead, see [Add an exchange](/platform/add-exchange).
 
@@ -93,7 +93,7 @@ A new paper account starts with no balances; fund it with [Deposit](/api-referen
 | Operation | What it does | Takes |
 | --- | --- | --- |
 | [Connect](/api-reference/platform/accounts/connect) | Connects an exchange account. | `tenantId`, `name`, `hostId`, `credential` |
-| [Create a paper account](/api-reference/platform/paper/create) | Creates a paper account on a paper host. | `tenantId`, `name`, `hostId`, optional `feeTier` |
+| [Create a paper account](/api-reference/platform/paper/create) | Creates a paper account on a paper host. | `tenantId`, `name`, `hostId`, optional `feeTier` (a tier ID from [Get paper host fee tiers](/api-reference/platform/paper/get-host-fee-tiers)) |
 | [Update credentials](/api-reference/platform/accounts/update-connection) | Replaces a connected account's exchange credentials, for example when you rotate keys. The new key is checked like a new connection, but Plurex does not check that it belongs to the same exchange account, so use a key for that account. | `accountId`, `credential` |
 | [Rename](/api-reference/platform/accounts/rename) | Changes the account's name. | `accountId`, `name` |
 | [Delete](/api-reference/platform/accounts/delete) | Removes the account from Plurex. | `accountId` |
@@ -128,9 +128,13 @@ Identify the new account by what it is, not by its name: after an unclear Connec
 
 | Code | Status | Meaning |
 | --- | --- | --- |
-| `AccountNotFound` | 404 | The `accountId` does not exist. |
-| `Forbidden` | 403 | You are authenticated but have no access to that account or operation. |
+| `AccountNotFound` | 404 | The `accountId` does not exist, or it is not an account you can read. |
+| `Forbidden` | 403 | You have no access to this operation, or you can read the account but not act on it. |
+| `InvalidProviderCredentials` | 422 | Connect or Update credentials: the exchange rejected the credentials (invalid, expired or revoked). |
+| `ProviderAccessDenied` | 422 | Connect or Update credentials: the credentials lack the access the account needs. |
 | `AccountLimit` | 422 | An account or subscription limit was reached. |
+
+Account names are labels only: two accounts can share a name.
 
 See [Errors](/api-reference/platform/errors) for the full list.
 

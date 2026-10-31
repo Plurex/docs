@@ -7,6 +7,9 @@ No feedback is open.
 
 Earlier feedback, all adopted:
 
+- TradingFee sign, `Opened` exceptions, paper `positionId` per side, unknown fee tier: raised and adopted in plurex
+  `030e972e1` during the refresh recorded in `refresh-log/2026-10-31-da5772f-030e972.md`.
+
 - Parts A–E (union titles, stream payloads, response examples, the `error` field, operation descriptions): adopted in
   plurex `02f04962b`, checked in `refresh-log/2026-10-26-ddf3a5e-02f0496.md`. The text is in this file's git history
   up to docs commit `3c89620`.
