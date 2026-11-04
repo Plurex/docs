@@ -19,7 +19,7 @@ Venue IDs in examples on this page are illustrative. Discover venues with List.
 
 ## The header
 
-`VenueHeader` has an `id` and `capabilities`, a `VenueCapabilities` tree. Every entry is always present.
+`VenueHeader` has an `id` and `capabilities`, a `VenueCapabilities` object grouped by area, with one capability for each operation and variant. Every capability is always present.
 
 ```text
 capabilities
@@ -35,14 +35,14 @@ capabilities
 └─ fundingPeriods     listFundingPeriods.byInstrument                   (paged)
 ```
 
-| Leaf | Operation | Notes |
+| Capability | Operation | Notes |
 | --- | --- | --- |
 | [`orderBookL2.getOrderBookL2`](/api-reference/platform/venues/get-order-book-l2) | [GetOrderBookL2](/api-reference/platform/venues/get-order-book-l2) | Always supported. |
 | [`orderBookL2.subscribeToOrderBookL2s`](/api-reference/platform/venues/subscribe-to-order-book-l2s) | [SubscribeToOrderBookL2s](/api-reference/platform/venues/subscribe-to-order-book-l2s) | Always supported. |
 | [`trades.getRecentTrades`](/api-reference/platform/venues/get-recent-trades) | [GetRecentTrades](/api-reference/platform/venues/get-recent-trades) | Always supported. |
 | [`trades.subscribeToTrades`](/api-reference/platform/venues/subscribe-to-trades) | [SubscribeToTrades](/api-reference/platform/venues/subscribe-to-trades) | Always supported. |
-| [`prices.<kind>.getPrice`](/api-reference/platform/venues/get-price) | [GetPrice](/api-reference/platform/venues/get-price) with `kind` `Traded`, `Mark` or `Index` | One leaf per price kind. |
-| [`prices.<kind>.subscribeToPrices`](/api-reference/platform/venues/subscribe-to-prices) | [SubscribeToPrices](/api-reference/platform/venues/subscribe-to-prices) with that `kind` | One leaf per price kind. |
+| [`prices.<kind>.getPrice`](/api-reference/platform/venues/get-price) | [GetPrice](/api-reference/platform/venues/get-price) with `kind` `Traded`, `Mark` or `Index` | One per price kind. |
+| [`prices.<kind>.subscribeToPrices`](/api-reference/platform/venues/subscribe-to-prices) | [SubscribeToPrices](/api-reference/platform/venues/subscribe-to-prices) with that `kind` | One per price kind. |
 | [`orderBookL1.getOrderBookL1`](/api-reference/platform/venues/get-order-book-l1) | [GetOrderBookL1](/api-reference/platform/venues/get-order-book-l1) | |
 | [`orderBookL1.subscribeToOrderBookL1s`](/api-reference/platform/venues/subscribe-to-order-book-l1s) | [SubscribeToOrderBookL1s](/api-reference/platform/venues/subscribe-to-order-book-l1s) | |
 | [`statistics.getMarketStatistics`](/api-reference/platform/venues/get-market-statistics) | [GetMarketStatistics](/api-reference/platform/venues/get-market-statistics) | |
@@ -56,16 +56,16 @@ capabilities
 | [`candles.subscribeToCandles`](/api-reference/platform/venues/subscribe-to-candles) | [SubscribeToCandles](/api-reference/platform/venues/subscribe-to-candles) | |
 | [`fundingPeriods.listFundingPeriods.byInstrument`](/api-reference/platform/venues/list-funding-periods) | [ListFundingPeriods](/api-reference/platform/venues/list-funding-periods) with `query.type` `ByInstrument` | Funding periods are always newest first. |
 
-The L2 order book and trades are always supported: their leaves are `Supported` on every venue, for every market it lists. Every other entry belongs to the market, so it is a `MarketSupport`, either `PerMarket` or `NotSupported`, never `Supported`:
+The L2 order book and trades are always supported: their capabilities are `Supported` on every venue, for every market it lists. Every other capability belongs to the market, so its support value is a `MarketSupport`, either `PerMarket` or `NotSupported`, never `Supported`:
 
 - `PerMarket`: the venue offers it, and each market's `marketData` says whether that market does.
 - `NotSupported`: no market on the venue has it, for example a venue that reports no index prices. Calls return `422 NotSupported`.
 
 ## Market data on each market
 
-`VenueMarketSummary.marketData` is a `VenueMarketData`. Each entry is a descriptor: `null` when the market does not have that data, otherwise an object with a flag for each read or stream and the terms you need.
+`VenueMarketSummary.marketData` is a `VenueMarketData` made up of descriptors. Each is `null` when the market does not have that data, otherwise an object with a flag for each read or stream and the terms you need.
 
-| Entry | `null` when | Flags | Terms |
+| Descriptor | `null` when | Flags | Terms |
 | --- | --- | --- | --- |
 | [`prices.traded`](/api-reference/platform/venues/get-price), [`.mark`](/api-reference/platform/venues/get-price), [`.index`](/api-reference/platform/venues/get-price) | The market does not report that price kind | `get`, `subscribe` | |
 | [`orderBookL1`](/api-reference/platform/venues/get-order-book-l1) | The market has no best quote | `get`, `subscribe` | |
@@ -75,7 +75,7 @@ The L2 order book and trades are always supported: their leaves are `Supported` 
 | [`candles.traded`](/api-reference/platform/venues/list-candles), [`.mark`](/api-reference/platform/venues/list-candles), [`.index`](/api-reference/platform/venues/list-candles) | The market has no candles of that price kind | `list`, `listBefore`, `subscribe` | `supportedIntervals` |
 | [`fundingPeriods`](/api-reference/platform/venues/list-funding-periods) | The market is not a perpetual with funding history | `list` | |
 
-`prices` and `candles` are always objects; their per-kind entries are the nullable descriptors. The L2 order book and trades have no entry: every listed market has them.
+`prices` and `candles` are always objects; the descriptors inside them, one per price kind, can be `null`. The L2 order book and trades have no descriptor: every listed market has them.
 
 ### Prices
 
@@ -113,34 +113,34 @@ At least one of `list` and `listBefore` is `true`. Candles are aligned to whole 
 
 ### Funding history
 
-`fundingPeriods` is present only on a perpetual with funding history. Its `list` flag says whether [ListFundingPeriods](/api-reference/platform/venues/list-funding-periods) with `ByInstrument` works on the market, including every page after the first. Indicative funding and funding history are separate entries: a market can have one without the other, so check each.
+`fundingPeriods` is present only on a perpetual with funding history. Its `list` flag says whether [ListFundingPeriods](/api-reference/platform/venues/list-funding-periods) with `ByInstrument` works on the market, including every page after the first. Indicative funding and funding history are separate descriptors: a market can have one without the other, so check each.
 
-## Resolve a read or stream
+## Resolve an operation
 
-Check the header leaf, then the market descriptor and its terms. The header alone is enough only for the L2 order book and trades.
+Check the header capability, then the market descriptor and its terms. The header alone is enough only for the L2 order book and trades.
 
-| Read | Header leaf | Market check |
+| Operation | Capability | Market check |
 | --- | --- | --- |
-| GetOrderBookL2, GetRecentTrades | Always supported | The venue lists the market |
-| GetPrice, kind `K` | [`prices.<k>.getPrice`](/api-reference/platform/venues/get-price) | [`marketData.prices.<k>`](/api-reference/platform/venues/get-price) non-null and `get` is `true` |
-| GetOrderBookL1 | [`orderBookL1.getOrderBookL1`](/api-reference/platform/venues/get-order-book-l1) | [`marketData.orderBookL1`](/api-reference/platform/venues/get-order-book-l1) non-null and `get` is `true` |
-| GetMarketStatistics | [`statistics.getMarketStatistics`](/api-reference/platform/venues/get-market-statistics) | [`marketData.statistics`](/api-reference/platform/venues/get-market-statistics) non-null and `get` is `true` |
-| GetIndicativeFunding | [`indicativeFunding.getIndicativeFunding`](/api-reference/platform/venues/get-indicative-funding) | [`marketData.indicativeFunding`](/api-reference/platform/venues/get-indicative-funding) non-null and `get` is `true` |
-| GetOpenInterest | [`openInterest.getOpenInterest`](/api-reference/platform/venues/get-open-interest) | [`marketData.openInterest`](/api-reference/platform/venues/get-open-interest) non-null and `get` is `true` |
-| ListCandles `ByInstrument` | [`candles.listCandles.byInstrument`](/api-reference/platform/venues/list-candles) | [`marketData.candles.<k>`](/api-reference/platform/venues/list-candles) non-null, `list` is `true`, interval in `supportedIntervals` |
-| ListCandles `ByInstrumentBefore`, or any page after the first | [`candles.listCandles.byInstrumentBefore`](/api-reference/platform/venues/list-candles) | The same, with `listBefore` `true` |
-| ListFundingPeriods `ByInstrument` | [`fundingPeriods.listFundingPeriods.byInstrument`](/api-reference/platform/venues/list-funding-periods) | [`marketData.fundingPeriods`](/api-reference/platform/venues/list-funding-periods) non-null and `list` is `true` |
-| SubscribeToOrderBookL2s, SubscribeToTrades | Always supported | The venue lists the market |
-| Any other stream | The read's area, with `subscribeTo…` in place of `get…` (for example [`prices.<k>.subscribeToPrices`](/api-reference/platform/venues/subscribe-to-prices)) | The same descriptor non-null and `subscribe` is `true`; for candles, also the interval in `supportedIntervals` |
+| [GetOrderBookL2](/api-reference/platform/venues/get-order-book-l2), [GetRecentTrades](/api-reference/platform/venues/get-recent-trades) | Always supported | The venue lists the market |
+| [GetPrice](/api-reference/platform/venues/get-price) | [`prices.<kind>.getPrice`](/api-reference/platform/venues/get-price) | [`marketData.prices.<kind>`](/api-reference/platform/venues/get-price) non-null and `get` is `true` |
+| [GetOrderBookL1](/api-reference/platform/venues/get-order-book-l1) | [`orderBookL1.getOrderBookL1`](/api-reference/platform/venues/get-order-book-l1) | [`marketData.orderBookL1`](/api-reference/platform/venues/get-order-book-l1) non-null and `get` is `true` |
+| [GetMarketStatistics](/api-reference/platform/venues/get-market-statistics) | [`statistics.getMarketStatistics`](/api-reference/platform/venues/get-market-statistics) | [`marketData.statistics`](/api-reference/platform/venues/get-market-statistics) non-null and `get` is `true` |
+| [GetIndicativeFunding](/api-reference/platform/venues/get-indicative-funding) | [`indicativeFunding.getIndicativeFunding`](/api-reference/platform/venues/get-indicative-funding) | [`marketData.indicativeFunding`](/api-reference/platform/venues/get-indicative-funding) non-null and `get` is `true` |
+| [GetOpenInterest](/api-reference/platform/venues/get-open-interest) | [`openInterest.getOpenInterest`](/api-reference/platform/venues/get-open-interest) | [`marketData.openInterest`](/api-reference/platform/venues/get-open-interest) non-null and `get` is `true` |
+| [ListCandles](/api-reference/platform/venues/list-candles) `ByInstrument` | [`candles.listCandles.byInstrument`](/api-reference/platform/venues/list-candles) | [`marketData.candles.<kind>`](/api-reference/platform/venues/list-candles) non-null, `list` is `true`, interval in `supportedIntervals` |
+| [ListCandles](/api-reference/platform/venues/list-candles) `ByInstrumentBefore`, or any page after the first | [`candles.listCandles.byInstrumentBefore`](/api-reference/platform/venues/list-candles) | The same, with `listBefore` `true` |
+| [ListFundingPeriods](/api-reference/platform/venues/list-funding-periods) `ByInstrument` | [`fundingPeriods.listFundingPeriods.byInstrument`](/api-reference/platform/venues/list-funding-periods) | [`marketData.fundingPeriods`](/api-reference/platform/venues/list-funding-periods) non-null and `list` is `true` |
+| [SubscribeToOrderBookL2s](/api-reference/platform/venues/subscribe-to-order-book-l2s), [SubscribeToTrades](/api-reference/platform/venues/subscribe-to-trades) | Always supported | The venue lists the market |
+| Any other stream | The `subscribeTo…` capability in the same area (for example [`prices.<kind>.subscribeToPrices`](/api-reference/platform/venues/subscribe-to-prices)) | The read's descriptor non-null and `subscribe` is `true`; for candles, also the interval in `supportedIntervals` |
 
-Here `<k>` is the lowerCamel price kind (`traded`, `mark`, `index`) for the request's `Traded`, `Mark` or `Index`.
+Here `<kind>` is the lowerCamel form of the request's price kind: `traded`, `mark` or `index` for `Traded`, `Mark` or `Index`.
 
 ```python
 KIND = {"Traded": "traded", "Mark": "mark", "Index": "index"}
 
 def can_list_candles(venue, market, price_kind, interval, before=False):
-    leaf = venue["capabilities"]["candles"]["listCandles"]["byInstrumentBefore" if before else "byInstrument"]
-    if leaf["type"] != "PerMarket":
+    support = venue["capabilities"]["candles"]["listCandles"]["byInstrumentBefore" if before else "byInstrument"]
+    if support["type"] != "PerMarket":
         return False
     series = market["marketData"]["candles"][KIND[price_kind]]
     if series is None or interval not in series["supportedIntervals"]:
@@ -148,9 +148,9 @@ def can_list_candles(venue, market, price_kind, interval, before=False):
     return series["listBefore"] if before else series["list"]
 
 def can_list_funding_periods(venue, market):
-    leaf = venue["capabilities"]["fundingPeriods"]["listFundingPeriods"]["byInstrument"]
+    support = venue["capabilities"]["fundingPeriods"]["listFundingPeriods"]["byInstrument"]
     spec = market["marketData"]["fundingPeriods"]
-    return leaf["type"] == "PerMarket" and spec is not None and spec["list"]
+    return support["type"] == "PerMarket" and spec is not None and spec["list"]
 ```
 
 ## Unsupported markets
