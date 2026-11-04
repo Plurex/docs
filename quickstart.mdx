@@ -3,12 +3,10 @@ title: "Quickstart"
 description: "Go from a new Plurex account to a filled paper order in about ten minutes, using curl."
 ---
 
-This guide takes you from zero to a filled order on a paper account: simulated funds, live order books, and the same
-API calls you will later use to trade for real. You need a terminal with `curl`.
+You will place a market order on a paper account: simulated funds, live order books, and the same API calls you will
+later use to trade for real. You need a terminal with `curl`.
 
 ## Before you start
-
-You need a Plurex account and an API key.
 
 1. Sign up in the [Plurex web app](https://platform.plurex.io) with your email, confirm the 6-digit code sent to you,
    and choose a handle and password.
@@ -43,8 +41,8 @@ export PLUREX_API_SECRET="your-api-secret"
       --data '{}'
     ```
 
-    The response lists every host. Paper hosts have `isPaper: true`, and `modelHostId` names the real host each one
-    simulates (`capabilities` is left out here):
+    Paper hosts have `isPaper: true`, and `modelHostId` names the real host each one simulates (`capabilities` is left
+    out here):
 
     ```json
     {
@@ -61,13 +59,13 @@ export PLUREX_API_SECRET="your-api-secret"
     }
     ```
 
-    Pick a paper host and export its ID. This guide uses `bybit-paper`; use whichever paper host the list returns.
+    Export the ID of a paper host from your list. This guide uses `bybit-paper`.
 
     ```bash
     export PLUREX_HOST_ID="bybit-paper"
     ```
 
-    List results come in pages. When `nextCursor` is not `null`, send it back as `cursor` to read the next page.
+    When `nextCursor` is not `null`, send it back as `cursor` to read the next page.
   </Step>
 
   <Step title="Read the market's order rules">
@@ -95,11 +93,13 @@ export PLUREX_API_SECRET="your-api-secret"
     }
     ```
 
-    These values are an example; read your own. `sizingSupport.buy` says how you may size a market buy: `Notional`
-    (an amount of the quote asset to spend) or `Size` (an amount in native contracts, a whole multiple of
-    `size.increment` and at least `size.min`; on spot markets one contract is normally one unit of the base asset, as
-    the market's `contractDetails` confirms). If the host has no BTC/USDT spot market, or `orderTypes.market` is
-    `null`, choose another market from the list.
+    These values are an example; read your own. `sizingSupport.buy` says how you may size a market buy:
+
+    - `Notional`: an amount of the quote asset to spend.
+    - `Size`: an amount in native contracts, a whole multiple of `size.increment` and at least `size.min`. On spot
+      markets one contract is normally one unit of the base asset, as the market's `contractDetails` confirms.
+
+    If the host has no BTC/USDT spot market, or `orderTypes.market` is `null`, choose another market from the list.
   </Step>
 
   <Step title="Create a paper account">
@@ -150,9 +150,9 @@ export PLUREX_API_SECRET="your-api-secret"
     EOF
     ```
 
-    The response is the resulting USDT wallet. A deposit is not safe to repeat either: each call credits the account
-    again. If a deposit times out, check the account's `Deposit` transactions with
-    [List transactions](/api-reference/platform/hosts/list-transactions) before trying again.
+    A deposit is not safe to repeat either: each call credits the account again. If it times out, check the account's
+    `Deposit` transactions with [List transactions](/api-reference/platform/hosts/list-transactions) before trying
+    again.
   </Step>
 
   <Step title="Submit a market order">
@@ -183,7 +183,7 @@ export PLUREX_API_SECRET="your-api-secret"
     at least `size.min`, and small enough for your deposit at the current price. Then send
     `"sizing": { "type": "Size", "size": "0.0005" }` with your own value.
 
-    The paper host matches the order against the live order book. The response shows the order, already filled:
+    The response shows the order, already filled:
 
     ```json
     {
@@ -231,8 +231,7 @@ export PLUREX_API_SECRET="your-api-secret"
     EOF
     ```
 
-    You get the same order record. Its fills, with price, size, fees and maker or taker role, are available from
-    [List fills](/api-reference/platform/hosts/list-fills).
+    You get the same order record. [List fills](/api-reference/platform/hosts/list-fills) returns its fills.
   </Step>
 
   <Step title="Check your balances">
@@ -249,7 +248,6 @@ export PLUREX_API_SECRET="your-api-secret"
   </Step>
 </Steps>
 
-You have run the whole order flow end to end: discovery, order rules, an account, funding, execution and reconciliation.
 Every step after creating and funding the account works the same on a connected exchange account.
 
 ## Next steps

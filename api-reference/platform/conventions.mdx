@@ -5,13 +5,11 @@ description: "Understand request and response formats, paging, unions, batches, 
 
 ## Requests
 
-Commands are `POST`; queries and streams are `QUERY`. Every operation has a JSON body and `Content-Type: application/json`, and goes to a path of the form `/api/v1/{domain}/{query|command|stream}/{Action}`. IDs such as `accountId`, `hostId` and `venueId` go in the body, never in the path. See [Commands, queries and streams](/api-reference/platform/overview#commands-queries-and-streams) for the three kinds of operation.
+Commands are `POST`; queries and streams are `QUERY`. Every operation has a JSON body, `Content-Type: application/json` and both [API key headers](/authentication), and goes to a path of the form `/api/v1/{domain}/{query|command|stream}/{Action}`. IDs such as `accountId`, `hostId` and `venueId` go in the body, never in the path. See [Commands, queries and streams](/api-reference/platform/overview#commands-queries-and-streams) for the three kinds of operation.
 
 `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)) has no `POST` fallback: the wrong method returns `405 MethodNotAllowed`. Most HTTP clients send it as a custom method, in uppercase, for example `curl --request QUERY` or `requests.request("QUERY", url, json=body)` in Python. Java's `HttpURLConnection` refuses it; use `HttpClient`.
 
 Every operation needs a body, even a list with no filters: send `{}` for the first page. Request bodies are strict: unknown fields, unknown enum values and wrong types return `400 InvalidRequest`. Send only the fields the specification defines.
-
-Every operation and stream needs both the `X-API-KEY` and `X-API-SECRET` headers. See [Authentication](/authentication).
 
 ## Responses
 
@@ -42,11 +40,11 @@ For example, the next request to [List accounts](/api-reference/platform/account
 
 Cursors are opaque. A cursor sent with a different query or account returns `400 InvalidRequest`.
 
-Pages are read live, not from a snapshot, so items can change while you page. For host lists, the variant's capability entry gives its `defaultOrdering` (`Chronological` or `ReverseChronological`), which holds within and across pages. Candles are always newest first: they exclude the candle still forming and need the market's `listBefore` to page beyond the first page (see [Read market data](/guides/market-data#candles)). [Funding periods](/api-reference/platform/venues/list-funding-periods) are always newest first too.
+Pages are read live, not from a snapshot, so items can change while you page. For host lists, the variant's capability entry gives its `defaultOrdering` (`Chronological` or `ReverseChronological`), which holds within and across pages. [Candles](/guides/market-data#candles) and [funding periods](/api-reference/platform/venues/list-funding-periods) are always newest first; candles have their own paging rules.
 
 ## Capabilities and variants
 
-Read [venues](/api-reference/platform/venues/list), [hosts](/api-reference/platform/hosts/list) and their market summaries before choosing operations. Each entry is `Supported` (on every market) or `NotSupported`. Operations that belong to a market, such as market settings and most venue market data, are `PerMarket` (check the market's summary) or `NotSupported` instead. Calling an unsupported operation or variant returns `422 NotSupported`. See [Capabilities](/capabilities/overview).
+Read [venues](/api-reference/platform/venues/list), [hosts](/api-reference/platform/hosts/list) and their market summaries before choosing operations. Calling an unsupported operation or variant returns `422 NotSupported`. See [Capabilities](/capabilities/overview).
 
 Unions use a `type` discriminator. Operations with several access patterns take them as variants in a `query` or `command` field, for example `GetOrder` with `ById`, `ByClientOrderId` or `ByClientOrderIdForInstrument`. `SubmitOrder` takes an `order` whose `type` is `Limit`, `Market`, `TriggerLimit` or `TriggerMarket`. Each variant has its own required fields and its own capability entry; all variants of one operation return the same shape.
 
@@ -61,15 +59,9 @@ Batch operations take a list of identifiers, but they report missing items diffe
 
 ## Sizes and instruments
 
-Instruments are always sent as structured objects, never as symbols:
+Instruments are always sent as structured objects, such as `{ "type": "Perp", "base": "BTC", "quote": "USDT" }`, never as symbols. See [Instruments](/concepts/instruments).
 
-```json
-{ "type": "Perp", "base": "BTC", "quote": "USDT" }
-```
-
-Asset codes are uppercase letters, digits and dots. Market summaries also return a canonical `symbol` such as `BTC-USDT-PERP` for display and joining, but it is not accepted as input.
-
-Every `size` (in orders, fills, positions, order books, trades and size rules) is in the market's **native contracts**, not necessarily base-asset units: one contract is `contractSize` units of `contractSizeAsset`, from the market's `contractDetails`. A `notional` is an amount of the quote asset. See [Instruments](/concepts/instruments).
+Every `size` (in orders, fills, positions, order books, trades and size rules) is in the market's **native contracts**, not necessarily base-asset units: one contract is `contractSize` units of `contractSizeAsset`, from the market's `contractDetails`. A `notional` is an amount of the quote asset.
 
 ## Decimals and timestamps
 
@@ -83,11 +75,11 @@ Exact decimal values, including prices, sizes, balances, rates and leverage, are
 
 ## Errors and retries
 
-Every error uses one envelope with a stable `code`. Commands document whether they are safe to repeat, and an error alone never proves a command had no effect. See [Errors](/api-reference/platform/errors) for the code catalogue, the retry rule for each operation and how to reconcile.
+An error alone never proves a command had no effect. See [Errors](/api-reference/platform/errors) for the error envelope, every code, the retry rule for each operation and how to reconcile.
 
 ## Streams
 
-A stream operation follows one topic, such as one market's order book or one account's orders. Its `200` response stays open and carries one JSON message per line (`application/jsonl`), and every message has a `type`. Market data streams start with a `Reset` and then send `Update`s. The account order stream starts with a `Reset` of the open orders, then sends an `Update` per change. The account transaction stream sends an `Event` per posting, with no snapshot. Every stream ends with an `Ended` line. Streams do not replay missed messages; see [Streams](/guides/streams) for how to read, reconnect and reconcile.
+A stream operation follows one topic, such as one market's order book or one account's orders. Its `200` response stays open and carries one JSON message per line (`application/jsonl`), and every message has a `type`. Market data streams and the account order stream start with a `Reset`, then send `Update`s. The account transaction stream sends an `Event` per posting, with no snapshot. A stream stops with an `Ended` line saying why, or without one if it is cut off. Streams do not replay missed messages; see [Streams](/guides/streams) for how to read, reconnect and reconcile.
 
 ## Compatibility
 

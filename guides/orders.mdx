@@ -3,17 +3,15 @@ title: "Place and manage orders"
 description: "Submit every order type, track orders to their final state, cancel them, and recover safely when a submission's outcome is unclear."
 ---
 
-Every account, real or paper, places and manages orders through the same host operations. This guide covers what to check before you submit, how to submit each order type, how to follow an order to its final state, and how to recover when you cannot tell whether a command took effect.
-
-The examples use a BTC/USDT perpetual and the host ID `bybit`. Discover the hosts and markets available to you with [List hosts](/api-reference/platform/hosts/list) and [List host markets](/api-reference/platform/hosts/list-markets), and find an account's host with [Get an account](/api-reference/platform/accounts/get).
+Real and paper accounts place and manage orders through the same host operations. The examples use a BTC/USDT perpetual and the host ID `bybit`. Discover the hosts and markets available to you with [List hosts](/api-reference/platform/hosts/list) and [List host markets](/api-reference/platform/hosts/list-markets), and find an account's host with [Get an account](/api-reference/platform/accounts/get).
 
 ## Before you submit
 
-An order is valid only if it fits the host market's order rules. Plurex checks your order against exactly the rules it publishes and never rounds your values, so read them first.
+Plurex checks your order against exactly the order rules the host market publishes and never rounds your values, so read them first.
 
 <Steps>
   <Step title="Find the host market">
-    Call [List host markets](/api-reference/platform/hosts/list-markets) with the account's `hostId` and filters such as `base`, `quote` and `types`. Order rules come from the host market, never from the venue market. A market the host does not list cannot be traded on that host: an order for it returns `422 NotSupported`.
+    Call [List host markets](/api-reference/platform/hosts/list-markets) with the account's `hostId` and filters such as `base`, `quote` and `types`. Order rules come from the host market, never from the venue market. An order for a market the host does not list returns `422 NotSupported`.
   </Step>
   <Step title="Check the order type">
     `orderTypes.limit` is always present. `market`, `triggerLimit` and `triggerMarket` are `null` when the market does not support that type; submitting one anyway returns `422 NotSupported`.
@@ -29,22 +27,6 @@ An order is valid only if it fits the host market's order rules. Plurex checks y
   </Step>
 </Steps>
 
-This is the limit-order entry of a perpetual market (example values; read the live ones from the market):
-
-```json
-{
-  "price": { "increment": "0.1" },
-  "size": { "increment": "0.001", "min": "0.001" },
-  "value": { "min": "5" },
-  "options": {
-    "supportsReduceOnly": true,
-    "supportedTimeInForce": ["GTC", "IOC", "FOK"],
-    "supportsPostOnly": true,
-    "supportsPositionEffect": true
-  }
-}
-```
-
 [Order rules](/capabilities/order-rules) explains every rule, including the value calculation for inverse markets and how to round in the right direction.
 
 <Tip>
@@ -53,7 +35,7 @@ This is the limit-order entry of a perpetual market (example values; read the li
 
 ## Submit an order
 
-[Submit an order](/api-reference/platform/hosts/submit-order) takes the `accountId` and one `order`, whose `type` is `Limit`, `Market`, `TriggerLimit` or `TriggerMarket`. Every order has an `instrument`, a `side` (`Buy` or `Sell`) and `reduceOnly`. There is no leverage field on an order: leverage is a market setting (see [Balances, positions and settings](/guides/portfolio#leverage)).
+[Submit an order](/api-reference/platform/hosts/submit-order) takes the `accountId` and one `order`, whose `type` is `Limit`, `Market`, `TriggerLimit` or `TriggerMarket`. There is no leverage field on an order: leverage is a market setting (see [Balances, positions and settings](/guides/portfolio#leverage)).
 
 ### Limit order
 
@@ -180,7 +162,7 @@ A successful response is the order as the host accepted it:
 }
 ```
 
-Keep `id`: every later lookup and cancel can use it. The order records what the host reports. Submitted options (`tif`, `postOnly`, `reduceOnly`, `positionEffect`) are not echoed, and `averagePrice` and `realizedPnl` are `null` when the host does not report them. Plurex does not calculate an average price from fills.
+Keep `id`: every later lookup and cancel can use it. Submitted options (`tif`, `postOnly`, `reduceOnly`, `positionEffect`) are not echoed, and `averagePrice` and `realizedPnl` are `null` when the host does not report them. Plurex does not calculate an average price from fills.
 
 ## Order states
 
@@ -205,17 +187,17 @@ stateDiagram-v2
 | `Cancelled` | No longer working. Check `sizeTraded`: a cancelled order may have partly filled first. |
 | `Rejected` | Refused by the host. |
 
-There is no separate partly-filled state and no `updatedAt`. Compare `sizeTraded` with the order's size to see progress.
+Orders have no `updatedAt`. Compare `sizeTraded` with the order's size to see progress.
 
 ## Track orders
 
 | To find | Use | Notes |
 | --- | --- | --- |
 | One order | [Get an order](/api-reference/platform/hosts/get-order) | `ById` works on every host. `ByClientOrderId` and `ByClientOrderIdForInstrument` depend on `getOrder` capabilities. |
-| Several named orders | [Get orders](/api-reference/platform/hosts/get-orders) | Batch. Unknown identifiers are left out of the result, not reported as errors. |
-| Everything still working | [List open orders](/api-reference/platform/hosts/list-orders) | `Global` or `ByInstrument`. Paged. |
-| Finished orders | [List closed orders](/api-reference/platform/hosts/list-closed-orders) | Filled, cancelled and rejected orders: `Global` or `ByInstrument`, optionally from a `Before` or `After` time. Paged. |
-| Individual executions | [List fills](/api-reference/platform/hosts/list-fills) | `ByOrderId`, `ByInstrument` or `Global`. Paged. |
+| Several named orders | [Get orders](/api-reference/platform/hosts/get-orders) | Unknown identifiers are left out of the result, not reported as errors, so compare the result with what you asked for. |
+| Everything still working | [List open orders](/api-reference/platform/hosts/list-orders) | `Global` or `ByInstrument`. |
+| Finished orders | [List closed orders](/api-reference/platform/hosts/list-closed-orders) | Filled, cancelled and rejected orders: `Global` or `ByInstrument`, optionally from a `Before` or `After` time. |
+| Individual executions | [List fills](/api-reference/platform/hosts/list-fills) | `ByOrderId`, `ByInstrument` or `Global`. |
 | Changes as they happen | [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders) | Starts with the open orders, then sends each change. See [Streams](/guides/streams#account-orders). |
 
 Look up by client order ID:
@@ -240,20 +222,11 @@ Where the host supports only the instrument-scoped variant, use `ByClientOrderId
 }
 ```
 
-Read several orders at once with `GetOrders`. Because unknown identifiers are omitted, compare the result with what you asked for:
-
-```json
-{
-  "accountId": "acc_123",
-  "query": { "type": "ByIds", "orderIds": ["ord_789", "ord_790", "ord_791"] }
-}
-```
-
-The list operations are paged: omit `cursor` for the first page, then send each `nextCursor` back with the same query until it is `null`. Each variant's capability entry gives its `defaultOrdering`. Every list operation, and each of its variants, is optional, so check `listOpenOrders`, `listClosedOrders` and `fills.listFills` in the host's capabilities first.
+The list operations are [paged](/api-reference/platform/conventions#paging), and each variant's capability entry gives its `defaultOrdering`. Every list operation, and each of its variants, is optional, so check `listOpenOrders`, `listClosedOrders` and `fills.listFills` in the [host's capabilities](/capabilities/host-capabilities) first.
 
 Treat the `before` and `after` times of List closed orders as approximate: start a little earlier than the time you need, and deduplicate by order `id`.
 
-A fill gives the price, size, fees and, when the host reports them, its execution `id` and `role` (`Maker` or `Taker`). Its `side` is your order's side, not the taker's.
+A fill's `side` is your order's side, not the taker's. Its execution `id` and `role` are `null` when the host does not report them.
 
 ## Cancel orders
 
@@ -268,7 +241,9 @@ A fill gives the price, size, fees and, when the host reports them, its executio
 }
 ```
 
-A success is an empty acknowledgement, `{}`. It means the host accepted the cancel, not that the order is closed: some hosts cancel asynchronously, and the order can fill before the cancel lands. Confirm the final state with [Get an order](/api-reference/platform/hosts/get-order) or the order stream. Cancelling is safe to repeat, but a repeat after the first cancel took effect can return either `404 OrderNotFound` or `409 OrderAlreadyClosed`.
+A success is an empty acknowledgement, `{}`. It means the host accepted the cancel, not that the order is closed: some hosts cancel asynchronously, and the order can fill before the cancel lands. Confirm the final state with [Get an order](/api-reference/platform/hosts/get-order) or the order stream.
+
+Cancelling is safe to repeat, but a repeat after the first cancel took effect can return either `404 OrderNotFound` or `409 OrderAlreadyClosed`.
 
 | Response | What it tells you | What to do |
 | --- | --- | --- |
@@ -312,7 +287,7 @@ Check every result. A `Failed` result carries the code a single cancel would hav
 }
 ```
 
-Success means no matching orders remain open; orders that were already gone or closed count as cancelled. Any other failure returns `502 CancelAllFailed`, after which [List open orders](/api-reference/platform/hosts/list-orders) shows what is still open. It is safe to repeat.
+Success means no matching orders remain open; orders that were already gone or closed count as cancelled. Any other failure returns `502 CancelAllFailed`: [List open orders](/api-reference/platform/hosts/list-orders) shows what is still open. It is safe to repeat.
 
 ## Handle an unclear outcome
 
@@ -333,7 +308,7 @@ flowchart TD
 2. Look the order up with the `GetOrder` client order ID variant the host supports: `ByClientOrderId`, or `ByClientOrderIdForInstrument`.
 3. If the order is found, it was placed. Track it; do not resubmit.
 4. `404 OrderNotFound` is not proof that the order was never placed: the host may not show it yet. Retry the lookup a few times with a growing delay, and if you are connected to the order stream, watch for an `Update` whose order carries your client order ID.
-5. Resubmit only when you are satisfied the order does not exist. `409 DuplicateClientOrderId` means the host holds another order with that client order ID: look it up and track it. Which orders a host still matches against varies, and reusing the client order ID of an order that has already filled or been cancelled may place a new order, so do not rely on `409` to catch duplicates. Use a unique `clientOrderId` for every order you intend to place, and always complete the lookup before you resubmit.
+5. Always complete the lookup before you resubmit, and resubmit only when you are satisfied the order does not exist. `409 DuplicateClientOrderId` means the host holds another order with that client order ID: look it up and track it. Do not rely on `409` to catch duplicates: which orders a host still matches against varies, and reusing the client order ID of an order that has already filled or been cancelled may place a new order. Use a unique `clientOrderId` for every order you intend to place.
 
 ### Cancel an order whose ID you never received
 

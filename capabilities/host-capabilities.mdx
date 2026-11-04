@@ -3,9 +3,9 @@ title: "Host capabilities"
 description: "Every capability in a host's header, the request variant each one gates, and how to use them to choose between operations."
 ---
 
-A host's header capabilities say which account operations and variants it supports. They cover orders, fills, market settings, the order stream and transactions. Order types, order rules and per-market settings are on each market instead; see [Market order rules](/capabilities/order-rules).
+A host's header capabilities say which account operations and variants it supports. Order types, order rules and per-market settings are on each market instead; see [Market order rules](/capabilities/order-rules).
 
-Read them with [List hosts](/api-reference/platform/hosts/list). It is paged:
+Read them with [List hosts](/api-reference/platform/hosts/list):
 
 ```bash
 curl --request QUERY https://api.plurex.io/api/v1/hosts/query/List \
@@ -15,49 +15,17 @@ curl --request QUERY https://api.plurex.io/api/v1/hosts/query/List \
   --data '{}'
 ```
 
-Each `HostHeader` in `items` has:
+Each `HostHeader` in `items` has `capabilities`, described on this page, alongside the host's other [fields](/concepts/hosts). Host IDs in examples on this page are illustrative. Discover the hosts available to you with List.
 
-| Field | Meaning |
-| --- | --- |
-| `id` | The host ID you pass as `hostId`, for example to [List host markets](/api-reference/platform/hosts/list-markets). |
-| `venueIds` | The venues whose markets this host trades. Each host market names its venue in `venueId`. |
-| `isPaper` | `true` for a paper host. |
-| `modelHostId` | For a paper host, the real host whose markets and order rules it simulates; `null` for a real host. |
-| `supportedCredentialTypes` | The credential types an account on this host can be connected with. |
-| `capabilities` | The tree described on this page. |
+## The header
 
-Host IDs in examples on this page are illustrative. Discover the hosts available to you with List.
+`capabilities` is an `ExecutionHostCapabilities` object with five areas: [`orders`](#orders), [`fills`](#fills), [`marketSettings`](#marketsettings), [`accountOrders`](#accountorders) and [`accountTransactions`](#accounttransactions). Every capability is always present.
 
-## The tree
-
-`ExecutionHostCapabilities` has five areas. Every area, operation and variant is always present. Each leaf name is the lowerCamel form of the request variant's `type`, so `byClientOrderIdForInstrument` gates `"type": "ByClientOrderIdForInstrument"`.
-
-```text
-capabilities
-├─ orders
-│  ├─ getOrder          byId (always Supported) · byClientOrderId · byClientOrderIdForInstrument
-│  ├─ getOrders         byIds · byClientOrderIds · byClientOrderIdsForInstrument
-│  ├─ listOpenOrders    global · byInstrument                                       (paged)
-│  ├─ listClosedOrders  global · byInstrument · globalBefore · byInstrumentBefore
-│  │                    · globalAfter · byInstrumentAfter                           (paged)
-│  ├─ cancelOrder       byId (always Supported) · byClientOrderId · byClientOrderIdForInstrument
-│  ├─ cancelOrders      byIds · byClientOrderIds · byClientOrderIdsForInstrument
-│  ├─ cancelAllOrders   global · byInstrument
-│  └─ submitOrder       clientOrderId
-├─ fills
-│  └─ listFills         byOrderId · global · byInstrument                           (paged)
-├─ marketSettings       getMarketLeverage · setMarketLeverage
-│                       · getMarketPositionMode · setMarketPositionMode
-├─ accountOrders        subscribeToAccountOrders
-└─ accountTransactions  listTransactions (paged) · subscribeToAccountTransactions
-                        · supportedTransactionTypes
-```
-
-Leaves marked paged are `CursorQueryCapability` values, and the `marketSettings` leaves are `MarketSupport` values. `supportedTransactionTypes` is a plain value described below. Every other leaf is an `OperationSupport`. All three are explained in [Support values](/capabilities/overview#support-values).
+`listOpenOrders`, `listClosedOrders`, `listFills` and `listTransactions` are paged, so their support values are `CursorQueryCapability`. `marketSettings` capabilities are `MarketSupport`. `supportedTransactionTypes` is a plain value. Everything else is an `OperationSupport`. See [Support values](/capabilities/overview#support-values).
 
 ## orders
 
-| Operation | Leaf | Request variant | What it lets you do |
+| Operation | Capability | Request variant | What it lets you do |
 | --- | --- | --- | --- |
 | [GetOrder](/api-reference/platform/hosts/get-order) | [`byId`](/api-reference/platform/hosts/get-order) | `query.type: ById` | Read one order by Plurex order ID. Always supported. |
 | | [`byClientOrderId`](/api-reference/platform/hosts/get-order) | `ByClientOrderId` | Read one order by your `clientOrderId` alone. |
@@ -78,67 +46,52 @@ Leaves marked paged are `CursorQueryCapability` values, and the `marketSettings`
 | | [`byInstrument`](/api-reference/platform/hosts/cancel-all-orders) | `ByInstrument` | Cancel every open order on one instrument. |
 | [SubmitOrder](/api-reference/platform/hosts/submit-order) | [`clientOrderId`](/api-reference/platform/hosts/submit-order) | (a field, not a variant) | Send a `clientOrderId` with new orders. |
 
-Single and batch operations are separate because hosts support them differently: a host can support `getOrder.byClientOrderId` and not `getOrders.byClientOrderIds`.
-
-The `...ForInstrument` variants exist because some hosts can find a `clientOrderId` only within one instrument. If your host supports only that variant, store each order's instrument next to its `clientOrderId`.
-
-`submitOrder.clientOrderId` gates a field rather than a variant. When it is `NotSupported`, send no `clientOrderId` (omit it or send `null`): an order that carries one returns `422 NotSupported`. Plan to identify orders by the order ID that SubmitOrder returns. Which order types and options a market accepts is on its market summary, not here.
+`submitOrder.clientOrderId` gates a field rather than a variant. When it is `NotSupported`, send no `clientOrderId` (omit it or send `null`): an order that carries one returns `422 NotSupported`. Plan to identify orders by the order ID that SubmitOrder returns.
 
 ## fills
 
-| Operation | Leaf | Request variant | What it lets you do |
+| Operation | Capability | Request variant | What it lets you do |
 | --- | --- | --- | --- |
 | [ListFills](/api-reference/platform/hosts/list-fills) | [`byOrderId`](/api-reference/platform/hosts/list-fills) | `query.type: ByOrderId` | Page through the executions of one order. |
 | | [`global`](/api-reference/platform/hosts/list-fills) | `Global` | Page through every execution on the account. |
 | | [`byInstrument`](/api-reference/platform/hosts/list-fills) | `ByInstrument` | Page through executions on one instrument. |
 
-If `byOrderId` is not supported, read an order's executions with `byInstrument` and match on each fill's `orderId`.
-
 ## marketSettings
 
-| Operation | Leaf | Also requires, on the market |
+| Operation | Capability | Also requires, on the market |
 | --- | --- | --- |
 | [GetMarketLeverage](/api-reference/platform/hosts/get-leverage) | [`getMarketLeverage`](/api-reference/platform/hosts/get-leverage) | `settings.leverage` non-null and its `get` is `true` |
 | [SetMarketLeverage](/api-reference/platform/hosts/set-leverage) | [`setMarketLeverage`](/api-reference/platform/hosts/set-leverage) | `settings.leverage` non-null and its `setEffectScope` non-null |
 | [GetMarketPositionMode](/api-reference/platform/hosts/get-position-mode) | [`getMarketPositionMode`](/api-reference/platform/hosts/get-position-mode) | `settings.positionMode` non-null and its `get` is `true` |
 | [SetMarketPositionMode](/api-reference/platform/hosts/set-position-mode) | [`setMarketPositionMode`](/api-reference/platform/hosts/set-position-mode) | `settings.positionMode` non-null and its `setEffectScope` non-null |
 
-Settings belong to a market, so these leaves are `MarketSupport` values: `PerMarket` or `NotSupported`, never `Supported`. With `PerMarket`, an operation applies to a market only when that market's settings entry is non-null and allows it. The market's entry also gives the accepted leverage grid, the position modes, and how far a change reaches. See [Settings](/capabilities/order-rules#settings).
+Each capability is `PerMarket` or `NotSupported`. The market's entry also gives the accepted leverage grid, the position modes, and how far a change reaches. See [Settings](/capabilities/order-rules#settings).
 
 ## accountOrders
 
-The order stream, [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders), starts with the account's open orders and then follows each change as it happens.
-
-| Field | Meaning |
-| --- | --- |
-| [`subscribeToAccountOrders`](/api-reference/platform/hosts/subscribe-to-account-orders) | Whether the host offers the order stream. When it is `NotSupported`, opening the stream returns `422 NotSupported`. |
-
-Every host that supports the stream sends every change type: `Opened`, `Filled`, `Cancelled`, `Rejected` and `Other`. A `Filled` update carries the order with its cumulative `sizeTraded`, `averagePrice` and `state`, not the execution: call [ListFills](/api-reference/platform/hosts/list-fills) for executions, including their prices and fees. See [Streams](/guides/streams#account-orders).
+[`subscribeToAccountOrders`](/api-reference/platform/hosts/subscribe-to-account-orders) says whether the host offers the order stream. See [Streams](/guides/streams#account-orders).
 
 ## accountTransactions
 
 Transactions are balance postings: fees, funding payments, deposits and so on.
 
-| Field | Meaning |
+| Capability | Meaning |
 | --- | --- |
-| [`listTransactions`](/api-reference/platform/hosts/list-transactions) | Paged transaction history, ListTransactions. |
+| [`listTransactions`](/api-reference/platform/hosts/list-transactions) | Paged transaction history. |
 | [`subscribeToAccountTransactions`](/api-reference/platform/hosts/subscribe-to-account-transactions) | The transaction stream. |
 | `supportedTransactionTypes` | The `AccountTransactionType` values this host reports. Non-empty when history or the stream is supported. |
 
-The types are `TradingFee`, `FundingPayment`, `BorrowInterest`, `Financing`, `LiquidationFee`, `Settlement`, `Trade`, `Rebate`, `Deposit`, `Withdrawal`, `Transfer`, `Conversion`, `Adjustment` and `Other`. The host reports only the types in `supportedTransactionTypes`, so do not build logic that waits for a type it does not list. History and the stream are separate leaves: a host can offer history without a stream, in which case poll ListTransactions.
+[Transactions](/guides/portfolio#transactions) explains each type.
 
 ## Paging and ordering
 
-Every paged leaf that is `Supported` says how results are ordered, in `defaultOrdering`:
+Every paged capability that is `Supported` states its `defaultOrdering`; see [Support values](/capabilities/overview#support-values) and [Paging](/api-reference/platform/conventions#paging).
 
-- `ReverseChronological`: newest first, within and across pages.
-- `Chronological`: oldest first.
-
-The `Before` and `After` variants of ListClosedOrders start from a time you give in `before` or `after`. Use them to resume reconciliation from a known point instead of paging from the newest order. The boundary is approximate, so start a little early and deduplicate by order ID. Pages are read live, so items can change while you page; a cursor is valid only with the same variant, account and filters.
+The `Before` and `After` variants of ListClosedOrders start from a time you give in `before` or `after`. Use them to resume reconciliation from a known point instead of paging from the newest order. The boundary is approximate, so start a little early and deduplicate by order ID.
 
 ## Example
 
-An illustrative header for a real host. The structure is exact; the support values show the kind of variation you will meet. Do not read them as the current values for the host named; read the live values with List.
+An illustrative header for a real host. The structure is exact; the values are examples, so read the live ones with List.
 
 ```json
 {
@@ -214,21 +167,18 @@ An illustrative header for a real host. The structure is exact; the support valu
 }
 ```
 
-Reading it: you can look up orders by `clientOrderId` with or without the instrument; batch reads and cancels are available, but a batch can partly succeed, so check every result; leverage and position mode depend on the market; the order stream is available, with executions read from ListFills; and transactions must be polled, because there is no transaction stream.
-
 ## How hosts differ
 
-The patterns below all occur among real and paper hosts. They are why your code should branch on capabilities rather than on host IDs.
+Branch on capabilities, not on host IDs. These patterns all occur among real and paper hosts.
 
 | Capability | Variation you will meet | What your code does |
 | --- | --- | --- |
-| [`getOrder.byClientOrderId`](/api-reference/platform/hosts/get-order) | `NotSupported` on a host that supports `byClientOrderIdForInstrument` | Keep the instrument with every `clientOrderId`, and use the `ForInstrument` variant. |
+| [`getOrder.byClientOrderId`](/api-reference/platform/hosts/get-order) | `NotSupported` on a host that supports `byClientOrderIdForInstrument`, which finds a `clientOrderId` only within one instrument | Keep the instrument with every `clientOrderId`, and use the `ForInstrument` variant. |
 | [`getOrders.*`](/api-reference/platform/hosts/get-orders) | Some batch variants supported, others not, independently of the single variants | Fall back to single GetOrder calls per identifier. |
-| [`listFills.byOrderId`](/api-reference/platform/hosts/list-fills) | `NotSupported` while `byInstrument` is supported | List by instrument and filter on `orderId`. |
+| [`listFills.byOrderId`](/api-reference/platform/hosts/list-fills) | `NotSupported` while `byInstrument` is supported | List by instrument and match on each fill's `orderId`. |
 | [`subscribeToAccountTransactions`](/api-reference/platform/hosts/subscribe-to-account-transactions) | `NotSupported` while `listTransactions` is supported | Poll ListTransactions. |
-| `supportedTransactionTypes` | Different sets per host; on a paper host, the set can grow while it runs | Never wait for a type the host does not list; re-read capabilities periodically. |
-| `marketSettings.*` | `PerMarket` for leverage and `NotSupported` for position mode on one host, and the reverse on another | Check the header leaf and the market's `settings` entry. |
-| Paper hosts | A paper host publishes its own capabilities, which can be broader or narrower than its model host's | Read the paper host's capabilities while paper trading and the `modelHostId` host's before going live. |
+| `supportedTransactionTypes` | Different sets per host; on a paper host, the set can grow while it runs | Never build logic that waits for a type the host does not list; re-read capabilities periodically. |
+| `marketSettings.*` | `PerMarket` for leverage and `NotSupported` for position mode on one host, and the reverse on another | Check the header capability and the market's `settings` entry. |
 
 ## Worked example: find an order after a SubmitOrder timeout
 
@@ -253,7 +203,7 @@ The patterns below all occur among real and paper hosts. They are why your code 
 def choose_lookup(host, order_ref):
     """order_ref: instrument, clientOrderId (or None), and submittedFrom, a time just before the submit."""
     orders = host["capabilities"]["orders"]
-    supported = lambda leaf: leaf["type"] == "Supported"
+    supported = lambda support: support["type"] == "Supported"
     instrument, client_id = order_ref["instrument"], order_ref["clientOrderId"]
 
     if client_id and supported(orders["getOrder"]["byClientOrderId"]):
@@ -272,7 +222,7 @@ def choose_lookup(host, order_ref):
     return ("Search", plan)   # match on clientOrderId, or on side, size, price and createdAt
 ```
 
-The direct lookup for the host above, as a request to [GetOrder](/api-reference/platform/hosts/get-order):
+A direct lookup as a request to [GetOrder](/api-reference/platform/hosts/get-order):
 
 ```bash
 curl --request QUERY https://api.plurex.io/api/v1/hosts/query/GetOrder \

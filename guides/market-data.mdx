@@ -3,7 +3,7 @@ title: "Read market data"
 description: "Discover venues and markets, read order books, trades, prices and statistics, follow them live with streams, and page back through candles and funding history."
 ---
 
-Venue operations are market data. Like every operation, they need an API key: send `X-API-KEY` and `X-API-SECRET` on each request (see [Authentication](/authentication)). Market data describes what is trading on a venue; to place orders, read the matching host market instead (see [Venues](/concepts/venues) for the model).
+Venue operations are market data: what is trading on a venue. To place orders, read the matching host market instead (see [Venues](/concepts/venues)).
 
 Each venue lists what it supports in its capabilities, and each market says which reads and streams it offers in `marketData`. Check them before calling; [Venue capabilities](/capabilities/venue-capabilities) explains both levels.
 
@@ -25,19 +25,19 @@ curl --request QUERY https://api.plurex.io/api/v1/venues/query/List \
 { "venueId": "bybit", "quote": "USDT", "types": ["Perp"], "search": "BTC" }
 ```
 
-Both lists are paged: follow `nextCursor` until it is `null`. Each market gives:
+Both lists are [paged](/api-reference/platform/conventions#paging). Each market gives:
 
 | Field | Use it for |
 | --- | --- |
-| `symbol` | The canonical symbol, such as `BTC-USDT-PERP`, for display and joining with host markets. Requests always take the structured `instrument`. |
+| `symbol` | The canonical symbol, such as `BTC-USDT-PERP`, for display and joining with host markets. |
 | `instrument` | The value to send in every market-data request. |
 | `increments` | The grid the venue quotes on: group book levels by `price` and format sizes by `size`. These are not order rules. |
-| `contractDetails` | What one contract is. Book and trade sizes are in native contracts. |
+| `contractDetails` | What one contract is. Book and trade sizes are in [native contracts](/concepts/instruments). |
 | `marketData` | Which reads and streams this market supports, and on what terms. |
 
 ## Order books
 
-A market's order book comes at two levels. The L2 book is every price level with the total size resting there, and every listed market has it. The L1 book is only the top of book, the best bid and ask; check `marketData.orderBookL1` before you read it.
+The L2 book is every price level with the total size resting there, and every listed market has it. The L1 book is only the best bid and ask; check `marketData.orderBookL1` before you read it.
 
 [Get the L2 order book](/api-reference/platform/venues/get-order-book-l2) returns the current book. Both sides list the best price first.
 
@@ -67,17 +67,6 @@ curl --request QUERY https://api.plurex.io/api/v1/venues/query/GetOrderBookL2 \
 ```
 
 [Get the L1 order book](/api-reference/platform/venues/get-order-book-l1) takes the same request and returns the best bid and ask, each with its `price` and the total `size` there. A side is `null` when the venue reports nothing on it.
-
-```json
-{
-  "data": {
-    "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
-    "bid": { "price": "64012.4", "size": "1.204" },
-    "ask": { "price": "64012.5", "size": "0.812" },
-    "asOf": "2026-10-25T09:30:00.250Z"
-  }
-}
-```
 
 `asOf` is the time the book is current as of. It can be the time of your read, even when the last change arrived earlier. An unknown or unsupported market returns `422 NotSupported`.
 
@@ -138,15 +127,7 @@ A market the venue does not list, or one whose entry is `null` or whose `get` is
 
 ### Judge freshness
 
-Each observation carries three times:
-
-| Field | Meaning |
-| --- | --- |
-| `confirmedAt` | The latest venue time at which the value was confirmed current, even if it did not change. `null` when it has not been confirmed. |
-| `observedAt` | The venue's time for the value. `null` when the venue gives none. |
-| `receivedAt` | When Plurex received the value. |
-
-Judge freshness by `confirmedAt`, falling back to `observedAt`. A value can be old but still current: an unchanged price on a quiet market keeps an early `observedAt` while `confirmedAt` moves forward. A value the venue stops reporting is cleared rather than kept: `price` or `amount` becomes `null`.
+Judge freshness by `confirmedAt`, falling back to `observedAt`: an unchanged price on a quiet market keeps an early `observedAt` while `confirmedAt` moves forward. A value the venue stops reporting becomes `null`. See [Timestamps and freshness](/concepts/venues#timestamps-and-freshness).
 
 ### Read the terms of each value
 
@@ -160,19 +141,9 @@ Judge freshness by `confirmedAt`, falling back to `observedAt`. A value can be o
 
 Before you call, read the market's `marketData.candles` entry for the price kind (`traded`, `mark` or `index`):
 
-```json
-{
-  "supportedIntervals": ["Minute1", "Minute5", "Minute15", "Hour1", "Hour4", "Day1"],
-  "list": true,
-  "listBefore": true,
-  "subscribe": true
-}
-```
-
 - The interval must be in `supportedIntervals`. Intervals are aligned to whole multiples from the Unix epoch, in UTC.
 - `list` allows `ByInstrument`, which starts from the latest closed candle.
 - `listBefore` allows `ByInstrumentBefore`, which starts from candles that end at or before `before`, and is needed to page past the first page with either variant.
-- `subscribe` allows the candle stream. These values are examples; read them from the market.
 
 ```json
 {
@@ -252,7 +223,7 @@ def candles_back_to(start_at, query, venue_id="bybit", price_kind="Traded", inte
         body["cursor"] = page["nextCursor"]
 ```
 
-Paging past the first page needs the series' `listBefore`. History does not reach back forever: before the start of the history available, a page is empty. Stop when `nextCursor` is `null`.
+History does not reach back forever: before the start of the history available, a page is empty.
 
 ## Funding history
 
@@ -281,17 +252,17 @@ curl --request QUERY https://api.plurex.io/api/v1/venues/query/ListFundingPeriod
 
 Each `FundingPeriod` is one funding that has settled: `fundingTime` is when it applied, and `rate` is the fraction of position value paid. A positive rate means longs pay shorts; a negative rate means shorts pay longs. These are the venue's rates; your account's own funding payments are in its [transactions](/guides/portfolio#transactions).
 
-Page back in time as you do for candles: send each `nextCursor` with the same `venueId` and `query` until it is `null` or you reach the oldest funding time you need. A funding period carries no interval: read the funding times rather than assuming a schedule.
+Page back in time as you do for candles. A funding period carries no interval: read the funding times rather than assuming a schedule.
 
 ## Follow market data live
 
-Each read above has a stream that follows one market as it changes. Stream when you follow a market continuously: a book you trade against, a live tape, a chart's forming candle. Use the reads for a one-off value. Each stream follows one market, so open one stream per market you follow.
+Stream when you follow a market continuously: a book you trade against, a live tape, a chart's forming candle. Use the reads for a one-off value. Each stream follows one market, so open one stream per market you follow.
 
-Every market data stream starts with a **Reset** holding the current state, then sends **Updates**. A Reset can arrive again at any time; it replaces everything you hold for that stream. The last line is **Ended**. [Streams](/guides/streams) covers how to open a stream, keepalives, how it ends and how to reopen it.
+Every market data stream starts with a **Reset** holding the current state, then sends **Updates**. A Reset can arrive again at any time; it replaces everything you hold for that stream. [Streams](/guides/streams) covers opening, keepalives, ending and reopening.
 
 | Stream | Reset | Update | Check support |
 | --- | --- | --- | --- |
-| [Stream the L2 order book](/api-reference/platform/venues/subscribe-to-order-book-l2s) | The whole book | The levels that changed | Always supported |
+| [Stream the L2 order book](/api-reference/platform/venues/subscribe-to-order-book-l2s) | The whole book, best price first | The levels that changed | Always supported |
 | [Stream the L1 order book](/api-reference/platform/venues/subscribe-to-order-book-l1s) | The best bid and ask | The complete new top of book | `marketData.orderBookL1.subscribe` |
 | [Stream public trades](/api-reference/platform/venues/subscribe-to-trades) | The recent trades | New trades | Always supported |
 | [Stream a price](/api-reference/platform/venues/subscribe-to-prices) | The current price of one `kind` | The complete new value | `marketData.prices.<kind>.subscribe` |
@@ -300,7 +271,7 @@ Every market data stream starts with a **Reset** holding the current state, then
 | [Stream open interest](/api-reference/platform/venues/subscribe-to-open-interests) | The current amount | The complete new value | `marketData.openInterest.subscribe` |
 | [Stream candles](/api-reference/platform/venues/subscribe-to-candles) | The recent candles, ending with the forming one | The forming candle | `marketData.candles.<priceKind>.subscribe` |
 
-The venue's capabilities say whether it offers each stream at all: `PerMarket` sends you to the market entry, and `NotSupported` means no market streams it. Funding history has no stream. A market the venue does not list, or one whose entry says `false`, returns `422 NotSupported` before the stream starts.
+The last column applies when the venue's capability is `PerMarket`; `NotSupported` means no market streams it. Funding history has no stream. A market the venue does not list, or one whose entry says `false`, returns `422 NotSupported` before the stream starts.
 
 ### Keep a book
 
@@ -313,50 +284,11 @@ An L2 order book Update lists only the levels that changed, each with its new to
 
 After these two lines the book has a bid of 0.9 at 67250.1 and no ask at 67250.2.
 
-```python
-import json
-import os
-from decimal import Decimal
-
-import requests
-
-URL = "https://api.plurex.io/api/v1/venues/stream/SubscribeToOrderBookL2s"
-HEADERS = {"X-API-KEY": os.environ["PLUREX_API_KEY"], "X-API-SECRET": os.environ["PLUREX_API_SECRET"]}
-
-def follow_book(venue_id, instrument, on_book):
-    """Keep one market's book until the stream ends. Returns the Ended line, or None if it was lost."""
-    body = {"venueId": venue_id, "instrument": instrument}
-    # The read timeout only needs to outlast the keepalive lines.
-    with requests.request("QUERY", URL, json=body, headers=HEADERS, stream=True, timeout=(10, 60)) as response:
-        response.raise_for_status()
-        bids, asks = {}, {}
-        for line in response.iter_lines():
-            if not line:
-                continue  # keepalive
-            message = json.loads(line)
-            if message["type"] == "Ended":
-                return message
-            if message["type"] == "Reset":
-                bids, asks = {}, {}
-            elif message["type"] != "Update":
-                continue  # a message type added later
-            for side, book in (("bids", bids), ("asks", asks)):
-                for level in message["data"][side]:
-                    price, size = Decimal(level["price"]), Decimal(level["size"])
-                    if size == 0:
-                        book.pop(price, None)
-                    else:
-                        book[price] = size
-            on_book(bids, asks)
-    return None
-```
-
-Whether `follow_book` returns an Ended line or `None`, the book you hold is no longer current: open the stream again as [Streams](/guides/streams) describes.
+When the stream stops, with or without an Ended line, the book you hold is no longer current: open the stream again. [A resilient reader](/guides/streams#a-resilient-reader) keeps a book across reopens.
 
 ### Top of book, trades, values and candles
 
 - **L1 order book.** Every Reset and Update carries the complete top of book: replace the `bid` and `ask` you hold. A side that is now `null` was cleared.
-
 - **Trades.** A trades Reset is the recent trades, as Get recent trades returns them, and it can repeat trades an Update already delivered. Replace the history you hold with it; do not add it to running totals such as traded volume. Updates carry only new trades, oldest first.
 - **Prices, statistics, funding and open interest.** Each Update carries the complete value, so a field that is now `null` was cleared. A stream value carries `observedAt` and `receivedAt`, with the same meanings as in a read, but no `confirmedAt`.
 - **Candles.** The Reset is the recent candles, oldest first, ending with the candle still forming. Each Update is the forming candle: one with the same `startAt` replaces it, and one with a later `startAt` completes it and starts the next. Updates never move back in time. Read older candles with List candles. A series that streams does so at every interval in its `supportedIntervals`.

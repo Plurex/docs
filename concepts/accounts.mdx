@@ -3,7 +3,7 @@ title: "Tenants and accounts"
 description: "Who owns your accounts, how real and paper accounts are created, and how to manage them safely through the API."
 ---
 
-Every trading action in Plurex happens on an **account**, and every account belongs to a **tenant**. This page explains both, how accounts are created on real and paper hosts, and which account operations are safe to retry.
+Every trading action in Plurex happens on an **account**, and every account belongs to a **tenant**.
 
 ## Tenants
 
@@ -17,7 +17,7 @@ See [Authentication](/authentication) for creating keys and sending them.
 
 ## Accounts
 
-An account is your account on one host. It lives on exactly one host for its whole life, and every operation on it takes only its `accountId`: Plurex resolves the host and checks your access from the account itself. You never pass a `hostId` or `tenantId` to trade.
+An account is your account on one host. It lives on exactly one host for its whole life, and every operation on it takes only its `accountId`. You never pass a `hostId` or `tenantId` to trade.
 
 ```json
 {
@@ -40,10 +40,8 @@ An account is your account on one host. It lives on exactly one host for its who
 | Created with | [Connect](/api-reference/platform/accounts/connect), using the exchange's API credentials | [Create a paper account](/api-reference/platform/paper/create) |
 | `isPaper` | `false` | `true` |
 | Money | Real funds on the exchange | Simulated balances you add with [Deposit](/api-reference/platform/paper/deposit) |
-| Trading | Every hosts operation | The same hosts operations |
-| Managed with | List, Get, Rename, Delete | List, Get, Rename, Delete |
 
-Creation is the only part that differs: connecting an account links an existing exchange account, while creating a paper account starts a new simulation. After that, both kinds are traded and managed through the same operations, so code written against a paper account runs against a real one by switching the `accountId`. Read each host's capabilities before you switch, because paper and real hosts publish their own. See [Going live](/paper/going-live).
+Creation is the only part that differs. After that, both kinds are traded and managed through the same operations, so code written against a paper account runs against a real one by switching the `accountId`. Read each host's capabilities before you switch, because paper and real hosts publish their own. See [Going live](/paper/going-live).
 
 ## Connecting an exchange account
 
@@ -66,11 +64,11 @@ curl --request POST https://api.plurex.io/api/v1/accounts/command/Connect \
   }'
 ```
 
-Before connecting, Plurex checks the key with the host:
+Plurex checks the key with the exchange before connecting:
 
-- **The key must allow reading and trading.** Plurex needs to read your orders, balances and positions, and to place and cancel orders.
+- **The key must allow reading and trading.**
 - **Bybit keys must belong to a Unified Trading Account.**
-- **A refused key creates no account.** Connect verifies the key with the exchange. `422 InvalidProviderCredentials` means the exchange rejected the key: it is invalid, expired or revoked. `422 ProviderAccessDenied` means the key works but lacks the access the account needs, such as trading. Retrying with the same key will not help: fix the key's permissions at the exchange, or create a new key, then connect again. [Update credentials](/api-reference/platform/accounts/update-connection) checks a new key the same way.
+- **A refused key creates no account.** `422 InvalidProviderCredentials` means the exchange rejected the key: it is invalid, expired or revoked. `422 ProviderAccessDenied` means the key works but lacks the access the account needs, such as trading. Retrying with the same key will not help: fix its permissions at the exchange, or create a new key, then connect again. [Update credentials](/api-reference/platform/accounts/update-connection) checks a new key the same way.
 
 To connect through the web app instead, see [Add an exchange](/platform/add-exchange).
 
@@ -90,15 +88,15 @@ A new paper account starts with no balances; fund it with [Deposit](/api-referen
 
 ## Account lifecycle
 
-| Operation | What it does | Takes |
-| --- | --- | --- |
-| [Connect](/api-reference/platform/accounts/connect) | Connects an exchange account. | `tenantId`, `name`, `hostId`, `credential` |
-| [Create a paper account](/api-reference/platform/paper/create) | Creates a paper account on a paper host. | `tenantId`, `name`, `hostId`, optional `feeTier` (a tier ID from [Get paper host fee tiers](/api-reference/platform/paper/get-host-fee-tiers)) |
-| [Update credentials](/api-reference/platform/accounts/update-connection) | Replaces a connected account's exchange credentials, for example when you rotate keys. The new key is checked like a new connection, but Plurex does not check that it belongs to the same exchange account, so use a key for that account. | `accountId`, `credential` |
-| [Rename](/api-reference/platform/accounts/rename) | Changes the account's name. | `accountId`, `name` |
-| [Delete](/api-reference/platform/accounts/delete) | Removes the account from Plurex. | `accountId` |
-| [List accounts](/api-reference/platform/accounts/list) | Lists the tenant's accounts, optionally only on some hosts (`hostIds`), only paper or real (`isPaper`), or by name (`search`, where every word must match). Paged: follow `nextCursor` until it is `null`. | `tenantId`, optional filters |
-| [Get an account](/api-reference/platform/accounts/get) | Returns one account. | `accountId` |
+| Operation | What it does |
+| --- | --- |
+| [Connect](/api-reference/platform/accounts/connect) | Connects an exchange account. |
+| [Create a paper account](/api-reference/platform/paper/create) | Creates a paper account on a paper host, optionally on a `feeTier` from [Get paper host fee tiers](/api-reference/platform/paper/get-host-fee-tiers). |
+| [Update credentials](/api-reference/platform/accounts/update-connection) | Replaces a connected account's exchange credentials, for example when you rotate keys. The new key is checked like a new connection, but Plurex does not check that it belongs to the same exchange account, so use a key for that account. |
+| [Rename](/api-reference/platform/accounts/rename) | Changes the account's name. |
+| [Delete](/api-reference/platform/accounts/delete) | Removes the account from Plurex. |
+| [List accounts](/api-reference/platform/accounts/list) | Lists the tenant's accounts, optionally only on some hosts (`hostIds`), only paper or real (`isPaper`), or by name (`search`, where every word must match). |
+| [Get an account](/api-reference/platform/accounts/get) | Returns one account. |
 
 For example, to list only your paper accounts:
 
@@ -111,32 +109,14 @@ For example, to list only your paper accounts:
 
 ## Retry safety
 
-A timeout or `5xx` does not prove that a command had no effect. Each account operation tells you how to recover:
+A timeout or `5xx` does not prove that a command had no effect. Connect and Create a paper account are not safe to repeat: a repeat adds another account. Before you retry, check [List accounts](/api-reference/platform/accounts/list) and identify the account by what it is:
 
-| Operation | Safe to repeat? | If the outcome is unclear |
-| --- | --- | --- |
-| Connect | No: repeating connects another account. | Check [List accounts](/api-reference/platform/accounts/list) for an account on that `hostId` whose `credential.publicValue` is the key you sent, before retrying. |
-| Create a paper account | No: repeating creates another account. | Check [List accounts](/api-reference/platform/accounts/list) for a new account on that `hostId` before retrying. |
-| Update credentials | Yes, with the same values. | Repeat it. |
-| Rename | Yes, with the same values. | Repeat it. |
-| Delete | Not after success: a repeat returns an error, because the account no longer exists. | Check [List accounts](/api-reference/platform/accounts/list); if the account is gone, the delete succeeded. |
-| List, Get | Yes: reads change nothing. | Repeat them. |
+- After an unclear Connect, look for an account on the `hostId` you sent whose `credential.publicValue` is the exchange key you sent.
+- After an unclear Create, compare the list for that paper `hostId` with the accounts you already knew about.
 
-Identify the new account by what it is, not by its name: after an unclear Connect, look for an account on the `hostId` you sent whose `credential.publicValue` is the exchange key you sent; after an unclear Create, compare the list for that paper `hostId` with the accounts you already knew about. Names are labels for you; don't rely on them to tell accounts apart.
+Names are labels only: two accounts can share one, so don't rely on them to tell accounts apart.
 
-## Errors to expect
-
-| Code | Status | Meaning |
-| --- | --- | --- |
-| `AccountNotFound` | 404 | The `accountId` does not exist, or it is not an account you can read. |
-| `Forbidden` | 403 | You have no access to this operation, or you can read the account but not act on it. |
-| `InvalidProviderCredentials` | 422 | Connect or Update credentials: the exchange rejected the credentials (invalid, expired or revoked). |
-| `ProviderAccessDenied` | 422 | Connect or Update credentials: the credentials lack the access the account needs. |
-| `AccountLimit` | 422 | An account or subscription limit was reached. |
-
-Account names are labels only: two accounts can share a name.
-
-See [Errors](/api-reference/platform/errors) for the full list.
+After an unclear Delete, check List accounts: if the account is gone, the delete succeeded. Repeating a Delete that succeeded returns `404 AccountNotFound`. See [Errors](/api-reference/platform/errors#retries-by-operation) for every other operation and error code.
 
 ## Related
 

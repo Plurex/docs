@@ -3,7 +3,7 @@ title: "Venue capabilities"
 description: "Which market-data reads and streams each venue and market supports, on what terms, and how to resolve one before you call it."
 ---
 
-A venue's capabilities say which market-data reads and streams it offers: L2 and L1 order books, recent trades, prices of each kind, statistics, indicative funding, open interest, candles and funding history. Each of its markets then says which of those reads and streams it supports, and on what terms: which candle intervals, over what statistics window, in what open-interest unit.
+A venue's capabilities say which market-data reads and streams it offers. Each of its markets then says which of those it supports, and on what terms: which candle intervals, over what statistics window, in what open-interest unit.
 
 Read venue headers with [List venues](/api-reference/platform/venues/list) and market summaries with [List venue markets](/api-reference/platform/venues/list-markets). Both are paged.
 
@@ -21,28 +21,14 @@ Venue IDs in examples on this page are illustrative. Discover venues with List.
 
 `VenueHeader` has an `id` and `capabilities`, a `VenueCapabilities` object grouped by area, with one capability for each operation and variant. Every capability is always present.
 
-```text
-capabilities
-├─ orderBookL2        getOrderBookL2 · subscribeToOrderBookL2s          always Supported
-├─ trades             getRecentTrades · subscribeToTrades               always Supported
-├─ prices             <kind>.getPrice · <kind>.subscribeToPrices        for traded, mark, index
-├─ orderBookL1        getOrderBookL1 · subscribeToOrderBookL1s
-├─ statistics         getMarketStatistics · subscribeToMarketStatistics
-├─ indicativeFunding  getIndicativeFunding · subscribeToIndicativeFundings
-├─ openInterest       getOpenInterest · subscribeToOpenInterests
-├─ candles            listCandles.byInstrument · listCandles.byInstrumentBefore   (paged)
-│                     subscribeToCandles
-└─ fundingPeriods     listFundingPeriods.byInstrument                   (paged)
-```
-
 | Capability | Operation | Notes |
 | --- | --- | --- |
 | [`orderBookL2.getOrderBookL2`](/api-reference/platform/venues/get-order-book-l2) | [GetOrderBookL2](/api-reference/platform/venues/get-order-book-l2) | Always supported. |
 | [`orderBookL2.subscribeToOrderBookL2s`](/api-reference/platform/venues/subscribe-to-order-book-l2s) | [SubscribeToOrderBookL2s](/api-reference/platform/venues/subscribe-to-order-book-l2s) | Always supported. |
 | [`trades.getRecentTrades`](/api-reference/platform/venues/get-recent-trades) | [GetRecentTrades](/api-reference/platform/venues/get-recent-trades) | Always supported. |
 | [`trades.subscribeToTrades`](/api-reference/platform/venues/subscribe-to-trades) | [SubscribeToTrades](/api-reference/platform/venues/subscribe-to-trades) | Always supported. |
-| [`prices.<kind>.getPrice`](/api-reference/platform/venues/get-price) | [GetPrice](/api-reference/platform/venues/get-price) with `kind` `Traded`, `Mark` or `Index` | One per price kind. |
-| [`prices.<kind>.subscribeToPrices`](/api-reference/platform/venues/subscribe-to-prices) | [SubscribeToPrices](/api-reference/platform/venues/subscribe-to-prices) with that `kind` | One per price kind. |
+| [`prices.<kind>.getPrice`](/api-reference/platform/venues/get-price) | [GetPrice](/api-reference/platform/venues/get-price) with `kind` `Traded`, `Mark` or `Index` | `<kind>` is `traded`, `mark` or `index`. |
+| [`prices.<kind>.subscribeToPrices`](/api-reference/platform/venues/subscribe-to-prices) | [SubscribeToPrices](/api-reference/platform/venues/subscribe-to-prices) with that `kind` | |
 | [`orderBookL1.getOrderBookL1`](/api-reference/platform/venues/get-order-book-l1) | [GetOrderBookL1](/api-reference/platform/venues/get-order-book-l1) | |
 | [`orderBookL1.subscribeToOrderBookL1s`](/api-reference/platform/venues/subscribe-to-order-book-l1s) | [SubscribeToOrderBookL1s](/api-reference/platform/venues/subscribe-to-order-book-l1s) | |
 | [`statistics.getMarketStatistics`](/api-reference/platform/venues/get-market-statistics) | [GetMarketStatistics](/api-reference/platform/venues/get-market-statistics) | |
@@ -56,10 +42,10 @@ capabilities
 | [`candles.subscribeToCandles`](/api-reference/platform/venues/subscribe-to-candles) | [SubscribeToCandles](/api-reference/platform/venues/subscribe-to-candles) | |
 | [`fundingPeriods.listFundingPeriods.byInstrument`](/api-reference/platform/venues/list-funding-periods) | [ListFundingPeriods](/api-reference/platform/venues/list-funding-periods) with `query.type` `ByInstrument` | Funding periods are always newest first. |
 
-The L2 order book and trades are always supported: their capabilities are `Supported` on every venue, for every market it lists. Every other capability belongs to the market, so its support value is a `MarketSupport`, either `PerMarket` or `NotSupported`, never `Supported`:
+Every capability other than the L2 order book and trades belongs to the market, so its support value is a `MarketSupport`:
 
 - `PerMarket`: the venue offers it, and each market's `marketData` says whether that market does.
-- `NotSupported`: no market on the venue has it, for example a venue that reports no index prices. Calls return `422 NotSupported`.
+- `NotSupported`: no market on the venue has it, for example a venue that reports no index prices.
 
 ## Market data on each market
 
@@ -79,11 +65,7 @@ The L2 order book and trades are always supported: their capabilities are `Suppo
 
 ### Prices
 
-Each price kind is separate. `Traded`, `Mark` and `Index` are what the venue reports each price to be: kinds are never relabelled or derived from one another, so a market without a mark price has `prices.mark: null` rather than a traded price in its place.
-
-### L1 order book
-
-`orderBookL1` says whether you can read and stream the market's top of book. Every L1 level carries both a `price` and a `size`. If you need depth beyond the best level, read the L2 order book, which every listed market supports.
+Each price kind is separate: kinds are never relabelled or derived from one another, so a market without a mark price has `prices.mark: null` rather than a traded price in its place.
 
 ### Statistics
 
@@ -92,11 +74,11 @@ Each price kind is separate. `Traded`, `Mark` and `Index` are what the venue rep
 - `{"type": "Rolling", "length": "PT24H"}`: a window of that ISO 8601 length ending now.
 - `{"type": "CalendarDay", "timeZone": "..."}`: the current calendar day in that IANA time zone.
 
-`supportedFields` lists the `StatisticsField` values the venue reports: `Open`, `High`, `Low`, `PreviousClose`, `VolumeBase`, `VolumeQuote`. Fields not listed are always `null` in results.
+`supportedFields` lists the `StatisticsField` values the venue reports. Fields not listed are always `null` in results.
 
-### Indicative funding and open interest
+### Open interest
 
-Indicative funding is offered only on perpetuals, and open interest only on derivatives. `openInterest.unit` says what the amount counts: `Contracts`, `BaseAsset` or `QuoteAsset`. Units differ between venues; convert `Contracts` with the market's `contractDetails` before comparing.
+`openInterest.unit` says what the amount counts: `Contracts`, `BaseAsset` or `QuoteAsset`. Units differ between venues; convert `Contracts` with the market's `contractDetails` before comparing.
 
 ### Candles
 
@@ -109,15 +91,15 @@ Each price kind has its own `CandleSeriesSpec`:
 | `listBefore` | `ListCandles` with `ByInstrumentBefore`, and continuing past the first page of either variant. |
 | `subscribe` | `SubscribeToCandles` for this series, at every interval in `supportedIntervals`. |
 
-At least one of `list` and `listBefore` is `true`. Candles are aligned to whole multiples of the interval from the Unix epoch, in UTC. ListCandles returns closed candles only, newest first, with no gaps.
+At least one of `list` and `listBefore` is `true`. See [Candles](/guides/market-data#candles) for reading and paging them.
 
 ### Funding history
 
-`fundingPeriods` is present only on a perpetual with funding history. Its `list` flag says whether [ListFundingPeriods](/api-reference/platform/venues/list-funding-periods) with `ByInstrument` works on the market, including every page after the first. Indicative funding and funding history are separate descriptors: a market can have one without the other, so check each.
+The `list` flag on `fundingPeriods` says whether [ListFundingPeriods](/api-reference/platform/venues/list-funding-periods) with `ByInstrument` works on the market, including every page after the first. Indicative funding and funding history are separate descriptors: a market can have one without the other, so check each.
 
 ## Resolve an operation
 
-Check the header capability, then the market descriptor and its terms. The header alone is enough only for the L2 order book and trades.
+Check the header capability, then the market descriptor and its terms. The header alone is enough only for the L2 order book and trades. The **Check support** block on each operation's page names both.
 
 | Operation | Capability | Market check |
 | --- | --- | --- |
@@ -176,25 +158,6 @@ def mark_price_markets(venue, markets):
 ```
 
 Still handle `422 NotSupported`: a market's support can change between your last refresh and the read. Refresh the market summaries when you get one.
-
-## Page through candle history
-
-To load history for a series, request the latest page with `ByInstrument`, then follow `nextCursor` back in time until it is `null`. Following the cursor needs `listBefore`. To start from a point in the past, use `ByInstrumentBefore`, which returns candles that end at or before `before`:
-
-```json
-{
-  "venueId": "bybit",
-  "priceKind": "Mark",
-  "interval": "Hour1",
-  "query": {
-    "type": "ByInstrumentBefore",
-    "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
-    "before": "2026-10-20T00:00:00Z"
-  }
-}
-```
-
-History does not reach back forever: before the start of the history available, a page is empty. A request for an interval the series does not list, or for a price kind the market has no candles of, returns `422 NotSupported`.
 
 ## Example
 
@@ -273,8 +236,6 @@ An illustrative venue header and the summary of a linear perpetual on it. The st
 ```
 
 </CodeGroup>
-
-Reading the summary: all three price kinds can be read and traded and mark prices streamed, but not the index price; the top of book can be read and streamed; statistics cover a rolling 24 hours and never report `PreviousClose`; open interest is counted in contracts; traded and mark candles can be listed, paged back and streamed, but there are no index candles on this market; and its finalised funding rates can be listed.
 
 ## Increments are not order rules
 

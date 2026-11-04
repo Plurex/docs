@@ -3,14 +3,12 @@ title: "Authentication"
 description: "Create API keys and authenticate every request and stream with two headers."
 ---
 
-Plurex authenticates API requests with an API key and its secret, sent as two headers. Every operation needs a key,
-market data and discovery included.
+Every operation needs an API key and its secret, market data and discovery included.
 
 ## Your tenant
 
-Every account and API key belongs to a **tenant**. Your tenant is created when you sign up, and you act as it whenever
-you call the API with one of your keys. Your **tenant ID** is shown on the **DevTools** page of the
-[Plurex web app](https://platform.plurex.io), next to your API keys.
+Every account and API key belongs to a **tenant**, created when you sign up. Your **tenant ID** is on the **DevTools**
+page of the [Plurex web app](https://platform.plurex.io), next to your API keys.
 
 ## Create an API key
 
@@ -23,32 +21,30 @@ you call the API with one of your keys. Your **tenant ID** is shown on the **Dev
     `research-server`. If you have two-factor authentication turned on, enter your one-time code when asked.
   </Step>
   <Step title="Save the key and secret">
-    The app shows the **Key** and the **Secret**. Store both somewhere safe, such as a secrets manager. This is the
-    only time the secret is shown; if you lose it, delete the key and create a new one.
+    Store the **Key** and **Secret** somewhere safe, such as a secrets manager. This is the only time the secret is
+    shown; if you lose it, delete the key and create a new one.
   </Step>
 </Steps>
 
-To revoke a key, delete it on the same page. Anything still using it stops working. Deleting a key also
-needs your one-time code when two-factor authentication is on.
+To revoke a key, delete it on the same page; anything still using it stops working. This also needs your one-time code
+when two-factor authentication is on.
 
 <Warning>
   A key acts as your tenant, with full access to all its accounts: it can place and cancel orders, and connect,
-  update and delete accounts. Keys have no scopes and no expiry. Use them only from your own servers, never in browser
-  or mobile code, and keep them out of source control. Create a separate key for each application so you can revoke one
-  without affecting the others.
+  update and delete accounts. Keys do not expire. Use them only from your own servers, never in browser or mobile code,
+  and keep them out of source control. Create a separate key for each application so you can revoke one without
+  affecting the others.
 </Warning>
 
 ## Authenticate a request
 
-Every operation is a request to `https://api.plurex.io/api/v1/...` with a JSON body: `QUERY` for queries and streams, `POST` for commands. Send your key and secret in two
-headers:
+Every operation is a request to `https://api.plurex.io/api/v1/...` with a JSON body: `QUERY` for queries and streams,
+`POST` for commands. Send both headers:
 
 | Header | Value |
 | --- | --- |
 | `X-API-KEY` | Your API key |
 | `X-API-SECRET` | Its secret |
-
-Both are required. A request with only one of them is treated as unauthenticated.
 
 ```bash
 curl --request QUERY \
@@ -61,14 +57,11 @@ curl --request QUERY \
 
 ## Tenant ID or account ID
 
-Operations that create or list accounts work across your tenant, so they take a `tenantId`:
+[Connect an account](/api-reference/platform/accounts/connect), [List accounts](/api-reference/platform/accounts/list)
+and [Create a paper account](/api-reference/platform/paper/create) work across your tenant, so they take a `tenantId`.
 
-- [Connect an account](/api-reference/platform/accounts/connect)
-- [List accounts](/api-reference/platform/accounts/list)
-- [Create a paper account](/api-reference/platform/paper/create)
-
-Account operations act on one account and take an `accountId`. Plurex checks that the account belongs to the tenant
-your key acts for; an account your key cannot read returns `404 AccountNotFound`, exactly as if it did not exist. Venue and host discovery operations take neither, but still need the key.
+Account operations take an `accountId`. An account your key cannot read returns `404 AccountNotFound`, exactly as if it
+did not exist. Venue and host discovery operations take neither.
 
 ## Authentication errors
 
@@ -78,21 +71,10 @@ your key acts for; an account your key cannot read returns `404 AccountNotFound`
 | 403 | `Forbidden` | The key is valid but has no access to that tenant or operation | Check the `tenantId` is your tenant's |
 | 404 | `AccountNotFound` | The account does not exist, or your key cannot read it | Check the `accountId` with [List accounts](/api-reference/platform/accounts/list) |
 
-Authentication is checked before the request body, so a request with bad credentials returns 401 even if its body is
-also invalid. See [Errors](/api-reference/platform/errors) for every error code.
+A request with bad credentials returns 401 even if its body is also invalid. See
+[Errors](/api-reference/platform/errors) for every error code.
 
 ## Streams
 
-Streams are `QUERY` requests, and take the same headers:
-
-```bash
-curl --no-buffer --request QUERY \
-  --url https://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountOrders \
-  --header 'Content-Type: application/json' \
-  --header "X-API-KEY: $PLUREX_API_KEY" \
-  --header "X-API-SECRET: $PLUREX_API_SECRET" \
-  --data "{\"accountId\": \"$PLUREX_ACCOUNT_ID\"}"
-```
-
-Credentials and access to the account are checked before the stream opens. If either fails, you get an ordinary error
-response with the usual body, and no stream. See [Streams](/guides/streams).
+Streams take the same headers. Credentials and access to the account are checked before the stream opens: if either
+fails, you get an ordinary error response with the usual body, and no stream. See [Streams](/guides/streams).

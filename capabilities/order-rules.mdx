@@ -3,7 +3,7 @@ title: "Market order rules"
 description: "Read a host market's order types, per-input rules, options, trigger rules and settings, and build orders that pass them exactly."
 ---
 
-Every market a host lists has a **host market summary**: the order types it accepts, the rules for every order input, the options each order type supports, and the market's settings. It is everything you need to build a valid order before you send it.
+Every market a host lists has a **host market summary**: the order types it accepts, the rules for every order input, the options each order type supports, and the market's settings.
 
 Plurex validates orders against exactly these published rules and never rounds your inputs. An order that follows them is passed to the host; one that breaks them returns `422 Rejected` without reaching the host.
 
@@ -27,8 +27,6 @@ curl --request QUERY https://api.plurex.io/api/v1/hosts/query/ListMarkets \
 | `contractDetails` | What one unit of `size` is. |
 | `orderTypes` | One entry per order type; `null` means the market does not accept it. |
 | `settings` | Leverage and position mode on this market; `null` means the setting does not exist here. |
-
-Every field is always present. Nullable fields are sent as `null`, never omitted.
 
 ## Contract details: what a size means
 
@@ -58,7 +56,7 @@ The **value** of a priced order, in the quote asset, is computed from `contractD
 | `TriggerLimit` | [`orderTypes.triggerLimit`](/api-reference/platform/hosts/submit-order) | When non-null |
 | `TriggerMarket` | [`orderTypes.triggerMarket`](/api-reference/platform/hosts/submit-order) | When non-null |
 
-Order types have no entry in the host header; the market summary is the only place to check. Sending a type whose entry is `null` returns `422 NotSupported`. Different order types on the same market can have different rules, so always read the entry for the type you send.
+Order types have no entry in the host header; the market summary is the only place to check. Sending a type whose entry is `null` returns `422 NotSupported`. Rules can differ between order types on the same market, so read the entry for the type you send.
 
 ## Input rules
 
@@ -126,7 +124,7 @@ With `HostSelected`, `price` tells you which reference the host uses; `null` mea
 
 ## Settings
 
-`settings` describes the market's account settings. Each is `null` when the setting does not exist on this market. The host header's leaf for the operation must also be `PerMarket`; see [Host capabilities](/capabilities/host-capabilities#marketsettings).
+`settings` describes the market's account settings. Each is `null` when the setting does not exist on this market. The host header's capability for the operation must also be `PerMarket`; see [Host capabilities](/capabilities/host-capabilities#marketsettings).
 
 ### Leverage
 
@@ -139,7 +137,7 @@ With `HostSelected`, `price` tells you which reference the host uses; `null` mea
 | [`get`](/api-reference/platform/hosts/get-leverage) | GetMarketLeverage works on this market. |
 | [`setEffectScope`](/api-reference/platform/hosts/set-leverage) | SetMarketLeverage works on this market; `null` means it cannot be set. |
 
-A valid leverage `L` satisfies `min ≤ L ≤ max` and `(L − min) / step` is a whole number. The grid starts at `min`, not at zero. Off-grid values return `422 Rejected`.
+The grid starts at `min`, not at zero. Off-grid values return `422 Rejected`.
 
 Leverage is a market setting, not an order field. `settings.leverage: null` means the market has no leverage control at all. That is different from GetMarketLeverage returning `Disabled`, which means the control exists and leverage is off for the account. On a market with no leverage control, the `currentLeverageSetting` in [Get market account state](/api-reference/platform/hosts/get-market-state) is `null`.
 
@@ -425,8 +423,6 @@ Illustrative summaries for a linear perpetual and a spot market. The structure i
 
 </CodeGroup>
 
-Reading the spot summary: no trigger market orders; no reduce-only or position effect; market orders can be sized either way on both sides, with no notional step; the host picks the trigger reference, so you must omit it; and there is no leverage or position mode to set.
-
 ## Venue increments are not order rules
 
-A venue market summary also has `increments` for `price` and `size`. They are the grid the venue quotes market data on, for formatting and grouping order book levels. They are not order rules: never price or size an order from them. Use the host market summary. See [Venue capabilities](/capabilities/venue-capabilities).
+A venue market summary also has `increments` for `price` and `size`. They are the grid the venue quotes market data on, not order rules: never price or size an order from them. See [Venue capabilities](/capabilities/venue-capabilities#increments-are-not-order-rules).

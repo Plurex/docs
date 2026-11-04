@@ -9,27 +9,15 @@ A stream follows one topic, such as one account's orders or one market's order b
 | --- | --- | --- |
 | [Account orders](/api-reference/platform/hosts/subscribe-to-account-orders) | One account | `Reset` with the open orders |
 | [Account transactions](/api-reference/platform/hosts/subscribe-to-account-transactions) | One account | The first posting. No snapshot: read [List account transactions](/api-reference/platform/hosts/list-transactions) |
-| [L2 order book](/api-reference/platform/venues/subscribe-to-order-book-l2s) | One market | `Reset` with the whole book |
-| [Public trades](/api-reference/platform/venues/subscribe-to-trades) | One market | `Reset` with the recent trades |
-| [Prices](/api-reference/platform/venues/subscribe-to-prices) | One market and price kind | `Reset` with the current price |
-| [L1 order book](/api-reference/platform/venues/subscribe-to-order-book-l1s) | One market | `Reset` with the best bid and ask |
-| [Market statistics](/api-reference/platform/venues/subscribe-to-market-statistics) | One market | `Reset` with the current statistics |
-| [Indicative funding](/api-reference/platform/venues/subscribe-to-indicative-fundings) | One perpetual | `Reset` with the current estimate |
-| [Open interest](/api-reference/platform/venues/subscribe-to-open-interests) | One derivative | `Reset` with the current amount |
-| [Candles](/api-reference/platform/venues/subscribe-to-candles) | One market, price kind and interval | `Reset` with the recent candles |
+| [Market data streams](/guides/market-data#follow-market-data-live) | One market, and a price kind or interval where it applies | `Reset` with the current state |
 
 ## Check support first
 
-A stream that the host, venue or market does not offer fails before it starts, with `422 NotSupported`. Each stream page's **Check support** block names the capability to read:
-
-- Account streams: the host's `accountOrders.subscribeToAccountOrders` and `accountTransactions.subscribeToAccountTransactions`, from [List hosts](/api-reference/platform/hosts/list).
-- Market data streams: the venue's `subscribeTo…` capabilities, from [List venues](/api-reference/platform/venues/list). The L2 order book and trades streams are always supported. The others are `PerMarket` or `NotSupported`; with `PerMarket`, the market's `marketData` from [List venue markets](/api-reference/platform/venues/list-markets) says whether that market streams it, for example `marketData.prices.mark.subscribe`.
-
-See [Host capabilities](/capabilities/host-capabilities) and [Venue capabilities](/capabilities/venue-capabilities).
+A stream that the host, venue or market does not offer returns `422 NotSupported` before it starts. Each stream page's **Check support** block names the capability to read: see [Host capabilities](/capabilities/host-capabilities) for account streams and [Venue capabilities](/capabilities/venue-capabilities) for market data streams.
 
 ## Open a stream
 
-Send the topic as the JSON body, with the same `X-API-KEY` and `X-API-SECRET` headers as every other operation. With `curl`, `--no-buffer` prints each line as it arrives:
+Send the topic as the JSON body. With `curl`, `--no-buffer` prints each line as it arrives:
 
 ```bash
 curl --no-buffer --request QUERY \
@@ -45,13 +33,13 @@ curl --no-buffer --request QUERY \
 
 Find venue IDs and instruments with [List venues](/api-reference/platform/venues/list) and [List venue markets](/api-reference/platform/venues/list-markets). An account stream takes `{"accountId": "…"}`.
 
-Everything that can go wrong before the stream starts is an ordinary error response with the [error envelope](/api-reference/platform/errors): `401 Unauthenticated`, `400 InvalidRequest`, `404` for an unknown venue, or an account that does not exist or you cannot access, `422 NotSupported` for an unsupported stream or market. Fix the request rather than retrying it in a loop; only `429` and `5xx` are worth retrying.
+A stream refused before it starts returns an ordinary [error response](/api-reference/platform/errors). Only `429` and `5xx` are worth retrying; anything else needs a fix.
 
-A `200` means the subscription is live. The response is `application/jsonl` and stays open: one JSON message per line, until the last line, which is always `Ended`. Close the response to stop the stream.
+A `200` means the subscription is live. Close the response to stop the stream.
 
 ## Read the lines
 
-Read the body line by line as it arrives. Every message has a `type`:
+Every message has a `type`:
 
 | `type` | Streams | Meaning |
 | --- | --- | --- |
@@ -68,28 +56,11 @@ New message types and fields can be added. Ignore a `type` you do not recognise.
 
 ## Market data streams
 
-A market data stream starts with a `Reset` holding the topic's current state, then sends `Update`s. A `Reset` can arrive again at any time and replaces everything you hold: do not merge it with your copy.
-
-```json
-{"type":"Reset","timestamp":"2026-10-27T09:00:00.120Z","data":{"bids":[{"price":"67250.1","size":"0.42"}],"asks":[{"price":"67250.2","size":"0.08"}],"observedAt":"2026-10-27T09:00:00.101Z","receivedAt":"2026-10-27T09:00:00.115Z"}}
-
-{"type":"Update","timestamp":"2026-10-27T09:00:00.320Z","data":{"bids":[{"price":"67250.1","size":"0.9"}],"asks":[{"price":"67250.2","size":"0"}],"observedAt":"2026-10-27T09:00:00.301Z","receivedAt":"2026-10-27T09:00:00.316Z"}}
-```
-
-How to apply an `Update` depends on the stream:
-
-| Stream | `Reset` | `Update` |
-| --- | --- | --- |
-| L2 order book | The whole book, best price first. | Only the levels that changed, each with its new total size. Set each level; size `"0"` removes it. Levels not listed are unchanged. |
-| Public trades | The recent trades. They can repeat trades an `Update` already delivered, so replace your trade history and do not add them to running totals. | New trades. |
-| Prices, L1 order book, statistics, indicative funding, open interest | The current value. | The complete new value. Replace the old one; a field that is now `null` was cleared, such as an L1 side with no bid or ask. |
-| Candles | The recent candles, oldest first, ending with the current one, still forming. Read older candles with [List candles](/api-reference/platform/venues/list-candles). | The current candle alone. The same `startAt` replaces the current candle; a later `startAt` completes it and starts the next. |
-
-Values carry `observedAt`, the venue's time when it reports one, and `receivedAt`, when Plurex received it. See [Read market data](/guides/market-data) for what each value means.
+A market data stream starts with a `Reset` holding the topic's current state, then sends `Update`s. A `Reset` can arrive again at any time and replaces everything you hold: do not merge it with your copy. How to apply each `Update` depends on the stream: see [Follow market data live](/guides/market-data#follow-market-data-live).
 
 ## Account streams
 
-The two account streams work differently. The order stream starts with a snapshot of the open orders, so it is all you need to keep them current. The transaction stream has **no snapshot**: it sends each new posting as an `Event`, and you pair it with a read of the history.
+The order stream starts with a snapshot of the open orders, so it is all you need to keep them current. The transaction stream has **no snapshot**: it sends each new posting as an `Event`, and you pair it with a read of the history.
 
 ### Account orders
 
@@ -113,7 +84,7 @@ Each `Update` carries the `change` and the complete `order` after it, exactly as
 
 There is one `Update` per change, so a single host report that fills an order and cancels the rest sends `Filled`, then `Cancelled`, each with the same order. Intermediate states can be merged, for example several fills arriving as one `Filled`, but a final state is final: an order that reached `Filled`, `Cancelled` or `Rejected` gets no further updates.
 
-Because every update carries the whole order, you do not need to rebuild state from the change. Store the latest order you receive for each order ID, and use `change` to decide what to react to. New change types can be added, so handle an unrecognised `type` as `Other`.
+Store the latest order you receive for each order ID, and use `change` to decide what to react to. Handle an unrecognised `change.type` as `Other`.
 
 ### Transaction events
 
@@ -139,7 +110,7 @@ Each transaction event is one new balance posting, with the same `id` that [List
 }
 ```
 
-`amount` is signed from your side: positive increases the balance, negative decreases it. Transaction events are not ordered relative to order updates, so a fee can arrive before or after the fill it belongs to. See [Balances, positions and settings](/guides/portfolio#transactions) for posting types and links.
+Transaction events are not ordered relative to order updates, so a fee can arrive before or after the fill it belongs to. See [Balances, positions and settings](/guides/portfolio#transactions) for `amount` signs, posting types and links.
 
 ### Keep a correct local copy
 
@@ -174,19 +145,19 @@ Each transaction event is one new balance posting, with the same `id` that [List
   </Step>
 </Steps>
 
-Opening the stream before you read is what closes the gap: a posting made after your read also arrives as an event, and matching on `id` removes duplicates. Reading a little past the newest posting you hold catches a posting that reached the host's history late. The `listTransactions` capability's `defaultOrdering` says whether history comes newest or oldest first.
+Opening the stream first closes the gap: a posting made after your read also arrives as an event, and matching on `id` removes duplicates. Reading past the newest posting you hold catches one that reached the host's history late. The `listTransactions` capability's `defaultOrdering` says whether history comes newest or oldest first.
 
 ## When a stream stops
 
 A stream stops in one of two ways.
 
-**With `Ended`.** The last line says why, with a `code` from the [error catalogue](/api-reference/platform/errors), for example `UpstreamFailure` when the venue's or host's own feed ended. `message` is for logs; do not parse it.
+**With `Ended`.** The last line says why, with a `code` from the [error catalogue](/api-reference/platform/errors). `message` is for logs; do not parse it.
 
 ```json
 {"type":"Ended","code":"UpstreamFailure","message":"Upstream stream ended"}
 ```
 
-**Without `Ended`.** The response ends or fails without an `Ended` line, the connection drops, or the stream falls too far behind (see below). Messages have been lost.
+**Without `Ended`.** The response ends or fails, the connection drops, or the stream [falls too far behind](#keep-up-with-the-stream). Messages have been lost.
 
 Either way, open the stream again after a short, randomised delay, so that many clients do not reconnect at once, and rebuild from its first message: the new `Reset` for market data and account orders, or a fresh read of history for account transactions. Back off further if reopening keeps failing, and stop on a `4xx` other than `429`: that needs a fix, not a retry.
 
@@ -194,7 +165,7 @@ Either way, open the stream again after a short, randomised delay, so that many 
 
 Read lines as they arrive. A stream whose client falls too far behind is cut, without an `Ended` line, rather than delaying it. Hand messages to a queue as soon as you read them, and do slow work, such as REST reads, elsewhere.
 
-Open one stream per topic. Each stream is cut on its own, so a busy order book never delays your order updates. Streams work over HTTP/1.1, which holds a connection per stream, and HTTP/2, which shares one connection between all your streams.
+Open one stream per topic. Each stream is cut on its own, so a busy order book never delays your order updates. Over HTTP/1.1 each stream holds a connection; HTTP/2 shares one connection between all your streams.
 
 ## A resilient reader
 
@@ -202,6 +173,8 @@ This sketch keeps a local L2 order book for one market and the set of open order
 
 ```python
 import json, os, random, threading, time
+from decimal import Decimal
+
 import requests
 
 API = "https://api.plurex.io/api/v1"
@@ -211,7 +184,6 @@ HEADERS = {
 }
 RETRYABLE = {429, 500, 502, 503, 504}
 TERMINAL = {"Filled", "Cancelled", "Rejected"}
-
 
 def follow(path, body, on_message):
     """Keep one stream open, calling on_message() for every line. Each reopen starts with a Reset."""
@@ -241,7 +213,6 @@ def follow(path, body, on_message):
         time.sleep(delay * random.uniform(0.5, 1.5))     # randomised, so clients do not reconnect together
         delay = min(delay * 2, 60)
 
-
 # L2 order book: a Reset replaces the book, an Update sets or removes levels.
 book = {"bids": {}, "asks": {}}
 
@@ -252,11 +223,11 @@ def on_book(message):
     if message["type"] in ("Reset", "Update"):
         for side in ("bids", "asks"):
             for level in message["data"][side]:
-                if level["size"] == "0":
-                    book[side].pop(level["price"], None)
+                price, size = Decimal(level["price"]), Decimal(level["size"])
+                if size == 0:
+                    book[side].pop(price, None)
                 else:
-                    book[side][level["price"]] = level["size"]
-
+                    book[side][price] = size
 
 # Account orders: the Reset is the open orders, each Update replaces one order.
 ACCOUNT_ID = os.environ["PLUREX_ACCOUNT_ID"]
@@ -274,7 +245,6 @@ def on_orders(message):
         else:
             open_orders[order["id"]] = order             # newest update wins
 
-
 threading.Thread(target=follow, daemon=True, args=(
     "hosts/stream/SubscribeToAccountOrders", {"accountId": ACCOUNT_ID}, on_orders)).start()
 follow("venues/stream/SubscribeToOrderBookL2s",
@@ -282,14 +252,11 @@ follow("venues/stream/SubscribeToOrderBookL2s",
        on_book)
 ```
 
-Both streams rebuild from their first line, a `Reset`, so reopening needs no extra reads. Messages of any other `type` are ignored.
-
 ## What a stream does not promise
 
-- No snapshot on the account transaction stream, and no replay of missed changes on any stream.
+- No replay of missed changes on any stream.
 - No sequence numbers or resume tokens. A gap shows as a fresh `Reset` on a market data stream, an `Ended`, or a stream that stops without one.
 - No ordering between streams, such as between the order stream and the transaction stream.
-- No individual executions on the order stream, and no promise that every intermediate order state is sent: read executions with [List fills](/api-reference/platform/hosts/list-fills).
 
 ## Related
 

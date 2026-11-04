@@ -3,21 +3,12 @@ title: "From paper to live"
 description: "Move a strategy from paper trading to a connected exchange account with the same API calls, and plan for the differences that matter."
 ---
 
-Plurex is built so that the strategy you forward test on paper is the strategy you run live. A paper account and a
-connected account use the same operations, the same request and response models, the same errors and the same order
-rules. Going live is a change of account, not a rewrite.
+A paper account and a connected account use the same operations, the same request and response models, the same errors
+and the same order rules. Going live is a change of account, not a rewrite.
 
-```mermaid
-flowchart LR
-    A["Your backtests<br/>(your own tools, on history)"] --> B["Paper account<br/>live data, simulated funds"]
-    B --> C["Connected account<br/>live data, real funds"]
-```
-
-1. **Backtest** with your own tools and historical data. Plurex does not backtest; it provides the
-   [market data](/guides/market-data), including candles, that you can feed into your own research.
-2. **Forward test on paper.** Run the strategy unchanged against live order books, with fees and funding, until you
-   trust its behaviour.
-3. **Go live.** Connect an exchange account on the paper host's model host and point the strategy at it.
+Test on history with your own tools, which can use Plurex's [market data](/guides/market-data), then forward test on
+paper until you trust the strategy's behaviour. By then your code has handled fills, fees, funding, errors and
+reconnects through the same calls it will use live.
 
 ## What stays the same
 
@@ -52,8 +43,8 @@ flowchart LR
 
 ## Differences to plan for
 
-Paper simulates the market faithfully where it can and leaves out what it cannot. Each difference below is either
-visible in the hosts' capabilities and market summaries, or listed here so you can plan for it.
+Paper keeps these differences in the open: each one is visible in the hosts' capabilities and market summaries, or
+listed here so you can plan for it.
 
 ### Leverage and liquidation
 
@@ -76,7 +67,6 @@ capabilities before relying on:
 - IOC and FOK on limit and trigger limit orders, and FOK on market and trigger market orders (`supportedTimeInForce`
   in each order type's options);
 - [Get position mode](/api-reference/platform/hosts/get-position-mode) on perpetuals where the live host reports none;
-- the transaction stream (`accountTransactions.subscribeToAccountTransactions`);
 - the order stream (`accountOrders.subscribeToAccountOrders`); without it, poll
   [List open orders](/api-reference/platform/hosts/list-orders) and [Get an order](/api-reference/platform/hosts/get-order);
 - the scope of a position mode change (`settings.positionMode.setEffectScope`); live, a change may apply to more than
@@ -98,10 +88,11 @@ See [Fees and funding](/paper/fees-and-funding).
 
 ### Execution realism
 
-Paper adds no latency of its own beyond the real path through Plurex and its live market data. It models market
-impact only as the depth your own orders take, and estimates queue position from visible size. Expect live fills,
-especially passive fills and large sweeps, to differ. Paper's market order protection is its own: the exchange may cap
-a market order at a different price, or not at all.
+Paper adds no artificial latency: orders see the real path through Plurex and its live market data. It models your
+market impact as the depth your own orders take, and estimates queue position from visible size and public trades.
+Other traders can still react to a live order, so live fills will differ, most of all on passive fills and large
+sweeps. Paper's market order protection is its own: the exchange may cap a market order at a different price, or not
+at all.
 
 ### Funds held by trigger orders
 
@@ -134,25 +125,29 @@ Paper posts `Deposit`, `Withdrawal`, `TradingFee`, `Settlement`, `Trade` and `Fu
 its own set, which may include types such as `Transfer`, `BorrowInterest` or `LiquidationFee`, and may not report
 some of paper's. Read `accountTransactions.supportedTransactionTypes`, and handle types you do not recognise.
 
-### Transaction history and stream
-
-A paper host always offers transaction history and the transaction stream. A live host may not offer the stream:
-check `accountTransactions.subscribeToAccountTransactions` on the live host, and fall back to polling List
-transactions where there is no stream.
+A paper host always offers the transaction stream. A live host may not: check
+`accountTransactions.subscribeToAccountTransactions`, and fall back to polling List transactions where there is no
+stream.
 
 ## Write strategies that adapt
 
-The safest way to make the switch seamless is to never hard-code a host. Read the host's capabilities and the market's
-order rules when the strategy starts, and choose behaviour from them. The same code then runs on paper and live.
+Never hard-code a host. Read the host's capabilities and the market's order rules when the strategy starts, and choose
+behaviour from them, so the same code runs on paper and live.
 
 ```python
+import os
+
 import requests
 
 BASE = "https://api.plurex.io/api/v1"
+HEADERS = {
+    "X-API-KEY": os.environ["PLUREX_API_KEY"],
+    "X-API-SECRET": os.environ["PLUREX_API_SECRET"],
+}
 
 
-def query(path, body, headers=None):
-    response = requests.request("QUERY", f"{BASE}/{path}", json=body, headers=headers or {})
+def query(path, body):
+    response = requests.request("QUERY", f"{BASE}/{path}", json=body, headers=HEADERS)
     response.raise_for_status()
     return response.json()
 

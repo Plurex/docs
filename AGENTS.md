@@ -14,8 +14,9 @@ point of view of someone using it.
   (including stream pages, placed beside their query operations). Never hand-edit them; put explanation in authored
   pages.
   - Every page references its OpenAPI operation. Streams are `QUERY` operations whose `200` is `application/jsonl` with
-    an `itemSchema` message union; their pages set `playground: "none"`, because the response never finishes.
-  - Every host and venue page carries a "Check support" block (`snippets/capability-check.mdx`). Header leaves are
+    an `itemSchema` message union; their pages set `playground: "none"`, because the response never finishes. The Try it playground is also off
+    for every endpoint through `api.playground.display` in `docs.json`.
+  - Every host and venue page carries a "Check support" block (`snippets/capability-check.mdx`). Header capabilities are
     derived from the spec; market descriptors and extra notes come from the `EXTRA` table in the script, which fails
     the sync when a path no longer exists. Change the block's wording in the snippet, and its content in `EXTRA`.
   - Every operation page shows the operation's badges (`snippets/operation-badges.mdx`). The first is its kind

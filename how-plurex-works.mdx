@@ -3,7 +3,7 @@ title: "How Plurex works"
 description: "The model behind Plurex: venues, hosts, accounts and paper hosts, the principles that keep it unambiguous, and how a strategy moves from paper to live."
 ---
 
-Plurex sits between your strategy and the markets it trades. Your strategy talks to one API. Plurex talks to each exchange in that exchange's own terms, and it either describes what comes back exactly or tells you the exchange doesn't report it.
+Plurex sits between your strategy and the markets it trades. Your strategy talks to one API, and every value it gets back is either what the exchange said or explicitly unknown.
 
 ```mermaid
 flowchart LR
@@ -23,7 +23,7 @@ flowchart LR
 
 ## One API across venues and hosts
 
-Plurex models trading with four ideas. Each one answers a different question.
+Plurex models trading with four ideas:
 
 | Concept | Question it answers | Examples of what it covers |
 | --- | --- | --- |
@@ -32,9 +32,9 @@ Plurex models trading with four ideas. Each one answers a different question.
 | [Account](/concepts/accounts) | Which of my accounts am I acting on? | A connected exchange account, or a paper account |
 | [Tenant](/concepts/accounts) | Who owns the accounts and API keys? | Accounts and API keys |
 
-Venues and hosts are separate because they are separate concerns. A venue's market is where liquidity and prices are. A host is the institution that holds your account and executes your orders there. One exchange is often both, but not always: a paper host trades a venue it doesn't run, and several hosts can trade the same venue. Keeping them apart means market data never pretends to be an order rule, and an order rule always comes from the host that enforces it. [Venues and hosts](/concepts/venues-and-hosts) covers this in depth.
+A venue's market is where liquidity and prices are. A host holds your account and executes your orders there. One exchange is often both, but not always: a paper host trades a venue it doesn't run, and several hosts can trade the same venue. See [Venues and hosts](/concepts/venues-and-hosts).
 
-Every account is on exactly one host, and every operation on an account works the same way whatever the host. A strategy that trades several hosts uses the same calls, the same order model and the same error codes for all of them. It can run several accounts side by side.
+Every account is on exactly one host. A strategy can run several accounts side by side, with the same calls, order model and error codes on every host.
 
 ## Commands, queries and streams
 
@@ -42,73 +42,70 @@ Every operation is one of three kinds:
 
 - A **query** reads state, such as listing markets or getting an order. Queries are always safe to repeat.
 - A **command** changes state, such as submitting or cancelling an order. Each command says whether it is safe to repeat, because in trading a retry can mean a second order.
-- A **stream** follows one topic and sends you its changes as they happen: a market's order book, trades, prices or candles, or an account's orders and transactions. Most streams start with the current state, such as the whole order book or the account's open orders; the account transaction stream sends only new transactions.
+- A **stream** follows one topic and sends you its changes as they happen, such as a market's order book or an account's orders. Most streams start with the current state.
 
-The HTTP method states the split: commands are `POST`, and queries and streams are `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)), a safe method that carries a body. Every operation takes a JSON body and is sent to a path that names it, such as `/api/v1/hosts/command/SubmitOrder`. There are no `GET`, `PUT` or `DELETE` resources, and IDs never go in the path. This is deliberate:
+Commands are `POST`. Queries and streams are `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)), a safe method that carries a body. Every operation takes a JSON body at a path that names it, such as `/api/v1/hosts/command/SubmitOrder`. There are no `GET`, `PUT` or `DELETE` resources, and IDs never go in the path, because:
 
-- **Operations are trading actions, not resources.** `CancelAllOrders` on one instrument, or `GetOrder` by `clientOrderId`, don't map cleanly onto HTTP verbs and URLs, so each operation is named for what it does.
+- **Operations are trading actions, not resources.** `CancelAllOrders` on one instrument, or `GetOrder` by `clientOrderId`, don't map cleanly onto HTTP verbs and URLs.
 - **Requests are typed.** Instruments, order types and lookup variants are structured JSON with a `type` field, which query strings can't express unambiguously.
 - **Retry safety is in the method and path.** `QUERY` tells your retry logic it may repeat; `POST` means check the command.
-- **Responses have a fixed shape.** Unlike GraphQL, you don't choose fields: each operation returns every field every time, with `null` where the host doesn't report a value, and has its own capability entry and errors.
+
+Unlike GraphQL, you don't choose fields: each operation returns every field every time, with `null` where the host doesn't report a value.
 
 The [OpenAPI specification](/api-reference/platform/overview#specification) describes every operation and stream, so you can generate a client in any language.
 
 ## Self-describing by design
 
-Exchanges differ in which order types they offer, how they size orders, whether they can look up an order by your own ID, and which market data they publish. Plurex doesn't hide these differences behind a lowest common denominator, and it doesn't paper over them with guesses. It declares them.
+Exchanges differ in which order types they offer, how they size orders, whether they can look up an order by your own ID, and which market data they publish. Plurex declares these differences instead of hiding them behind a lowest common denominator.
 
-- **Every host and venue publishes its capabilities.** These list every operation and variant, each marked as supported everywhere, supported on some markets, or not supported. Nothing is left out, so a missing entry never has to be interpreted.
-- **Every market publishes its rules.** A host market lists the order types it accepts and, for each one, the price, size, notional and value rules and the options it allows. A venue market lists the market data it serves.
-- **Plurex validates exactly what it publishes.** It checks your order against the market's published rules and rejects one that breaks them with a clear error. It never rounds or adjusts the order for you. The host can still reject an order for reasons no rule describes, such as insufficient funds or a size limit the market doesn't publish.
+- **Every host and venue publishes its capabilities.** These say which operations and variants are supported everywhere, on some markets, or not at all.
+- **Every market publishes its rules.** A host market lists the order types it accepts and, for each one, its rules and options. A venue market lists the market data it serves.
+- **Plurex validates exactly what it publishes.** It rejects an order that breaks the market's published rules with a clear error, and never rounds or adjusts the order for you. The host can still reject an order for reasons no rule describes, such as insufficient funds or a size limit the market doesn't publish.
 
-So your program can make every decision from data: which order types to use, how to round a price, whether it can cancel by client order ID, or whether a market has mark-price candles. Read [Capabilities](/capabilities/overview) to see how.
+Your program can decide from data which order types to use, how to round a price, or whether a market has mark-price candles. See [Capabilities](/capabilities/overview).
 
 ## Unambiguous data
 
-Plurex is an aggregate of many hosts, so it promises only what every supported host can keep:
+Plurex promises only what every supported host can keep:
 
 - A field is non-null only when every host reports it truthfully. Otherwise it can be `null`, and its description says when.
-- Plurex never invents data. It doesn't calculate an average price the host didn't report, invent an execution ID, echo back options the host didn't confirm, or infer an order's sizing unit from its fills.
-- Prices keep their kind. A mark price is never relabelled as a traded price or derived from another kind. If a venue stops reporting a value, it is cleared rather than served stale.
+- Plurex never invents data. It doesn't calculate an average price the host didn't report, invent an execution ID, or infer an order's sizing unit from its fills.
+- Prices keep their kind. A mark price is never relabelled as a traded price. If a venue stops reporting a value, it is cleared rather than served stale.
 - Sizes are always in the market's [native contracts](/concepts/instruments#size-is-always-native-contracts), and every decimal is an exact string.
-- Responses only grow. New fields, enum values, variants and error codes can be added without a new API version, and the API tells you to tolerate them.
-
-The result is a model you can trust in code: a value is either what the exchange said, or explicitly unknown.
+- Responses only grow. New fields, enum values, variants and error codes can be added without a new API version. See [Compatibility](/api-reference/platform/conventions#compatibility).
 
 ## High-fidelity paper trading
 
 A paper host simulates a real host on that host's venue, using the venue's live market data. Paper accounts use exactly the same host operations and streams as real accounts.
 
-- Market orders and marketable limit orders fill against the live order book's depth, one fill per price level, so large orders see realistic slippage. Market orders are protected by a worst price, and depth your account takes is used up.
-- Resting orders wait behind the visible queue at their price, and fill as live public trades work through it.
-- Trigger orders fire on the live reference price they name, and are checked against your account when they fire.
-- Wallets hold and lock funds as the host does, and perpetual collateral is a weighted, multi-asset pool modelled on the host's account, valued at live prices.
-- Trading fees follow the exchange's published tier you choose. Perpetual positions pay and receive funding at the venue's funding times, from its finalised rates, with the position valued at the mark price. See [Fees and funding](/paper/fees-and-funding).
-- Paper markets follow the order rules of the host they simulate. Anything paper can't simulate is left out, and the paper host publishes its own capabilities so your program can see exactly what it supports. [From paper to live](/paper/going-live) lists the differences, such as leverage and liquidation.
+- **Orders.** Marketable orders fill against the live order book's depth, one fill per price level, so large orders see realistic slippage, and depth your account takes is used up. Resting orders wait behind the visible queue and fill as live public trades work through it. Trigger orders fire on the live reference price they name.
+- **Wallets and collateral.** Wallets hold and lock funds as the host does, and perpetual collateral is a weighted, multi-asset pool modelled on the host's account.
+- **Fees and funding.** Trading fees follow the exchange's published tier you choose, and perpetual positions pay and receive funding at the venue's funding times, from its finalised rates. See [Fees and funding](/paper/fees-and-funding).
+- **Order rules.** Paper markets follow the order rules of the host they simulate. The paper host publishes its own capabilities, and [From paper to live](/paper/going-live) lists the differences, such as leverage and liquidation.
 
 Read [Paper trading](/paper/overview) for the full model.
 
 ## From backtest to live
 
-Plurex doesn't run backtests. Use whatever research tools you like for that. Plurex takes over where a backtest ends:
+Plurex doesn't run backtests; use whatever research tools you like. It takes over where a backtest ends:
 
 <Steps>
   <Step title="Forward test on paper">
-    Create a paper account on the paper host for the exchange you plan to trade, fund it and run your strategy against live markets with no risk. Your strategy reads capabilities and market rules the same way it will in production.
+    Create a paper account on the paper host for the exchange you plan to trade, fund it and run your strategy against live markets with no risk.
   </Step>
   <Step title="Span venues and hosts">
-    Run paper accounts on several hosts at once to test strategies that trade across venues, with the same code path for each.
+    Run paper accounts on several hosts at once to test strategies that trade across venues.
   </Step>
   <Step title="Switch to live">
-    Connect a real account on the host the paper host simulates (its `modelHostId`), and point your strategy at the new account ID. The API calls, the models and the order rules of the host you simulated stay the same: change the account, then re-read the live host's capabilities. [From paper to live](/paper/going-live) lists the differences to plan for, such as leverage and order options.
+    Connect a real account on the host the paper host simulates (its `modelHostId`), point your strategy at the new account ID, and re-read the live host's capabilities. The API calls, the models and the order rules of the host you simulated stay the same. Plan for [the differences](/paper/going-live), such as leverage and order options.
   </Step>
 </Steps>
 
 ## What Plurex is not
 
-- **Not a strategy framework.** Plurex places and tracks orders and serves market data. Your strategy logic lives in your code.
+- **Not a strategy framework.** Your strategy logic lives in your code.
 - **Not a backtester or historical data store.** Candle history is limited: before the start of the history available, a page of candles is empty.
-- **Not a lowest common denominator.** If one host offers something another doesn't, Plurex exposes it and declares where it is available, so you don't lose a host's strengths to keep your code portable.
+- **Not a lowest common denominator.** If one host offers something another doesn't, Plurex exposes it and declares where it is available.
 
 ## Next steps
 

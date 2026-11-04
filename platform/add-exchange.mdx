@@ -3,9 +3,8 @@ title: "Connect an exchange account"
 description: "Create an exchange API key and connect your exchange account to Plurex in the web app or through the API."
 ---
 
-Connecting an exchange account lets you trade it through Plurex: read its balances, positions and orders, and place
-and cancel orders, from the web app or the API. Plurex talks to the exchange with an API key you create at the exchange; your exchange login
-never passes through Plurex.
+Connecting an exchange account lets you read and trade it from the web app or the API. Plurex uses an API key you
+create at the exchange; your exchange login never passes through Plurex.
 
 ## Before you start
 
@@ -17,15 +16,14 @@ You need:
   [Authentication](/authentication).
 
 <Tip>
-  To trade without capital at risk first, create a [paper account](/paper/overview). It trades the same markets
-  through the same API calls, with simulated funds.
+  To trade without capital at risk first, create a [paper account](/paper/overview).
 </Tip>
 
 ## Create an API key at the exchange
 
 In your exchange's API management settings, create an API key for Plurex that can **read** your account and **trade**.
-Plurex verifies the key with the exchange when you connect, and refuses it if the exchange rejects it or it cannot
-both read and trade, for example a read-only key or one without full trading permissions. Keep the exchange's public key and secret key to hand for the next step.
+Plurex checks the key with the exchange when you connect, and refuses a read-only key or one without full trading
+permissions. Keep the exchange's public key and secret key to hand.
 
 - **Bybit**: the key must belong to a **Unified Trading Account** and have trading permissions for spot, contracts,
   derivatives and options. Plurex requires all of them, even if you plan to trade only some markets.
@@ -102,15 +100,13 @@ market's order rules with [List hosts](/api-reference/platform/hosts/list) and
 
 ### If connecting fails
 
-If the exchange rejects the key, or the key cannot read and trade, Plurex refuses it and no account is created.
-Retrying with the same key will not help. Check that you copied both halves correctly, that the key is active, and that
-it has the permissions [listed above](#create-an-api-key-at-the-exchange); fix it at the exchange or create a new key,
-then connect again.
+If Plurex refuses the key, no account is created and retrying with the same key will not help. Fix it at the exchange
+or create a new key, then connect again.
 
 | Error | Meaning | What to do |
 | --- | --- | --- |
 | `422 InvalidProviderCredentials` | The exchange rejected the key: it is invalid, expired or revoked | Check both halves and that the key is active, or create a new key |
-| `422 ProviderAccessDenied` | The exchange accepted the key, but it lacks the access Plurex needs | Grant the permissions listed above at the exchange, or create a new key that has them |
+| `422 ProviderAccessDenied` | The exchange accepted the key, but it lacks the access Plurex needs | Grant the [permissions listed above](#create-an-api-key-at-the-exchange) at the exchange, or create a new key that has them |
 | `429 RateLimited` | The exchange rate-limited the check | Wait and try again, after checking as below |
 | `500`, `502`, `503` or `504` | Plurex or the exchange could not complete the request | Check as below, then retry; if the same key keeps failing, check it as above |
 
@@ -126,7 +122,8 @@ then connect again.
 When you replace the API key at the exchange, update the account rather than connecting a new one, so its ID and
 history stay the same.
 
-- **Web app**: in **Accounts**, choose **Refresh** on the account and enter the new public and secret keys.
+- **Web app**: in **Accounts**, choose **Update credentials** from the account's menu, or open the account and choose
+  **Update connection**, and enter the new public and secret keys.
 - **API**: call [Update account credentials](/api-reference/platform/accounts/update-connection):
 
 ```json
@@ -140,8 +137,8 @@ history stay the same.
 }
 ```
 
-The new key is checked with the exchange in the same way, with the same two errors, and the call is safe to repeat with the same values.
-Plurex does not check that the new key belongs to the same exchange account, so use a key for that account; otherwise
+The new key is checked with the exchange in the same way, with the same two errors, and the call is safe to repeat with
+the same values. Plurex does not check that the new key belongs to the same exchange account, so use a key for that account; otherwise
 the account's orders, balances and history will come from a different exchange account.
 
 ## Remove an account

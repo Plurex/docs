@@ -3,10 +3,10 @@ title: "Venues and hosts"
 description: "The core model behind Plurex: venues are where markets trade and prices form, hosts hold your accounts and execute your orders."
 ---
 
-Plurex is one API across many exchanges. To make that work without hiding how they differ, it splits every trading venue into two concerns that most exchange APIs mix together:
+Plurex splits every exchange into two concerns that most exchange APIs mix together:
 
-- A **venue** is where markets trade and prices form. Venue operations are market data: what is trading and at what price.
-- A **host** is the institution that holds trading accounts and executes orders on a venue's markets. Host operations cover executing trades, and everything about your account: orders, fills, balances, positions, margin, market settings and transactions.
+- A **[venue](/concepts/venues)** is where markets trade and prices form. Venue operations are market data: what is trading and at what price.
+- A **[host](/concepts/hosts)** is the institution that holds trading accounts and executes orders on a venue's markets. Host operations cover executing trades, and everything about your account: orders, fills, balances, positions, margin, market settings and transactions.
 
 Read market data from the venue. Trade through the host. A venue market tells you what is trading; the matching host market tells you how you can trade it.
 
@@ -39,15 +39,11 @@ See [Tenants and accounts](/concepts/accounts) for ownership and the account lif
 
 ## Why Plurex separates venues and hosts
 
-Many exchanges are both a venue and a host: Bybit runs the market and also holds your Bybit account. Plurex still models them separately, because the two concerns answer different questions and do not always come from the same place.
+Many exchanges are both a venue and a host: Bybit runs the market and also holds your Bybit account. Plurex still models them separately, and that shapes how you call the API:
 
-**The concerns differ.** Market data is the same for everyone and changes by the millisecond. Account data is private, belongs to one account and is governed by the institution that holds it. Keeping them apart means market data is named by venue and instrument, and account operations identify everything from the `accountId`, never from a venue.
-
-**Hosts can trade venues they do not run.** The model allows a host that trades a venue it does not operate, as a broker does. Today the case you will meet is the paper host: it executes nothing for real, and simulates its model host against the venue's live order book. The market data comes from the venue, and the account and order handling come from the host.
-
-**Several hosts can trade one venue.** Today the `bybit` venue is traded by both the `bybit` host and the `bybit-paper` host. Both read the same venue for prices, and the paper host follows the real host's order rules for the markets it simulates. Your paper account and your real account see the same market.
-
-**Venue increments are not order rules.** A venue publishes `increments`, the grid its order book and trades are quoted on, so you can format prices and group book levels. Only a host places orders, so only a host can say what it will accept: order types, price and size increments, minimum size, minimum value and options such as `postOnly` or `reduceOnly`. Always size and price orders from the host market, never from the venue market. See [Order rules](/capabilities/order-rules).
+- **Market data is the same for everyone; account data is private.** Market data is named by venue and instrument. Account operations identify everything from the `accountId`, never from a venue.
+- **Several hosts can trade one venue.** The `bybit` venue is traded by both the `bybit` host and the `bybit-paper` host. A paper host executes nothing for real: it simulates its model host against the venue's live order book, under the model host's order rules, so your paper and real accounts see the same market. [From backtest to live](/how-plurex-works#from-backtest-to-live) shows how a strategy moves between them.
+- **Venue increments are not order rules.** A venue's `increments` are the grid it quotes on, for formatting prices and grouping book levels. Only a host can say what it will accept, so always size and price orders from the host market. See [Order rules](/capabilities/order-rules).
 
 ## Joining a venue market to a host market
 
@@ -71,20 +67,18 @@ To read its mark price, send the same `venueId` and `instrument` to [Get a price
 }
 ```
 
-The `symbol` is identical on both summaries, so it works as a display name and a map key. You never send it as input: every operation takes the structured `instrument`. See [Instruments and sizing](/concepts/instruments).
+The `symbol` is identical on both summaries, so it works as a display name and a map key, but you never send it: every operation takes the structured `instrument`. See [Instruments and sizing](/concepts/instruments).
 
 ## Venues and hosts compared
 
 | | Venue | Host |
 | --- | --- | --- |
 | Answers | What is trading, and at what price? | How do I trade here, and what are my positions and balances? |
-| Discover | [List venues](/api-reference/platform/venues/list) | [List hosts](/api-reference/platform/hosts/list) |
 | Markets | [Venue markets](/api-reference/platform/venues/list-markets): instrument, contract details, increments and which market data each market reports | [Host markets](/api-reference/platform/hosts/list-markets): instrument, contract details, order types, order rules and settings such as leverage and position mode |
 | Data and actions | L2 and L1 order books, recent trades, prices by kind, statistics, indicative funding, open interest, candles, funding history | Orders, fills, wallets, positions, margin, per-market account state, leverage, position mode, transactions, account streams |
 | Capabilities | `VenueCapabilities` on each venue | `ExecutionHostCapabilities` on each host |
-| API key | Needed for every operation | Needed for every operation |
 
-Each venue and host declares what it supports. When hosts differ, the difference is in their capabilities and market summaries, not hidden behind a lowest common denominator or papered over with guesses. Read them before you call. See [Capabilities](/capabilities/overview).
+When hosts or venues differ, the difference is in their capabilities and market summaries, so read them before you call. See [Capabilities](/capabilities/overview).
 
 ## What exists today
 
@@ -100,17 +94,7 @@ curl --request QUERY https://api.plurex.io/api/v1/hosts/query/List \
   --data '{}'
 ```
 
-Each host in the response carries its `id`, `venueIds`, `isPaper`, `modelHostId` (the real host a paper host simulates, `null` for a real host), `supportedCredentialTypes` and `capabilities`. Both listings are paged: follow `nextCursor` until it is `null`.
-
-## From your backtest to live trading
-
-Plurex is an execution layer. It does not build or backtest strategies; it gives a strategy you built and backtested elsewhere one API for every stage that follows:
-
-1. **Forward test on paper.** Create a paper account on a paper host. It fills your orders against the venue's live order book, with the model host's markets and order rules, and simulates fees and perpetual funding. No real money moves.
-2. **Go live.** Connect an account on the model host and use its `accountId` instead. Orders, fills, positions and streams use the same operations and shapes.
-3. **Go wider.** Add accounts on other hosts. The same code reads each host's capabilities and order rules and adapts to them.
-
-Paper and real hosts publish their own capabilities, so check the real host's before you switch. See [Paper trading](/paper/overview) and [Going live](/paper/going-live).
+Both listings are paged: follow `nextCursor` until it is `null`. [Hosts](/concepts/hosts#the-host-header) describes what each host carries.
 
 ## Next
 

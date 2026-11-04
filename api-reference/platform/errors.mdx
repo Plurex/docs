@@ -19,7 +19,7 @@ Every error, at every HTTP status, has the same shape. Use `code` in your progra
 | `code` | The specific reason, from the catalogue below. Each code always comes with the same HTTP status. |
 | `message` | Human-readable detail. Its wording can change; do not parse it. |
 
-The envelope is used for unknown paths (`404 NotFound`), wrong methods (`405 MethodNotAllowed`) and streams refused before they open, as well as for every operation's own errors. Once a stream is open, its last line is an `Ended` message carrying one of the same codes; see [Streams](/guides/streams).
+Unknown paths (`404 NotFound`), wrong methods (`405 MethodNotAllowed`) and streams refused before they open use the same envelope. Once a stream is open, an `Ended` line carries one of the same codes; see [Streams](/guides/streams).
 
 ## Error codes
 
@@ -27,12 +27,12 @@ The envelope is used for unknown paths (`404 NotFound`), wrong methods (`405 Met
 | --- | --- | --- | --- |
 | `InvalidRequest` | 400 | Malformed JSON, wrong types, unknown fields or enum values, or invalid values. This includes a cursor sent with a different query. | Fix the request. Do not retry unchanged. |
 | `Unauthenticated` | 401 | Missing or invalid API key headers. | Send both `X-API-KEY` and `X-API-SECRET` with valid values. |
-| `Forbidden` | 403 | Authenticated, but without access to the account or operation. | Check that the `tenantId` is yours and that your key may perform the operation. |
+| `Forbidden` | 403 | Authenticated, but without access to the account or operation. | Check that the `tenantId` is yours. |
 | `AccountNotFound` | 404 | The `accountId` does not exist, or your key cannot read it. A 403 never reveals that an account ID exists. | Check the ID with [List accounts](/api-reference/platform/accounts/list). |
 | `OrderNotFound` | 404 | The account exists, but the order identifier does not. | Not proof the order never existed; see [Reconciliation rules](#reconciliation-rules). |
 | `NotFound` | 404 | Unknown path, host or venue. | Check the path and the `hostId` or `venueId`. |
 | `MethodNotAllowed` | 405 | The operation uses a different HTTP method. | Use `QUERY` for queries and streams, `POST` for commands. |
-| `DuplicateClientOrderId` | 409 | The host holds another order with this `clientOrderId`. It does not guard against every repeat: on some hosts an order that has already closed does not block the ID, so do not rely on this code to catch duplicates. | Look the order up by client order ID instead of submitting again, and use a unique `clientOrderId` for every order. |
+| `DuplicateClientOrderId` | 409 | The host holds another order with this `clientOrderId`. It does not catch every repeat: on some hosts an order that has already closed does not block the ID. | Look the order up by client order ID instead of submitting again, and use a unique `clientOrderId` for every order. |
 | `OrderAlreadyClosed` | 409 | The order is already filled, cancelled or rejected. | Do not retry the cancel. Read the order to see how it ended; it may have filled. |
 | `UnsupportedMediaType` | 415 | The request is not `Content-Type: application/json`. | Send the header, with a JSON body. |
 | `InsufficientFunds` | 422 | The account cannot fund the order or withdrawal. | Reduce the order or add funds. |
@@ -54,20 +54,18 @@ For your own retries, use exponential backoff with jitter and a cap, and stop af
 
 New codes can be added without a new API version. Handle a code you do not recognise by its HTTP status: a `4xx` means the request needs to change, a `5xx` means the outcome of a command is unknown.
 
-<Note>
-  The specification declares `ErrorCode` as a closed `enum`. If you generate a client, make sure an unknown value decodes to a fallback instead of failing; otherwise a new code turns a clear error into a parsing failure.
-</Note>
+The specification declares `ErrorCode` as a closed `enum`, so make sure a generated client decodes an unknown value to a fallback instead of failing.
 
 ## 400 or 422
 
 The two statuses separate a malformed request from a request the host will not carry out:
 
-- **400 `InvalidRequest`**: the request does not match the schema. Examples: a misspelt field such as `clientOrderID`, an unknown enum value such as `"types": ["Swap"]`, an unknown `type` variant, a lowercase asset, a decimal sent as a number, or a cursor from another query. The server rejects unknown request fields, even though responses can gain fields.
-- **422**: the request is well formed, but the host, the market or Plurex's validation will not accept it: an unsupported operation (`NotSupported`), a value that breaks the order rules (`Rejected`), too little balance (`InsufficientFunds`), exchange credentials that are rejected (`InvalidProviderCredentials`) or lack access (`ProviderAccessDenied`), or a limit (`AccountLimit`).
+- **400 `InvalidRequest`**: the request does not match the schema. Examples: a misspelt field such as `clientOrderID`, an unknown enum value such as `"types": ["Swap"]`, an unknown `type` variant, a lowercase asset, a decimal sent as a number, or a cursor from another query.
+- **422**: the request is well formed, but the host, the market or Plurex's validation will not accept it, for example an unsupported operation (`NotSupported`) or a value that breaks the order rules (`Rejected`).
 
 ### Order of checks
 
-Every operation checks authentication before it reads the body. A request with missing or invalid credentials gets `401 Unauthenticated` even if its body is also invalid, so fix credentials first.
+Authentication is checked before the body, so a request with missing or invalid credentials gets `401 Unauthenticated` even if its body is also invalid.
 
 ## Retries by operation
 
@@ -86,10 +84,10 @@ An error or timeout does not prove that a command had no effect. Queries (`.../q
 | [Rename](/api-reference/platform/accounts/rename) | Yes, with the same values. | Repeat it. |
 | [Delete](/api-reference/platform/accounts/delete) | Repeating after success returns `404 AccountNotFound`, because the account no longer exists. | Check [List accounts](/api-reference/platform/accounts/list): if the account is gone, the delete succeeded. |
 | [CreateAccount](/api-reference/platform/paper/create) (paper) | No. Repeating creates another account. | Check [List accounts](/api-reference/platform/accounts/list) for a new account on that paper `hostId` before retrying. |
-| [Deposit](/api-reference/platform/paper/deposit) (paper) | No. Repeating deposits again. | Check [List account transactions](/api-reference/platform/hosts/list-transactions) for the deposit where the paper host supports it, or compare the balance from [List wallets](/api-reference/platform/hosts/list-wallets), before retrying. |
+| [Deposit](/api-reference/platform/paper/deposit), [Withdraw](/api-reference/platform/paper/withdraw) (paper) | No. Repeating moves the amount again. | Check [List account transactions](/api-reference/platform/hosts/list-transactions) for the transaction where the paper host supports it, or compare the balance from [List wallets](/api-reference/platform/hosts/list-wallets), before retrying. |
 | [SetFeeTier](/api-reference/platform/paper/set-fee-tier) (paper) | Yes, with the same values. | Repeat it. Selecting the current tier changes nothing. |
 
-The API has no idempotency keys. A `clientOrderId` correlates an order with your own records and lets you look it up or cancel it; it is not a transport retry key.
+A `clientOrderId` correlates an order with your own records and lets you look it up or cancel it; it does not make repeating a submit safe.
 
 ## Reconciliation rules
 
