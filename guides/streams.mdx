@@ -3,7 +3,7 @@ title: "Streams"
 description: "Follow your accounts' orders and balance postings, and a market's order book, trades, prices and candles, as they happen, and keep a correct local copy through reconnects."
 ---
 
-A stream follows one topic, such as one account's orders or one market's order book, and pushes each change as it happens, so you do not have to poll. You open it with an ordinary `POST`, and the response stays open, carrying one JSON message per line. Streams work the same way for real and paper accounts.
+A stream follows one topic, such as one account's orders or one market's order book, and pushes each change as it happens, so you do not have to poll. You open it with a `QUERY` request, and the response stays open, carrying one JSON message per line. Streams work the same way for real and paper accounts.
 
 | Stream | Topic | First line |
 | --- | --- | --- |
@@ -32,7 +32,7 @@ See [Host capabilities](/capabilities/host-capabilities) and [Venue capabilities
 Send the topic as the JSON body, with the same `X-API-KEY` and `X-API-SECRET` headers as every other operation. With `curl`, `--no-buffer` prints each line as it arrives:
 
 ```bash
-curl --no-buffer --request POST \
+curl --no-buffer --request QUERY \
   --url https://api.plurex.io/api/v1/venues/stream/SubscribeToOrderBookL2s \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
@@ -219,8 +219,8 @@ def follow(path, body, on_message):
     while True:
         try:
             # The read timeout is the longest silence allowed; a keepalive arrives at least every 15 s.
-            with requests.post(f"{API}/{path}", json=body, headers=HEADERS,
-                               stream=True, timeout=(10, 45)) as response:
+            with requests.request("QUERY", f"{API}/{path}", json=body, headers=HEADERS,
+                                  stream=True, timeout=(10, 45)) as response:
                 if response.status_code != 200:
                     error = response.json()
                     if response.status_code not in RETRYABLE:

@@ -10,7 +10,7 @@ Plurex validates orders against exactly these published rules and never rounds y
 Read summaries with [List host markets](/api-reference/platform/hosts/list-markets). It is paged and takes optional filters:
 
 ```bash
-curl --request POST https://api.plurex.io/api/v1/hosts/query/ListMarkets \
+curl --request QUERY https://api.plurex.io/api/v1/hosts/query/ListMarkets \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
   --header "X-API-SECRET: $PLUREX_API_SECRET" \

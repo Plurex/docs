@@ -345,7 +345,7 @@ def sync():
     pages = []
     for path, item in source["paths"].items():
         for method, operation in item.items():
-            if method not in {"get", "put", "post", "delete", "patch", "head", "options", "trace"}:
+            if method not in {"get", "put", "post", "delete", "patch", "head", "options", "trace", "query"}:
                 continue
             module = path.split("/")[3]
             action = path.rsplit("/", 1)[1]

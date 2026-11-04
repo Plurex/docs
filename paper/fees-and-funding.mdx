@@ -47,7 +47,7 @@ You can choose a tier when you create the account, and change it at any time aft
     ```
 
     The response lists every tier and the one selected. Each tier has default rates and may override them for
-    instruments whose canonical symbol matches `instrumentPattern`, a regular expression:
+    instruments whose canonical symbol matches `instrumentPattern`, a regular expression, named by `label`:
 
     ```json
     {
@@ -59,6 +59,7 @@ You can choose a tier when you create the account, and change it at any time aft
             "defaults": { "makerFeePercent": "0.08", "takerFeePercent": "0.12", "fractionDigits": null },
             "instrumentOverrides": [
               {
+                "label": "Perpetuals",
                 "instrumentPattern": ".*-.*-(PERP|PERPINV)",
                 "rates": { "makerFeePercent": "0.015", "takerFeePercent": "0.045", "fractionDigits": null }
               }
@@ -219,7 +220,7 @@ types it reports:
   "accountTransactions": {
     "listTransactions": { "type": "Supported", "defaultOrdering": "ReverseChronological" },
     "subscribeToAccountTransactions": { "type": "Supported" },
-    "supportedTransactionTypes": ["Deposit", "Withdrawal", "TradingFee", "Settlement", "FundingPayment"]
+    "supportedTransactionTypes": ["Deposit", "Withdrawal", "TradingFee", "Settlement", "Trade", "FundingPayment"]
   }
 }
 ```
@@ -232,9 +233,12 @@ A paper account reports these transaction types:
 | `Withdrawal` | You call Withdraw; the amount is negative | none |
 | `TradingFee` | A fill is charged a fee; a maker rebate is a negative fee, posted as a positive amount | `instrument`, `orderId`, `fillId`, `groupId` |
 | `Settlement` | A perpetual fill realises profit or loss | `instrument`, `orderId`, `fillId`, `groupId` |
+| `Trade` | A spot fill: one posting for the asset received and one for the asset paid | `instrument`, `orderId`, `fillId`, `groupId` |
 | `FundingPayment` | Funding is paid or received for a funding time | `instrument`, `positionId`, `groupId` |
 
-`groupId` ties together postings that belong to the same event: the fee and settlement from one fill share it (a
+Summed per asset, a paper account's transactions equal its wallet totals.
+
+`groupId` ties together postings that belong to the same event: the fee and settlement or `Trade` legs from one fill share it (a
 sweep across several price levels has one fill, and one `groupId`, per level), and so
 do the funding payments for one instrument at one funding time. On a funding payment, `positionId` names the position
 side that was charged, so in hedging mode the long and short legs post separately with different `positionId`s. Treat

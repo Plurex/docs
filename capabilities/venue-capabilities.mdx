@@ -8,7 +8,7 @@ A venue's capabilities say which market-data reads and streams it offers: L2 and
 Read venue headers with [List venues](/api-reference/platform/venues/list) and market summaries with [List venue markets](/api-reference/platform/venues/list-markets). Both are paged.
 
 ```bash
-curl --request POST https://api.plurex.io/api/v1/venues/query/ListMarkets \
+curl --request QUERY https://api.plurex.io/api/v1/venues/query/ListMarkets \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
   --header "X-API-SECRET: $PLUREX_API_SECRET" \

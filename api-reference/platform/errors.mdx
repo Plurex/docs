@@ -31,7 +31,7 @@ The envelope is used for unknown paths (`404 NotFound`), wrong methods (`405 Met
 | `AccountNotFound` | 404 | The `accountId` does not exist, or your key cannot read it. A 403 never reveals that an account ID exists. | Check the ID with [List accounts](/api-reference/platform/accounts/list). |
 | `OrderNotFound` | 404 | The account exists, but the order identifier does not. | Not proof the order never existed; see [Reconciliation rules](#reconciliation-rules). |
 | `NotFound` | 404 | Unknown path, host or venue. | Check the path and the `hostId` or `venueId`. |
-| `MethodNotAllowed` | 405 | The path exists but only accepts `POST`. | Use `POST`. |
+| `MethodNotAllowed` | 405 | The operation uses a different HTTP method. | Use `QUERY` for queries and streams, `POST` for commands. |
 | `DuplicateClientOrderId` | 409 | The host holds another order with this `clientOrderId`. It does not guard against every repeat: on some hosts an order that has already closed does not block the ID, so do not rely on this code to catch duplicates. | Look the order up by client order ID instead of submitting again, and use a unique `clientOrderId` for every order. |
 | `OrderAlreadyClosed` | 409 | The order is already filled, cancelled or rejected. | Do not retry the cancel. Read the order to see how it ended; it may have filled. |
 | `UnsupportedMediaType` | 415 | The request is not `Content-Type: application/json`. | Send the header, with a JSON body. |

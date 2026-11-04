@@ -17,7 +17,7 @@ The preview runs at `http://localhost:3000`. Site settings and navigation live i
 
 The docs describe a pinned commit of the [plurex repository](https://github.com/Plurex/plurex), recorded in `upstream.lock.json`. `.upstream/plurex` is a gitignored clone of it, checked out at that commit and excluded from Mintlify by `.mintignore`. See `AGENTS.md` for how the spec and authored pages divide the work, and `agent_plans/automated_docs_bootstrap.md` for the refresh plan.
 
-`api-reference/platform/plurex-platform-api.yaml` (**OpenAPI 3.2**) is a copy of `platform-public-api/` at the pinned commit. Every endpoint and stream page references it directly, preserving its schemas, tag hierarchy and operation metadata. Streams are `POST` operations with an `application/jsonl` `200` response described by `itemSchema`; their pages turn the playground off.
+`api-reference/platform/plurex-platform-api.yaml` (**OpenAPI 3.2**) is a copy of `platform-public-api/` at the pinned commit. Every endpoint and stream page references it directly, preserving its schemas, tag hierarchy and operation metadata. Streams are `QUERY` operations with an `application/jsonl` `200` response described by `itemSchema`; their pages turn the playground off.
 
 After replacing the spec, sync the endpoint and stream pages and the API reference navigation:
 

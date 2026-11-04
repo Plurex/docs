@@ -44,11 +44,11 @@ Every operation is one of three kinds:
 - A **command** changes state, such as submitting or cancelling an order. Each command says whether it is safe to repeat, because in trading a retry can mean a second order.
 - A **stream** follows one topic and sends you its changes as they happen: a market's order book, trades, prices or candles, or an account's orders and transactions. Most streams start with the current state, such as the whole order book or the account's open orders; the account transaction stream sends only new transactions.
 
-Every operation, streams included, is an HTTP `POST` request with a JSON body, sent to a path that names the operation, such as `/api/v1/hosts/command/SubmitOrder`. There are no `GET`, `PUT` or `DELETE` resources, and IDs never go in the path. This is deliberate:
+The HTTP method states the split: commands are `POST`, and queries and streams are `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)), a safe method that carries a body. Every operation takes a JSON body and is sent to a path that names it, such as `/api/v1/hosts/command/SubmitOrder`. There are no `GET`, `PUT` or `DELETE` resources, and IDs never go in the path. This is deliberate:
 
 - **Operations are trading actions, not resources.** `CancelAllOrders` on one instrument, or `GetOrder` by `clientOrderId`, don't map cleanly onto HTTP verbs and URLs, so each operation is named for what it does.
 - **Requests are typed.** Instruments, order types and lookup variants are structured JSON with a `type` field, which query strings can't express unambiguously.
-- **Retry safety is in the path.** `query` or `command` tells your retry logic what it may repeat.
+- **Retry safety is in the method and path.** `QUERY` tells your retry logic it may repeat; `POST` means check the command.
 - **Responses have a fixed shape.** Unlike GraphQL, you don't choose fields: each operation returns every field every time, with `null` where the host doesn't report a value, and has its own capability entry and errors.
 
 The [OpenAPI specification](/api-reference/platform/overview#specification) describes every operation and stream, so you can generate a client in any language.

@@ -186,7 +186,7 @@ Leverage and position mode are **settings of a market on your account**, not fie
 [List transactions](/api-reference/platform/hosts/list-transactions) returns the account's balance postings: the ledger behind its wallets. Each `AccountTransaction` is one posting of one asset.
 
 - `amount` is signed from your point of view: positive increases the balance, negative decreases it.
-- `type` classifies the posting: `TradingFee`, `FundingPayment`, `BorrowInterest`, `Financing`, `LiquidationFee`, `Settlement`, `Rebate`, `Deposit`, `Withdrawal`, `Transfer`, `Conversion`, `Adjustment` or `Other`. A host lists the types it reports in `accountTransactions.supportedTransactionTypes`.
+- `type` classifies the posting: `TradingFee`, `FundingPayment`, `BorrowInterest`, `Financing`, `LiquidationFee`, `Settlement`, `Trade`, `Rebate`, `Deposit`, `Withdrawal`, `Transfer`, `Conversion`, `Adjustment` or `Other`. A host lists the types it reports in `accountTransactions.supportedTransactionTypes`.
 - `TradingFee` is the fee charged on a fill. A maker rebate paid on a fill is also a `TradingFee`, a negative fee, so its posting credits the balance. `Rebate` is a rebate paid separately from fills, such as a referral or programme rebate.
 - `nativeType` keeps the host's own classification. `Other` is used only for a real posting whose host meaning has no standard type.
 - `id` is stable within the account and identical in history and in the [transaction stream](/api-reference/platform/hosts/subscribe-to-account-transactions), so you can merge the two without duplicates.

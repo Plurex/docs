@@ -259,10 +259,11 @@ How to read a posting:
 | `BorrowInterest` | Interest on borrowed assets. |
 | `Financing` | A financing charge. |
 | `LiquidationFee` | A fee charged on liquidation. |
-| `Settlement` | A contract settlement, such as realised profit or loss. |
+| `Settlement` | Profit or loss realised on a contract, at a reducing fill, a periodic settlement or expiry. |
+| `Trade` | One asset leg of a spot fill: the base or quote amount exchanged. A fill's legs share its `fillId` and `groupId`. |
 | `Deposit`, `Withdrawal` | A deposit to or withdrawal from the account. |
 | `Transfer` | A transfer in or out. |
-| `Conversion` | An asset conversion. |
+| `Conversion` | An asset conversion outside the order book, such as a convert or swap service. |
 | `Adjustment` | A balance adjustment. |
 | `Other` | No standard type; read `nativeType`. |
 

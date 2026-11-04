@@ -5,7 +5,9 @@ description: "Understand request and response formats, paging, unions, batches, 
 
 ## Requests
 
-Every operation is a `POST` with a JSON body and `Content-Type: application/json`, to a path of the form `/api/v1/{domain}/{query|command|stream}/{Action}`. IDs such as `accountId`, `hostId` and `venueId` go in the body, never in the path. See [Commands, queries and streams](/api-reference/platform/overview#commands-queries-and-streams) for the three kinds of operation.
+Commands are `POST`; queries and streams are `QUERY`. Every operation has a JSON body and `Content-Type: application/json`, and goes to a path of the form `/api/v1/{domain}/{query|command|stream}/{Action}`. IDs such as `accountId`, `hostId` and `venueId` go in the body, never in the path. See [Commands, queries and streams](/api-reference/platform/overview#commands-queries-and-streams) for the three kinds of operation.
+
+`QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)) has no `POST` fallback: the wrong method returns `405 MethodNotAllowed`. Most HTTP clients send it as a custom method, in uppercase, for example `curl --request QUERY` or `requests.request("QUERY", url, json=body)` in Python. Java's `HttpURLConnection` refuses it; use `HttpClient`.
 
 Every operation needs a body, even a list with no filters: send `{}` for the first page. Request bodies are strict: unknown fields, unknown enum values and wrong types return `400 InvalidRequest`. Send only the fields the specification defines.
 

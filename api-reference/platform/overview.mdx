@@ -20,7 +20,7 @@ The specification is the contract. Use it to generate clients or validate payloa
 Every operation and stream page in this reference is rendered from it.
 
 <Note>
-  The specification uses OpenAPI 3.2 union nullability (`type: [string, 'null']`). If you generate a client, check that your generator decodes explicit `null` values. Also treat `ErrorCode` and other enums as open: new values can appear without a new API version. Stream responses use OpenAPI 3.2 `itemSchema` to describe each line; generators that predate it may not type them.
+  The specification uses OpenAPI 3.2 union nullability (`type: [string, 'null']`). If you generate a client, check that your generator decodes explicit `null` values. Also treat `ErrorCode` and other enums as open: new values can appear without a new API version. Queries and streams use the OpenAPI 3.2 `query` method, and stream responses use `itemSchema` to describe each line; generators that predate 3.2 may not handle them.
 </Note>
 
 ## Commands, queries and streams
@@ -29,9 +29,9 @@ Every operation is one of three kinds, and its path says which:
 
 | Kind | What it does | Request | Safe to repeat |
 | --- | --- | --- | --- |
-| Query | Reads state | `POST /api/v1/{domain}/query/{Action}` | Always |
+| Query | Reads state | `QUERY /api/v1/{domain}/query/{Action}` | Always |
 | Command | Changes state | `POST /api/v1/{domain}/command/{Action}` | Stated per command |
-| Stream | Follows one topic and sends its changes | `POST /api/v1/{domain}/stream/{Action}` | Yes: opening it again starts a new stream |
+| Stream | Follows one topic and sends its changes | `QUERY /api/v1/{domain}/stream/{Action}` | Yes: opening it again starts a new stream |
 
 Every kind takes a JSON body, and IDs go in the body, never in the path. There are no `GET`, `PUT` or `DELETE` resources. [Commands, queries and streams](/how-plurex-works#commands-queries-and-streams) explains why.
 

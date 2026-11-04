@@ -12,7 +12,7 @@ Each venue lists what it supports in its capabilities, and each market says whic
 [List venues](/api-reference/platform/venues/list) returns every venue with its capabilities:
 
 ```bash
-curl --request POST https://api.plurex.io/api/v1/venues/query/List \
+curl --request QUERY https://api.plurex.io/api/v1/venues/query/List \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
   --header "X-API-SECRET: $PLUREX_API_SECRET" \
@@ -42,7 +42,7 @@ A market's order book comes at two levels. The L2 book is every price level with
 [Get the L2 order book](/api-reference/platform/venues/get-order-book-l2) returns the current book. Both sides list the best price first.
 
 ```bash
-curl --request POST https://api.plurex.io/api/v1/venues/query/GetOrderBookL2 \
+curl --request QUERY https://api.plurex.io/api/v1/venues/query/GetOrderBookL2 \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
   --header "X-API-SECRET: $PLUREX_API_SECRET" \
@@ -112,7 +112,7 @@ Four observation reads each take one `venueId` and one `instrument`, and return 
 | [Get open interest](/api-reference/platform/venues/get-open-interest) | Open interest, for derivatives | `marketData.openInterest` |
 
 ```bash
-curl --request POST https://api.plurex.io/api/v1/venues/query/GetPrice \
+curl --request QUERY https://api.plurex.io/api/v1/venues/query/GetPrice \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
   --header "X-API-SECRET: $PLUREX_API_SECRET" \
@@ -240,7 +240,7 @@ def candles_back_to(start_at, query, venue_id="bybit", price_kind="Traded", inte
     """Yield closed candles newest first, stopping before start_at (an aware datetime)."""
     body = {"venueId": venue_id, "priceKind": price_kind, "interval": interval, "query": query}
     while True:
-        response = requests.post(URL, json=body, headers=HEADERS, timeout=10)
+        response = requests.request("QUERY", URL, json=body, headers=HEADERS, timeout=10)
         response.raise_for_status()
         page = response.json()
         for candle in page["items"]:
@@ -259,7 +259,7 @@ Paging past the first page needs the series' `listBefore`. History does not reac
 [List funding periods](/api-reference/platform/venues/list-funding-periods) returns the finalised funding rates of one perpetual, newest first across every page. Check that the market's `marketData.fundingPeriods` is non-null and its `list` is `true`; any other market returns `422 NotSupported`.
 
 ```bash
-curl --request POST https://api.plurex.io/api/v1/venues/query/ListFundingPeriods \
+curl --request QUERY https://api.plurex.io/api/v1/venues/query/ListFundingPeriods \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
   --header "X-API-SECRET: $PLUREX_API_SECRET" \
@@ -327,7 +327,7 @@ def follow_book(venue_id, instrument, on_book):
     """Keep one market's book until the stream ends. Returns the Ended line, or None if it was lost."""
     body = {"venueId": venue_id, "instrument": instrument}
     # The read timeout only needs to outlast the keepalive lines.
-    with requests.post(URL, json=body, headers=HEADERS, stream=True, timeout=(10, 60)) as response:
+    with requests.request("QUERY", URL, json=body, headers=HEADERS, stream=True, timeout=(10, 60)) as response:
         response.raise_for_status()
         bids, asks = {}, {}
         for line in response.iter_lines():

@@ -130,7 +130,7 @@ Handle both codes as "not enough funds or collateral".
 
 ### Transactions
 
-Paper posts `Deposit`, `Withdrawal`, `TradingFee`, `Settlement` and `FundingPayment` transactions. A live host reports
+Paper posts `Deposit`, `Withdrawal`, `TradingFee`, `Settlement`, `Trade` and `FundingPayment` transactions. A live host reports
 its own set, which may include types such as `Transfer`, `BorrowInterest` or `LiquidationFee`, and may not report
 some of paper's. Read `accountTransactions.supportedTransactionTypes`, and handle types you do not recognise.
 
@@ -151,8 +151,8 @@ import requests
 BASE = "https://api.plurex.io/api/v1"
 
 
-def post(path, body, headers=None):
-    response = requests.post(f"{BASE}/{path}", json=body, headers=headers or {})
+def query(path, body, headers=None):
+    response = requests.request("QUERY", f"{BASE}/{path}", json=body, headers=headers or {})
     response.raise_for_status()
     return response.json()
 
@@ -164,9 +164,9 @@ def supported(support):
 
 
 def load_profile(host_id, instrument):
-    hosts = post("hosts/query/List", {})["items"]  # follow nextCursor in production
+    hosts = query("hosts/query/List", {})["items"]  # follow nextCursor in production
     host = next(h for h in hosts if h["id"] == host_id)
-    markets = post("hosts/query/ListMarkets", {
+    markets = query("hosts/query/ListMarkets", {
         "hostId": host_id,
         "base": instrument["base"],
         "quote": instrument["quote"],

@@ -355,7 +355,7 @@ This flow places a limit order on a paper or real account, confirms it, cancels 
 <Steps>
   <Step title="Read the market's order rules">
     ```bash
-    curl --request POST https://api.plurex.io/api/v1/hosts/query/ListMarkets \
+    curl --request QUERY https://api.plurex.io/api/v1/hosts/query/ListMarkets \
       --header 'Content-Type: application/json' \
       --header "X-API-KEY: $PLUREX_API_KEY" \
       --header "X-API-SECRET: $PLUREX_API_SECRET" \
@@ -391,7 +391,7 @@ This flow places a limit order on a paper or real account, confirms it, cancels 
   </Step>
   <Step title="Confirm the order">
     ```bash
-    curl --request POST https://api.plurex.io/api/v1/hosts/query/GetOrder \
+    curl --request QUERY https://api.plurex.io/api/v1/hosts/query/GetOrder \
       --header 'Content-Type: application/json' \
       --header "X-API-KEY: $PLUREX_API_KEY" \
       --header "X-API-SECRET: $PLUREX_API_SECRET" \

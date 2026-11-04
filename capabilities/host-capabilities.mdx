@@ -8,7 +8,7 @@ A host's header capabilities say which account operations and variants it suppor
 Read them with [List hosts](/api-reference/platform/hosts/list). It is paged:
 
 ```bash
-curl --request POST https://api.plurex.io/api/v1/hosts/query/List \
+curl --request QUERY https://api.plurex.io/api/v1/hosts/query/List \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
   --header "X-API-SECRET: $PLUREX_API_SECRET" \
@@ -125,7 +125,7 @@ Transactions are balance postings: fees, funding payments, deposits and so on.
 | [`subscribeToAccountTransactions`](/api-reference/platform/hosts/subscribe-to-account-transactions) | The transaction stream. |
 | `supportedTransactionTypes` | The `AccountTransactionType` values this host reports. Non-empty when history or the stream is supported. |
 
-The types are `TradingFee`, `FundingPayment`, `BorrowInterest`, `Financing`, `LiquidationFee`, `Settlement`, `Rebate`, `Deposit`, `Withdrawal`, `Transfer`, `Conversion`, `Adjustment` and `Other`. The host reports only the types in `supportedTransactionTypes`, so do not build logic that waits for a type it does not list. History and the stream are separate leaves: a host can offer history without a stream, in which case poll ListTransactions.
+The types are `TradingFee`, `FundingPayment`, `BorrowInterest`, `Financing`, `LiquidationFee`, `Settlement`, `Trade`, `Rebate`, `Deposit`, `Withdrawal`, `Transfer`, `Conversion`, `Adjustment` and `Other`. The host reports only the types in `supportedTransactionTypes`, so do not build logic that waits for a type it does not list. History and the stream are separate leaves: a host can offer history without a stream, in which case poll ListTransactions.
 
 ## Paging and ordering
 
@@ -275,7 +275,7 @@ def choose_lookup(host, order_ref):
 The direct lookup for the host above, as a request to [GetOrder](/api-reference/platform/hosts/get-order):
 
 ```bash
-curl --request POST https://api.plurex.io/api/v1/hosts/query/GetOrder \
+curl --request QUERY https://api.plurex.io/api/v1/hosts/query/GetOrder \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
   --header "X-API-SECRET: $PLUREX_API_SECRET" \

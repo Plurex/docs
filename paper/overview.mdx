@@ -276,8 +276,8 @@ as on the host; what is held or locked is not available to new orders or withdra
 **Spot.** A buy holds quote and a sell holds base while the order is open; a cancel releases the hold. A buy's hold
 includes its fee at the higher of your maker and taker rates, and a market buy is held at its protected worst price.
 Fills move the balances, and what they do not use is released when the order ends. An order the balance cannot cover,
-fee included, returns `422 InsufficientFunds`. Spot trades do not post `Settlement`
-transactions; their fees post as `TradingFee`.
+fee included, returns `422 InsufficientFunds`. A spot fill posts two `Trade`
+transactions, the asset received and the asset paid, and its fee as `TradingFee`.
 
 ### Collateral on perpetuals
 

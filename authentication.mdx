@@ -40,7 +40,7 @@ needs your one-time code when two-factor authentication is on.
 
 ## Authenticate a request
 
-Every operation is a `POST` to `https://api.plurex.io/api/v1/...` with a JSON body. Send your key and secret in two
+Every operation is a request to `https://api.plurex.io/api/v1/...` with a JSON body: `QUERY` for queries and streams, `POST` for commands. Send your key and secret in two
 headers:
 
 | Header | Value |
@@ -51,7 +51,7 @@ headers:
 Both are required. A request with only one of them is treated as unauthenticated.
 
 ```bash
-curl --request POST \
+curl --request QUERY \
   --url https://api.plurex.io/api/v1/accounts/query/List \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
@@ -83,10 +83,10 @@ also invalid. See [Errors](/api-reference/platform/errors) for every error code.
 
 ## Streams
 
-Streams are `POST` requests too, and take the same headers:
+Streams are `QUERY` requests, and take the same headers:
 
 ```bash
-curl --no-buffer --request POST \
+curl --no-buffer --request QUERY \
   --url https://api.plurex.io/api/v1/hosts/stream/SubscribeToAccountOrders \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \

@@ -93,7 +93,7 @@ Plurex currently supports **Bybit** and **VALR** as venues and hosts, with a pap
 Do not hard-code these lists. Discover venues and hosts at runtime, and filter to what your strategy needs:
 
 ```bash
-curl --request POST https://api.plurex.io/api/v1/hosts/query/List \
+curl --request QUERY https://api.plurex.io/api/v1/hosts/query/List \
   --header 'Content-Type: application/json' \
   --header "X-API-KEY: $PLUREX_API_KEY" \
   --header "X-API-SECRET: $PLUREX_API_SECRET" \

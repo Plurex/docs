@@ -1,7 +1,7 @@
 ---
 title: "List candles"
 description: "Closed candles for one market, price kind and interval, newest first, without gaps; the forming candle is never included. ByInstrument starts from the latest closed candle, ByInstrumentBefore from candles ending at or before `before`; paging past the first page needs the market's listBefore. Before the available history the page is empty. A price kind or interval the market does not list returns 422 NotSupported."
-openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/venues/query/ListCandles"
+openapi: "/api-reference/platform/plurex-platform-api.yaml QUERY /api/v1/venues/query/ListCandles"
 ---
 
 import { OperationBadges } from "/snippets/operation-badges.mdx";

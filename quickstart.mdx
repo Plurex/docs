@@ -35,7 +35,7 @@ export PLUREX_API_SECRET="your-api-secret"
     List the hosts:
 
     ```bash
-    curl --request POST \
+    curl --request QUERY \
       --url https://api.plurex.io/api/v1/hosts/query/List \
       --header 'Content-Type: application/json' \
       --header "X-API-KEY: $PLUREX_API_KEY" \
@@ -74,7 +74,7 @@ export PLUREX_API_SECRET="your-api-secret"
     Look up BTC/USDT spot on that host:
 
     ```bash
-    curl --request POST \
+    curl --request QUERY \
       --url https://api.plurex.io/api/v1/hosts/query/ListMarkets \
       --header 'Content-Type: application/json' \
       --header "X-API-KEY: $PLUREX_API_KEY" \
@@ -218,7 +218,7 @@ export PLUREX_API_SECRET="your-api-secret"
 
   <Step title="Read the order back">
     ```bash
-    curl --request POST \
+    curl --request QUERY \
       --url https://api.plurex.io/api/v1/hosts/query/GetOrder \
       --header 'Content-Type: application/json' \
       --header "X-API-KEY: $PLUREX_API_KEY" \
@@ -237,7 +237,7 @@ export PLUREX_API_SECRET="your-api-secret"
 
   <Step title="Check your balances">
     ```bash
-    curl --request POST \
+    curl --request QUERY \
       --url https://api.plurex.io/api/v1/hosts/query/ListWallets \
       --header 'Content-Type: application/json' \
       --header "X-API-KEY: $PLUREX_API_KEY" \

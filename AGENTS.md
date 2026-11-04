@@ -13,7 +13,7 @@ point of view of someone using it.
   `api-reference/platform/{venues,hosts,accounts,paper}/` and the whole "API reference" tab navigation
   (including stream pages, placed beside their query operations). Never hand-edit them; put explanation in authored
   pages.
-  - Every page references its OpenAPI operation. Streams are `POST` operations whose `200` is `application/jsonl` with
+  - Every page references its OpenAPI operation. Streams are `QUERY` operations whose `200` is `application/jsonl` with
     an `itemSchema` message union; their pages set `playground: "none"`, because the response never finishes.
   - Every host and venue page carries a "Check support" block (`snippets/capability-check.mdx`). Header leaves are
     derived from the spec; market descriptors and extra notes come from the `EXTRA` table in the script, which fails
@@ -83,7 +83,7 @@ per-market fidelity and substitution tables.
 - British English spelling (behaviour, recognise, cancelled), matching the spec. Enum values and field names stay
   exactly as the spec spells them.
 - Short paragraphs. Use tables for comparisons, `<Steps>` for procedures, `<Note>`, `<Tip>`, `<Warning>` sparingly.
-- Code: JSON bodies and `curl` with `--request POST`, `--header 'Content-Type: application/json'`, credentials from
+- Code: JSON bodies and `curl` with `--request QUERY` for queries and streams and `--request POST` for commands, `--header 'Content-Type: application/json'`, credentials from
   environment variables (`PLUREX_API_KEY`, `PLUREX_API_SECRET`, `PLUREX_TENANT_ID`, `PLUREX_ACCOUNT_ID`). Language-
   agnostic pseudocode or Python for algorithms. Decimal values are always JSON strings.
 - Every example must validate against the spec schemas: exact field names, `type` discriminators, required fields.

@@ -2,48 +2,7 @@ openapi: 3.2.0
 info:
   title: Plurex Platform API
   version: 1.0.0
-  description: >-
-    Trade across exchanges and brokers through one API, and paper trade any of them with the same API calls.
-
-
-    **Venues** are the exchanges where markets trade. Venue operations are market data.
-
-
-    **Hosts** hold trading accounts and execute orders on a venue's markets. Host operations cover each host's tradable markets
-    and order rules, and every account action. A venue market tells you what is trading; the matching host market tells you
-    what you may order there.
-
-
-    **Tenants** own trading resources: every account belongs to one tenant, and your API keys are created under it. Find your
-    tenant ID next to your API keys on the DevTools page of the Plurex app.
-
-
-    **Accounts** are your accounts on hosts. Connect an exchange or broker account with its API credentials, or create a **paper**
-    account. A paper host simulates a real host against the venue's live order book, and a paper account trades with the same
-    API calls as a real account.
-
-
-    **Capabilities.** Each host and venue lists the operations it supports, and each market lists its order types, settings
-    and market data. Check these before calling: an unsupported call returns 422 NotSupported.
-
-
-    **Requests.** Every operation is a POST with a JSON body (Content-Type application/json) and the X-API-KEY and X-API-SECRET
-    headers. Unknown fields, unknown enum values and wrong types are rejected with 400. Every error has the ErrorEnvelope
-    shape; its code says what went wrong.
-
-
-    **Streams.** Stream operations (paths under /stream/) follow one topic. Errors are ordinary responses before the stream
-    starts; otherwise the 200 response stays open and carries one JSON message per line (application/jsonl). Market data streams
-    start with a Reset holding the current state, then Updates; a Reset can arrive again at any time and replaces everything
-    you hold. The account orders stream starts with a Reset of the open orders, then Updates. The account transactions stream
-    sends an Event per transaction and no snapshot: read history with ListTransactions after it opens. A blank line arrives
-    at least every 15 seconds while the stream is quiet. The last line is Ended, saying why the stream stopped. A stream that
-    falls too far behind, or ends without an Ended line, has lost messages: reopen it after a short, randomized delay and
-    rebuild from its first message. Open one stream per topic.
-
-
-    **Compatibility.** Enum values, union variants, error codes and fields are added without a new version. Ignore unknown
-    fields, and treat unknown enum values and variants as an unrecognised case instead of failing.
+  description: Command and query RPC over HTTP for cross-exchange trading and account management.
 servers:
 - url: https://api.plurex.io
 tags:
@@ -157,7 +116,7 @@ security:
   ApiSecret: []
 paths:
   /api/v1/venues/query/List:
-    post:
+    query:
       operationId: venuesList
       summary: List venues
       description: Lists every venue with the market data it supports.
@@ -259,7 +218,7 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
   /api/v1/venues/query/ListMarkets:
-    post:
+    query:
       operationId: venuesListMarkets
       summary: List venue markets
       description: Lists a venue's markets with the market data each one supports, optionally filtered. Option markets are
@@ -433,7 +392,7 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
   /api/v1/venues/query/GetOrderBookL2:
-    post:
+    query:
       operationId: venuesGetOrderBookL2
       summary: Get the L2 order book
       description: 'The current L2 order book of one market: each price level with the total size resting there. An unknown
@@ -474,7 +433,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/query/GetRecentTrades:
-    post:
+    query:
       operationId: venuesGetRecentTrades
       summary: Get recent trades
       description: The venue's recent public trades for one market, oldest first; not a complete history. An unknown market
@@ -515,7 +474,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/stream/SubscribeToOrderBookL2s:
-    post:
+    query:
       operationId: venuesSubscribeToOrderBookL2s
       summary: Stream the L2 order book
       description: 'Streams one market''s L2 order book: a Reset of the whole book, then Updates of the changed levels. An
@@ -564,7 +523,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/stream/SubscribeToTrades:
-    post:
+    query:
       operationId: venuesSubscribeToTrades
       summary: Stream public trades
       description: 'Streams one market''s public trades: a Reset of the recent trades, then Updates with new trades. An unlisted
@@ -613,7 +572,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/query/GetPrice:
-    post:
+    query:
       operationId: venuesGetPrice
       summary: Get a price
       description: The current price of one kind (traded, mark or index) for one market. A market or kind the venue does not
@@ -675,7 +634,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/stream/SubscribeToPrices:
-    post:
+    query:
       operationId: venuesSubscribeToPrices
       summary: Stream a price
       description: 'Streams one market''s price of one kind: a Reset with the current value, then an Update on each change.
@@ -725,7 +684,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/query/GetOrderBookL1:
-    post:
+    query:
       operationId: venuesGetOrderBookL1
       summary: Get the L1 order book
       description: 'The current top of book of one market: the best bid and ask with the total size at each. A market the
@@ -792,7 +751,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/stream/SubscribeToOrderBookL1s:
-    post:
+    query:
       operationId: venuesSubscribeToOrderBookL1s
       summary: Stream the L1 order book
       description: 'Streams one market''s top of book: a Reset with the current best bid and ask, then an Update with the
@@ -842,7 +801,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/query/GetMarketStatistics:
-    post:
+    query:
       operationId: venuesGetMarketStatistics
       summary: Get market statistics
       description: Statistics for one market, over the window it declares. A market the venue does not serve returns 422 NotSupported.
@@ -910,7 +869,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/stream/SubscribeToMarketStatistics:
-    post:
+    query:
       operationId: venuesSubscribeToMarketStatistics
       summary: Stream market statistics
       description: 'Streams one market''s statistics: a Reset with the current values, then an Update on each change. A market
@@ -960,7 +919,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/query/GetIndicativeFunding:
-    post:
+    query:
       operationId: venuesGetIndicativeFunding
       summary: Get indicative funding
       description: The current indicative funding rate for one perpetual; the rate that settles can differ. A market the venue
@@ -1022,7 +981,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/stream/SubscribeToIndicativeFundings:
-    post:
+    query:
       operationId: venuesSubscribeToIndicativeFundings
       summary: Stream indicative funding
       description: 'Streams one perpetual''s indicative funding rate: a Reset with the current estimate, then an Update on
@@ -1072,7 +1031,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/query/GetOpenInterest:
-    post:
+    query:
       operationId: venuesGetOpenInterest
       summary: Get open interest
       description: The current open interest for one derivative, in the unit its market declares. A market the venue does
@@ -1134,7 +1093,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/stream/SubscribeToOpenInterests:
-    post:
+    query:
       operationId: venuesSubscribeToOpenInterests
       summary: Stream open interest
       description: 'Streams one derivative''s open interest: a Reset with the current amount, then an Update on each change.
@@ -1184,7 +1143,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/query/ListCandles:
-    post:
+    query:
       operationId: venuesListCandles
       summary: List candles
       description: Closed candles for one market, price kind and interval, newest first, without gaps; the forming candle
@@ -1287,7 +1246,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/query/ListFundingPeriods:
-    post:
+    query:
       operationId: venuesListFundingPeriods
       summary: List funding periods
       description: Finalized funding rates for one perpetual, newest first across every page. A market the venue does not
@@ -1352,7 +1311,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/venues/stream/SubscribeToCandles:
-    post:
+    query:
       operationId: venuesSubscribeToCandles
       summary: Stream candles
       description: 'Streams one market''s candles of one price kind and interval: a Reset of the recent candles, then an Update
@@ -1403,7 +1362,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/query/List:
-    post:
+    query:
       operationId: hostsList
       summary: List hosts
       description: Lists every host, real and paper, with the operations it supports.
@@ -1636,6 +1595,7 @@ paths:
                           - Withdrawal
                           - TradingFee
                           - Settlement
+                          - Trade
                       isPaper: true
                       supportedCredentialTypes:
                       - Paper
@@ -1651,7 +1611,7 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
   /api/v1/hosts/query/ListMarkets:
-    post:
+    query:
       operationId: hostsListMarkets
       summary: List host markets
       description: Lists a host's markets with their order types, order rules and settings, optionally filtered. Option markets
@@ -1900,7 +1860,7 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
   /api/v1/hosts/query/GetOrder:
-    post:
+    query:
       operationId: hostsGetOrder
       summary: Get an order
       description: Gets one order by ID or clientOrderId. 404 OrderNotFound can mean the order is not visible yet.
@@ -2003,7 +1963,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/query/GetOrders:
-    post:
+    query:
       operationId: hostsGetOrders
       summary: Get orders
       description: Gets the orders you name. Unknown identifiers are left out.
@@ -2050,7 +2010,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/query/ListOpenOrders:
-    post:
+    query:
       operationId: hostsListOpenOrders
       summary: List open orders
       description: Lists live orders, globally or for one instrument.
@@ -2156,7 +2116,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/stream/SubscribeToAccountOrders:
-    post:
+    query:
       operationId: hostsSubscribeToAccountOrders
       summary: Stream account orders
       description: Streams one account's orders, starting with a Reset of its open orders, then an Update per change the host
@@ -2209,7 +2169,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/query/ListClosedOrders:
-    post:
+    query:
       operationId: hostsListClosedOrders
       summary: List closed orders
       description: Lists filled, cancelled and rejected orders, globally or for one instrument, optionally before or after
@@ -2257,7 +2217,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/query/ListFills:
-    post:
+    query:
       operationId: hostsListFills
       summary: List fills
       description: Lists executions for one order, one instrument or the whole account.
@@ -2373,7 +2333,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/query/ListTransactions:
-    post:
+    query:
       operationId: hostsListTransactions
       summary: List account transactions
       description: Lists the account's balance postings, in the order the host's listTransactions capability states. Posting
@@ -2421,7 +2381,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/stream/SubscribeToAccountTransactions:
-    post:
+    query:
       operationId: hostsSubscribeToAccountTransactions
       summary: Stream account transactions
       description: Streams one account's new balance postings, with the IDs ListTransactions returns; reconcile with ListTransactions
@@ -2472,7 +2432,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/query/ListWallets:
-    post:
+    query:
       operationId: hostsListWallets
       summary: List wallets
       description: Lists the account's asset balances.
@@ -2540,7 +2500,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/query/ListOpenPositions:
-    post:
+    query:
       operationId: hostsListOpenPositions
       summary: List open positions
       description: Lists the account's open derivative positions.
@@ -2632,7 +2592,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/query/ListAccountMarginStates:
-    post:
+    query:
       operationId: hostsListAccountMarginStates
       summary: List margin states
       description: Lists the account's margin state per margin group.
@@ -2678,7 +2638,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/query/GetAccountMarketState:
-    post:
+    query:
       operationId: hostsGetAccountMarketState
       summary: Get market account state
       description: Gets the account's balances, position, collateral and leverage for one market.
@@ -2788,7 +2748,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/query/GetMarketLeverage:
-    post:
+    query:
       operationId: hostsGetMarketLeverage
       summary: Get market leverage
       description: Gets the account's current leverage setting for one market.
@@ -2834,7 +2794,7 @@ paths:
         '504':
           $ref: '#/components/responses/UpstreamTimeout'
   /api/v1/hosts/query/GetMarketPositionMode:
-    post:
+    query:
       operationId: hostsGetMarketPositionMode
       summary: Get market position mode
       description: Gets the account's position mode for one market.
@@ -3545,7 +3505,7 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
   /api/v1/accounts/query/List:
-    post:
+    query:
       operationId: accountsList
       summary: List accounts
       description: Lists your accounts, optionally filtered.
@@ -3581,7 +3541,7 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
   /api/v1/accounts/query/Get:
-    post:
+    query:
       operationId: accountsGet
       summary: Get an account
       description: Gets one account.
@@ -3782,7 +3742,7 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
   /api/v1/paper/query/GetHostFeeTiers:
-    post:
+    query:
       operationId: paperGetHostFeeTiers
       summary: Get paper host fee tiers
       description: Gets a paper host's selectable fee tiers and its default tier.
@@ -3817,7 +3777,7 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
   /api/v1/paper/query/GetFeeSettings:
-    post:
+    query:
       operationId: paperGetFeeSettings
       summary: Get paper fee settings
       description: Gets the available fee tiers and the selected tier.
@@ -3856,7 +3816,7 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
   /api/v1/paper/query/GetEffectiveFeeRates:
-    post:
+    query:
       operationId: paperGetEffectiveFeeRates
       summary: Get effective paper fee rates
       description: Gets the maker and taker rates that apply to new orders on one instrument.
@@ -6493,6 +6453,11 @@ components:
           - boolean
           - 'null'
           description: Only paper (true) or connected (false) accounts; null or omitted matches both.
+        search:
+          type:
+          - string
+          - 'null'
+          description: Case-insensitive match on the account name; every word must appear.
         cursor:
           type:
           - string
@@ -7071,11 +7036,15 @@ components:
     PaperInstrumentFeeRates:
       type: object
       properties:
+        label:
+          type: string
+          description: A short name for the instruments the pattern matches, such as Perpetuals; unique within the tier.
         instrumentPattern:
           type: string
         rates:
           $ref: '#/components/schemas/PaperFeeRates'
       required:
+      - label
       - instrumentPattern
       - rates
       description: Fee rates that replace a tier's defaults for instruments whose canonical symbol matches the regular expression
@@ -9020,6 +8989,7 @@ components:
       - Financing
       - LiquidationFee
       - Settlement
+      - Trade
       - Rebate
       - Deposit
       - Withdrawal
@@ -9029,10 +8999,12 @@ components:
       - Other
       description: 'The kind of balance posting. TradingFee: a fee charged on a fill, or a maker rebate paid on it, which
         has a positive amount. FundingPayment: a perpetual funding payment. BorrowInterest: interest on borrowed assets. Financing:
-        a financing charge. LiquidationFee: a fee charged on liquidation. Settlement: a contract settlement. Rebate: a rebate
-        paid separately from fills (such as referral or programme rebates). Deposit: a deposit. Withdrawal: a withdrawal.
-        Transfer: a transfer in or out. Conversion: an asset conversion. Adjustment: a balance adjustment. Other: no standard
-        type; see nativeType.'
+        a financing charge. LiquidationFee: a fee charged on liquidation. Settlement: profit or loss realized on a contract,
+        whether at a reducing fill, a periodic settlement or expiry. Trade: one asset leg of a spot fill, the base or quote
+        amount exchanged; a fill''s legs share its fillId and groupId. Rebate: a rebate paid separately from fills (such
+        as referral or programme rebates). Deposit: a deposit. Withdrawal: a withdrawal. Transfer: a transfer in or out.
+        Conversion: an asset conversion outside the order book, such as a convert or swap service. Adjustment: a balance
+        adjustment. Other: no standard type; see nativeType.'
     AccountTransactionsCapabilities:
       type: object
       properties:
@@ -9593,7 +9565,7 @@ components:
         unknown fields or enum values, or invalid values. Unauthenticated (401): missing or invalid API key headers. Forbidden
         (403): no access to the account or operation. AccountNotFound (404): the accountId does not exist. OrderNotFound (404):
         the order identifier does not exist on the account. NotFound (404): unknown path, host or venue. MethodNotAllowed
-        (405): the path accepts only POST. DuplicateClientOrderId (409): the host holds another order with this clientOrderId.
+        (405): the operation uses a different HTTP method. DuplicateClientOrderId (409): the host holds another order with this clientOrderId.
         OrderAlreadyClosed (409): the order is filled, cancelled or rejected. UnsupportedMediaType (415): the request is not
         Content-Type application/json. InsufficientFunds (422): the account cannot fund the order or withdrawal. InvalidProviderCredentials
         (422): the provider rejected the credentials (invalid, expired or revoked). ProviderAccessDenied (422): the credentials

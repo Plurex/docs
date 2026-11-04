@@ -97,7 +97,7 @@ A new paper account starts with no balances; fund it with [Deposit](/api-referen
 | [Update credentials](/api-reference/platform/accounts/update-connection) | Replaces a connected account's exchange credentials, for example when you rotate keys. The new key is checked like a new connection, but Plurex does not check that it belongs to the same exchange account, so use a key for that account. | `accountId`, `credential` |
 | [Rename](/api-reference/platform/accounts/rename) | Changes the account's name. | `accountId`, `name` |
 | [Delete](/api-reference/platform/accounts/delete) | Removes the account from Plurex. | `accountId` |
-| [List accounts](/api-reference/platform/accounts/list) | Lists the tenant's accounts, optionally only on some hosts (`hostIds`) or only paper or real (`isPaper`). Paged: follow `nextCursor` until it is `null`. | `tenantId`, optional filters |
+| [List accounts](/api-reference/platform/accounts/list) | Lists the tenant's accounts, optionally only on some hosts (`hostIds`), only paper or real (`isPaper`), or by name (`search`, where every word must match). Paged: follow `nextCursor` until it is `null`. | `tenantId`, optional filters |
 | [Get an account](/api-reference/platform/accounts/get) | Returns one account. | `accountId` |
 
 For example, to list only your paper accounts:
