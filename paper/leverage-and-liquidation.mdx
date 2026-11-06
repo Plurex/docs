@@ -7,7 +7,8 @@ Paper perpetuals trade with leverage and can be liquidated, so a forward test sh
 not only how its orders fill. You choose leverage per market, margin is held and locked at it, and an account that
 falls to maintenance margin has its positions closed through the live book.
 
-These are paper's rules, and they are the same on every paper host. A live host has its own; see
+These rules apply on every paper host, and each host takes its values from its model host: which assets count as
+collateral, their weights and the leverage each market allows. A live host has its own rules; see
 [From paper to live](/paper/going-live#leverage-and-liquidation).
 
 ## Collateral
@@ -15,9 +16,10 @@ These are paper's rules, and they are the same on every paper host. A live host 
 Collateral is a single cross pool shared by every perpetual on the account, modelled on the model host's account. The
 whole pool backs every position.
 
-- **Several assets count.** The pool uses the model host's main collateral assets. Stablecoins count at full value;
-  assets such as BTC and ETH count at a discount (a weight below 1) to their value. Other assets add nothing, so
-  deposit one of the model host's collateral assets, typically its stablecoins, to trade its perpetuals.
+- **The model host decides what counts.** The pool uses the model host's main collateral assets and their weights, so
+  both differ between paper hosts. A weight of 1 counts an asset at full value, and a lower weight discounts it. Any
+  other asset adds nothing, so deposit one the model host accepts to trade its perpetuals. `totalCollateralValue` in
+  [List margin states](/api-reference/platform/hosts/list-margin-states) shows what a deposit added.
 - **One valuation asset.** The pool is one margin group, valued in the `valueAsset` that
   [List margin states](/api-reference/platform/hosts/list-margin-states) reports. Each collateral asset is converted at
   a live reference price.
@@ -84,8 +86,8 @@ Liquidation starts when the pool's equity falls to its total maintenance margin.
 ### Your leverage does not move the liquidation price
 
 Maintenance does not depend on the leverage you chose, and the whole pool backs each position, so leverage changes what
-stays available for new orders, not where the position is closed. Take 1,000 USDT and a long of 0.08 BTC at 50,000,
-worth 4,000, on a market with a maximum of 100, ignoring fees:
+stays available for new orders, not where the position is closed. Take 1,000 USDT counted at full value and a long of
+0.08 BTC at 50,000, worth 4,000, on a market with a maximum of 100, ignoring fees:
 
 | | At 10× | At 5× |
 | --- | --- | --- |
@@ -94,8 +96,8 @@ worth 4,000, on a market with a maximum of 100, ignoring fees:
 | Liquidation price | 37,688.44 | 37,688.44 |
 
 Equity reaches maintenance when 1,000 + 0.08 × (mark − 50,000) = 0.08 × mark × 0.005. What moves the price is more
-collateral, a different position size, or profit and loss on your other positions. With discounted collateral such as
-BTC, leverage can move it slightly, because locked margin counts in full and free collateral at its weight.
+collateral, a different position size, or profit and loss on your other positions. With collateral at a weight below
+1, leverage can move it slightly, because locked margin counts in full and free collateral at its weight.
 
 <Note>
   1× is not exempt. A short at 1× can be liquidated, because its loss has no limit.
