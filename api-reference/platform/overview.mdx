@@ -1,9 +1,25 @@
 ---
 title: "Platform API"
-description: "Base URL, specification, authentication and the structure of the Plurex Platform API and its streams."
+description: "The Plurex Platform API is command and query RPC over HTTP with long-lived streams: how it is shaped, where it lives and how to call it."
 ---
 
-The Platform API is JSON over HTTP, with streams as long-lived HTTP responses. For concepts and how-to guides, start with [How Plurex works](/how-plurex-works).
+The Platform API is command and query RPC over HTTP, with long-lived streams. You call an operation by name with a JSON body rather than acting on resources: commands change state, queries read it, and streams stay open to send you changes as they happen.
+
+For concepts and how-to guides, start with [How Plurex works](/how-plurex-works).
+
+## Commands, queries and streams
+
+Every operation is one of three kinds, and its path says which:
+
+| Kind | What it does | Request | Safe to repeat |
+| --- | --- | --- | --- |
+| Query | Reads state | `QUERY /api/v1/{domain}/query/{Action}` | Always |
+| Command | Changes state | `POST /api/v1/{domain}/command/{Action}` | Unless it has the Not safe to repeat badge |
+| Stream | Follows one topic and sends its changes | `QUERY /api/v1/{domain}/stream/{Action}` | Yes: opening it again starts a new stream |
+
+There are no `GET`, `PUT` or `DELETE` resources. [Requests](/api-reference/platform/conventions#requests) has the rules, and [How Plurex works](/how-plurex-works#commands-queries-and-streams) explains why.
+
+Each stream page shows its message union under the `200` response, and streams are listed beside their query operations. See [Streams](/guides/streams).
 
 ## Base URL
 
@@ -16,20 +32,6 @@ The OpenAPI 3.2 specification (`plurex-platform-api.yaml`) is the contract. It c
 <Note>
   Queries and streams use the OpenAPI 3.2 `query` method, and stream responses use `itemSchema` to describe each line; generators that predate 3.2 may not handle them. Check that yours decodes explicit `null` values (`type: [string, 'null']`), and treat `ErrorCode` and other enums as [open](/api-reference/platform/conventions#compatibility): new values can appear without a new API version.
 </Note>
-
-## Commands, queries and streams
-
-Every operation is one of three kinds, and its path says which:
-
-| Kind | What it does | Request | Safe to repeat |
-| --- | --- | --- | --- |
-| Query | Reads state | `QUERY /api/v1/{domain}/query/{Action}` | Always |
-| Command | Changes state | `POST /api/v1/{domain}/command/{Action}` | Unless it has the Not safe to repeat badge |
-| Stream | Follows one topic and sends its changes | `QUERY /api/v1/{domain}/stream/{Action}` | Yes: opening it again starts a new stream |
-
-Every kind takes a JSON body, and there are no `GET`, `PUT` or `DELETE` resources. [Requests](/api-reference/platform/conventions#requests) has the rules, and [How Plurex works](/how-plurex-works#commands-queries-and-streams) explains why.
-
-Each stream page shows its message union under the `200` response, and streams are listed beside their query operations. See [Streams](/guides/streams).
 
 ## Domains
 
