@@ -19,10 +19,12 @@ replay history. When a strategy earns it, [switch the same code to a connected a
 | [Trigger orders](#trigger-orders) | Stops and take-profits watch the live last trade, best bid or ask, mark or index price. |
 | [Wallets and collateral](#positions-collateral-and-balances) | Balances are held and locked as on the host. Perpetual collateral is a weighted, multi-asset pool modelled on the host's account. |
 | [Positions](#positions-collateral-and-balances) | Spot, linear and inverse perpetuals, in netting or hedging mode, with realised profit and loss, and unrealised profit and loss at the mark price. |
+| [Leverage and margin](/paper/leverage-and-liquidation) | Leverage set per market within the model host's range, with margin held and locked at it. |
+| [Liquidation](/paper/leverage-and-liquidation#what-happens-in-a-liquidation) | An account that falls to maintenance margin has its orders cancelled and its positions closed through the live book. |
 | [Fees](/paper/fees-and-funding#trading-fees) | Maker and taker rates from the exchange's published fee tiers, including VIP tiers and rebates. |
 | [Funding](/paper/fees-and-funding#perpetual-funding) | Perpetuals pay and receive funding at the venue's real funding times, from its finalised rates. |
 | [Accounting](/paper/fees-and-funding#read-it-all-back) | Summed per asset, an account's transactions equal its wallet totals, so you can reconcile every balance. |
-| [The API](#the-same-api-as-a-real-account) | Every host operation and both account streams, the same as a real account, with leverage the one exception. |
+| [The API](#the-same-api-as-a-real-account) | Every host operation and both account streams, the same as a real account. |
 
 ## Paper hosts
 
@@ -41,17 +43,16 @@ Paper markets take their order rules from the model host: the same instruments, 
 value floors, and the same order types and order options where paper can simulate them. Paper simulates spot, linear
 perpetual and inverse perpetual markets, so its market list can be smaller than the model host's. Read the paper
 host's own markets with [List host markets](/api-reference/platform/hosts/list-markets) rather than assuming they
-match. New listings and changed order rules reach the paper host without any action from you, and markets the model
-host stops listing stop accepting new orders.
+match. New listings, changed order rules and changed leverage ranges reach the paper host without any action from you.
 
 A paper host publishes its own [capabilities](/capabilities/host-capabilities). It supports every order query and
 cancel variant, fill lookup, transaction history and account stream whatever its model host offers, so you can
-exercise your whole integration on paper, leverage control aside. Read the paper host's capabilities while you paper
-trade, and the model host's [before you go live](/paper/going-live).
+exercise your whole integration on paper. Read the paper host's capabilities while you paper trade, and the model
+host's [before you go live](/paper/going-live).
 
 ### The same API as a real account
 
-A paper account uses every `/hosts` operation except leverage, both account streams
+A paper account uses every `/hosts` operation, both account streams
 ([order changes](/api-reference/platform/hosts/subscribe-to-account-orders) and
 [transactions](/api-reference/platform/hosts/subscribe-to-account-transactions)), and the account operations
 [List](/api-reference/platform/accounts/list), [Get](/api-reference/platform/accounts/get),
@@ -123,8 +124,8 @@ test how your strategy behaves with a low or empty balance. The request has the 
 
 - Only the available balance can be withdrawn. Funds held by open orders or locked as position margin cannot, so
   cancel orders or close positions first.
-- A withdrawal above the available balance, including from an asset the account does not hold, fails with
-  `422 InsufficientFunds` and changes nothing.
+- A withdrawal above the available balance, including from an asset the account does not hold, or above what an open
+  position's loss or a debt leaves available, fails with `422 InsufficientFunds` and changes nothing.
 - Each withdrawal posts a `Withdrawal` transaction with a negative amount, and a repeat withdraws again. If the outcome
   is unclear, check List transactions before retrying.
 
@@ -195,11 +196,21 @@ fee with [List fills](/api-reference/platform/hosts/list-fills).
 | Reduce-only or `Close` order larger than the position left to close | Trimmed to what is left, in netting and hedging mode. Other open orders that would close the position count against what is left. |
 | Trimmed closing order | Keeps its requested `size`. It ends `Filled` once the trimmed size trades, or `Cancelled` with what it traded if the position shrinks first. |
 | Reduce-only order with nothing left to close, no position, or on the wrong side | Rejected with `422 Rejected` |
+| Reduce-only market order to close a remainder below the market's minimum size | Request at least the minimum, and the order is trimmed to what is left. A request for exactly the remainder breaks the order rules. |
 | Market order with no opposite liquidity | Rejected with `422 Rejected` |
 | Order that partly fills and keeps resting | `LIVE`, with `sizeTraded` above zero |
 
 Which options each market accepts is in its [order rules](/capabilities/order-rules), from
 [List host markets](/api-reference/platform/hosts/list-markets).
+
+### When market data drops
+
+Paper never decides on stale data. If Plurex's live feed for a market drops, resting orders and triggers wait, and carry
+on from the first fresh data. A crossed book then fills a resting order at its own price. Anything that came and went
+in between is lost: paper does not invent missed fills or trigger crossings.
+
+New orders still see the venue's current book. If it cannot be read, the order is rejected with `502 UpstreamFailure`
+and its funds are released.
 
 ## Trigger orders
 
@@ -236,23 +247,9 @@ posts two `Trade` transactions, the asset received and the asset paid, and its f
 
 ### Collateral on perpetuals
 
-Paper trades perpetuals at 1×, without leverage: opening risk needs collateral equal to the position's value plus the
-order's fee. An order that needs more collateral than is available is rejected with `422 InsufficientFunds`.
-
-Collateral is a single cross pool shared by every perpetual on the account, modelled on the model host's account:
-
-- **Several assets count.** The pool uses the model host's main collateral assets. Stablecoins count at full value;
-  assets such as BTC and ETH count at a discount (a weight below 1) to their value. Other assets add nothing, so
-  deposit one of the model host's collateral assets, typically its stablecoins, to trade its perpetuals.
-- **One valuation asset.** The pool is valued in one asset, reported as `baseCollateralAsset` in
-  [List margin states](/api-reference/platform/hosts/list-margin-states). Each collateral asset is converted at a live
-  reference price.
-- **What you can open** is the weighted available collateral, less what open orders hold and positions lock, less any
-  negative balances at full value and any position loss beyond what the position has locked. Unrealised profit does
-  not add to it.
-- **Reading it.** List margin states reports the pool's total, and
-  [Get market state](/api-reference/platform/hosts/get-market-state) its total and available collateral. The total
-  includes unrealised profit and loss at the mark price.
+Perpetuals share one cross collateral pool, modelled on the model host's account, and trade at the leverage you set per
+market. Opening risk needs margin at that leverage plus the order's fee, and an order that needs more collateral than
+is available is rejected with `422 InsufficientFunds`. See [Leverage and liquidation](/paper/leverage-and-liquidation).
 
 ### Positions and profit and loss
 
@@ -261,17 +258,16 @@ Collateral is a single cross pool shared by every perpetual on the account, mode
   closes a position.
 - [List open positions](/api-reference/platform/hosts/list-positions) and Get market state report each open leg's
   `markPrice` and its `unrealizedPnl` at that price, in the settlement asset, before fees and funding.
-- There is no liquidation. Losses, fees and funding can take a balance negative. A negative balance blocks new risk.
-- A closing order is never refused for lack of funds. An order that reverses a netting position needs collateral for
-  its new side; if that cannot be covered, the whole order is rejected with `422 InsufficientFunds`.
+- Losses, fees and funding can take a balance negative, which counts against your available collateral. An account that
+  falls to maintenance margin is [liquidated](/paper/leverage-and-liquidation#when-liquidation-starts).
+- A closing order is never refused for lack of funds.
 
 ### Position mode
 
 New perpetual positions start in netting mode. Where a market offers hedging, switch with
 [Set position mode](/api-reference/platform/hosts/set-position-mode) while the market is flat and has no open orders.
 In netting mode, an order larger than the position closes it and opens the other way. In hedging mode, long and short
-legs are independent, each with its own entry price, profit and loss, fees and funding, and each fully backed by
-collateral.
+legs are independent, each with its own entry price, profit and loss, fees, funding and margin.
 
 In hedging mode every order must set `positionEffect`: `Open` adds to the leg on the order's side, and `Close` reduces
 the opposite leg. Paper rejects an order without it with `422 Rejected`.
@@ -283,8 +279,9 @@ to read your results.
 
 | Not simulated | What happens instead |
 | --- | --- |
-| Leverage | Perpetuals trade at 1× collateral. [Get leverage](/api-reference/platform/hosts/get-leverage) and [Set leverage](/api-reference/platform/hosts/set-leverage) are not supported, every paper market's `settings.leverage` is `null`, and Get market state reports `currentLeverageSetting` as `null`. |
-| Liquidation, maintenance margin, auto-deleveraging | Balances can go negative; a closing order is never refused for lack of funds |
+| Risk tiers | Maintenance margin and maximum leverage stay the same at every position size. Exchanges tighten both as a position grows, so paper can allow a large position, above all in an illiquid market, that a live host would refuse or liquidate sooner. |
+| Insurance funds, auto-deleveraging, bankruptcy prices | Liquidations fill at real book prices, and a loss beyond the account is [written off](/paper/leverage-and-liquidation#losses-beyond-the-account). |
+| Liquidation on every tick | Paper checks accounts repeatedly, not on every price change, so at high leverage a close can come later and at a worse price than an exchange's. |
 | Borrowing, interest and isolated margin | Not available |
 | Dated futures and options | Not listed on paper hosts |
 | Resets | Create a new account to start fresh; use Withdraw to lower a balance |
@@ -297,7 +294,10 @@ to read your results.
 
 ## Next steps
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
+  <Card title="Leverage and liquidation" icon="gauge" href="/paper/leverage-and-liquidation">
+    Set leverage, read margin and see when positions close.
+  </Card>
   <Card title="Fees and funding" icon="percent" href="/paper/fees-and-funding">
     Choose a fee tier and follow funding payments.
   </Card>

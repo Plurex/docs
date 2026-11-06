@@ -113,7 +113,7 @@ Documentation tab:
 - Capabilities: `capabilities/overview`, `capabilities/host-capabilities`, `capabilities/order-rules`,
   `capabilities/venue-capabilities`
 - Trading guides: `guides/orders`, `guides/streams`, `guides/portfolio`, `guides/market-data`
-- Paper trading: `paper/overview`, `paper/fees-and-funding`, `paper/going-live`
+- Paper trading: `paper/overview`, `paper/leverage-and-liquidation`, `paper/fees-and-funding`, `paper/going-live`
 - Web app: `platform/overview`, `platform/add-exchange`
 
 API reference tab: `api-reference/platform/{overview,conventions,errors}` then the generated pages.

@@ -202,7 +202,7 @@ positive for a gain, negative for a loss. Spot trades do not post settlements; t
 
 ## Read it all back
 
-Every fee, funding payment, settlement, deposit and withdrawal is a transaction on the account. Read them with
+Every fee, funding payment, settlement, deposit, withdrawal and write-off is a transaction on the account. Read them with
 [List transactions](/api-reference/platform/hosts/list-transactions) or follow them live with the
 [transaction stream](/api-reference/platform/hosts/subscribe-to-account-transactions). A paper account reports these
 types:
@@ -215,6 +215,7 @@ types:
 | `Settlement` | A perpetual fill realises profit or loss | `instrument`, `orderId`, `fillId`, `groupId` |
 | `Trade` | A spot fill: one posting for the asset received and one for the asset paid | `instrument`, `orderId`, `fillId`, `groupId` |
 | `FundingPayment` | Funding is paid or received for a funding time | `instrument`, `positionId`, `groupId` |
+| `Adjustment` | A [loss beyond the account](/paper/leverage-and-liquidation#losses-beyond-the-account) is written off | none |
 
 Summed per asset, a paper account's transactions equal its wallet totals.
 

@@ -1,0 +1,173 @@
+---
+title: "Leverage and liquidation"
+description: "How paper perpetuals use collateral and leverage, when an account is liquidated, and what happens to a loss bigger than the account."
+---
+
+Paper perpetuals trade with leverage and can be liquidated, so a forward test shows what leverage does to a strategy,
+not only how its orders fill. You choose leverage per market, margin is held and locked at it, and an account that
+falls to maintenance margin has its positions closed through the live book.
+
+These are paper's rules, and they are the same on every paper host. A live host has its own; see
+[From paper to live](/paper/going-live#leverage-and-liquidation).
+
+## Collateral
+
+Collateral is a single cross pool shared by every perpetual on the account, modelled on the model host's account. The
+whole pool backs every position.
+
+- **Several assets count.** The pool uses the model host's main collateral assets. Stablecoins count at full value;
+  assets such as BTC and ETH count at a discount (a weight below 1) to their value. Other assets add nothing, so
+  deposit one of the model host's collateral assets, typically its stablecoins, to trade its perpetuals.
+- **One valuation asset.** The pool is one margin group, valued in the `valueAsset` that
+  [List margin states](/api-reference/platform/hosts/list-margin-states) reports. Each collateral asset is converted at
+  a live reference price.
+- **Equity** is your free collateral at its weights, plus locked margin, plus all unrealised profit and loss at the mark
+  price, gains included. It is reported as `totalCollateralValue`, and as `collateral.total` in
+  [Get market state](/api-reference/platform/hosts/get-market-state).
+
+## Leverage
+
+Leverage is a setting on a market for your account. Read it with
+[Get leverage](/api-reference/platform/hosts/get-leverage) and change it with
+[Set leverage](/api-reference/platform/hosts/set-leverage):
+
+```json
+{
+  "accountId": "acc_123",
+  "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
+  "leverage": "10"
+}
+```
+
+The paper market's `settings.leverage` gives the values it accepts, which are the model host's. See
+[Order rules](/capabilities/order-rules#leverage).
+
+- **Default.** A market you have not set uses its `min`, normally 1×.
+- **Changing it.** The market must be flat: with a position or an open order there, Set leverage returns
+  `422 Rejected`. Setting the value already in force always succeeds. A change reaches that market only.
+- **Trigger orders.** A waiting trigger order does not block a change, and uses the leverage in force when it fires.
+- **Position mode.** Your leverage carries across a position mode change, and hedging legs both use it.
+- **No leverage setting.** A market whose `settings.leverage` is `null` trades at 1×, owes no maintenance margin and is
+  never liquidated. Spot markets have no leverage.
+
+## Margin
+
+| When | What happens |
+| --- | --- |
+| An order is accepted | It holds its margin, its value divided by leverage, plus its fee on the **full** value at the higher of your maker and taker rates. A limit order is valued at its price, and a market order at the average of the book levels it needs, widened by its protection. An order the available collateral cannot cover returns `422 InsufficientFunds`. |
+| It fills | The fill locks its initial margin: its value at the fill price, divided by leverage. Locked margin stays at the opening price and does not follow the mark. |
+| It ends | What it held and did not use is released. |
+| The position closes | Margin is released in proportion to the size closed, and profit, loss and fees post to the settlement asset. |
+
+A closing order needs no margin and is never refused for lack of funds. An order that reverses a netting position needs
+margin for its new side; if that cannot be covered, the whole order is rejected with `422 InsufficientFunds`.
+
+**Available collateral**, which is what you can open with, is the weighted collateral not held or locked, less any
+negative balances at full value and the pool's net unrealised loss. Gains offset losses across your positions but never
+add to what is available, so profit funds new positions only once it is realised. A position opened with everything
+available leaves nothing as soon as it starts to lose.
+
+## When liquidation starts
+
+**Maintenance margin** is what an open position must keep: half the initial margin at the market's maximum leverage.
+
+$$
+\text{maintenance} = \text{value at mark} \times \frac{1}{2 \times \text{max leverage}}
+$$
+
+Use `settings.leverage.max` from the market. On a market with a maximum of 100, maintenance is 0.5% of the position's
+value. If the market's maximum changes, so does the maintenance on your open positions.
+
+Liquidation starts when the pool's equity falls to its total maintenance margin. That is when
+[List margin states](/api-reference/platform/hosts/list-margin-states) reports a `maintenanceMarginUsage` of 1.
+
+### Your leverage does not move the liquidation price
+
+Maintenance does not depend on the leverage you chose, and the whole pool backs each position, so leverage changes what
+stays available for new orders, not where the position is closed. Take 1,000 USDT and a long of 0.08 BTC at 50,000,
+worth 4,000, on a market with a maximum of 100, ignoring fees:
+
+| | At 10× | At 5× |
+| --- | --- | --- |
+| Margin locked | 400 | 800 |
+| Available after opening | 600 | 200 |
+| Liquidation price | 37,688.44 | 37,688.44 |
+
+Equity reaches maintenance when 1,000 + 0.08 × (mark − 50,000) = 0.08 × mark × 0.005. What moves the price is more
+collateral, a different position size, or profit and loss on your other positions. With discounted collateral such as
+BTC, leverage can move it slightly, because locked margin counts in full and free collateral at its weight.
+
+<Note>
+  1× is not exempt. A short at 1× can be liquidated, because its loss has no limit.
+</Note>
+
+Spot orders do not check your margin, so spending collateral on an asset the pool does not count lowers your equity
+and can bring on a liquidation.
+
+## What happens in a liquidation
+
+<Steps>
+  <Step title="Open orders are cancelled">
+    Paper cancels your open perpetual orders, waiting trigger orders included. Spot orders stay. These read like any
+    other cancelled order: the order has no field for why it was cancelled.
+  </Step>
+  <Step title="The largest position closes">
+    Paper submits a reduce-only market order for the largest position by value, at up to the size the book is showing.
+    It fills through the live book like any market order, one fill per price level at your taker rate, and posts the
+    usual `Settlement` and `TradingFee` transactions. Any size left over waits for a later order.
+  </Step>
+  <Step title="Paper checks again">
+    One liquidation order runs at a time. When it ends, paper values the account again, and stops once equity is back
+    above maintenance. In a hedged market the larger leg closes first and the other can survive.
+  </Step>
+</Steps>
+
+A liquidation order is an order you did not place. It appears in the [order stream](/guides/streams#account-orders),
+order history and fills, with `origin` set to `Liquidation` and `clientOrderId` set to `null`, so check `origin` before
+treating an unknown order as a fault. You cannot cancel it: Cancel all skips it and a cancel has no effect. Re-placing
+your own closing orders does not hold it off.
+
+Paper does not liquidate on doubtful data. If a price the account depends on is out of date, or a fill is still
+settling, it leaves the account alone and looks again, so a position can stay open past its liquidation price for a
+while. A market with nothing on the side of the book it would close against is skipped until it has.
+
+## Losses beyond the account
+
+A liquidation closes at real book prices, so in a fast market a position can lose more than the account holds.
+
+- **Written off.** Once the pool has no open positions and is worth less than nothing with its collateral at full value,
+  paper writes it off to zero with a positive `Adjustment` transaction, which has no instrument. This applies however
+  the position closed, including by your own order. The account's transactions still sum to its wallets.
+- **Still owed.** A negative balance your collateral can cover at full value stays owed, for example USDT owed with BTC
+  still in the account. Deposit to clear it. Until then it counts against your available collateral at full value,
+  though it never stops you closing a position.
+
+## Read it back
+
+| To see | Read |
+| --- | --- |
+| Where a position would be liquidated | `liquidationPrice` on each side, from [List open positions](/api-reference/platform/hosts/list-positions) or Get market state |
+| How close the account is | `maintenanceMarginUsage` and `totalMaintenanceMargin`, from List margin states |
+| Margin in use | `totalInitialMargin`: what open orders hold plus what positions lock |
+| What you can open | `collateral.available`, from Get market state |
+| The leverage in force | `currentLeverageSetting`, from Get market state, or Get leverage |
+| What a liquidation did | Orders with `origin` set to `Liquidation`, their [fills](/api-reference/platform/hosts/list-fills) and any `Adjustment` in [List transactions](/api-reference/platform/hosts/list-transactions) |
+
+`liquidationPrice` is an estimate that holds everything else still. Paper reports `null` for a position that shares its
+base asset with another open position, hedged legs included, because their marks move together and no single price
+answers it. It also reports `null` when no price would liquidate the position. On an account already past maintenance,
+the price can sit on the profitable side of the mark until the position closes.
+
+## Next steps
+
+<CardGroup cols={3}>
+  <Card title="Balances, positions and settings" icon="scale" href="/guides/portfolio">
+    Read margin groups and positions on any host.
+  </Card>
+  <Card title="Fees and funding" icon="percent" href="/paper/fees-and-funding">
+    Follow what fees and funding do to your equity.
+  </Card>
+  <Card title="From paper to live" icon="rocket" href="/paper/going-live">
+    Where live margin and liquidation differ.
+  </Card>
+</CardGroup>

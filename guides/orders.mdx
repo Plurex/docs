@@ -156,6 +156,7 @@ A successful response is the order as the host accepted it:
     "realizedPnl": null,
     "totalFees": [],
     "clientOrderId": "grid-buy-0042",
+    "origin": "User",
     "size": "0.010",
     "price": "60000.0"
   }
@@ -163,6 +164,8 @@ A successful response is the order as the host accepted it:
 ```
 
 Keep `id`: every later lookup and cancel can use it. Submitted options (`tif`, `postOnly`, `reduceOnly`, `positionEffect`) are not echoed, and `averagePrice` and `realizedPnl` are `null` when the host does not report them. Plurex does not calculate an average price from fills.
+
+`origin` says who placed the order: `User` for the account, or `Liquidation` when the host closed a position past its margin. It is `null` when the host does not report it. A strategy can meet a liquidation order it never placed, so check `origin` before treating an unknown order as a fault.
 
 ## Order states
 

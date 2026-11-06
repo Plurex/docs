@@ -48,12 +48,24 @@ listed here so you can plan for it.
 
 ### Leverage and liquidation
 
-Paper trades perpetuals at 1× with no leverage setting, and never liquidates: losses take a balance negative instead.
-Live perpetual markets usually have a leverage setting (`settings.leverage` on the market summary), and the exchange's
-current leverage applies to your orders. Before your first live order, read it with
-[Get leverage](/api-reference/platform/hosts/get-leverage) and set it with
-[Set leverage](/api-reference/platform/hosts/set-leverage) where the market allows. Live positions can be liquidated,
-so size them and manage margin with that in mind.
+Paper applies [one simple model](/paper/leverage-and-liquidation) on every host, so treat its leverage results as a
+guide to how a strategy behaves, not a promise of where a live position closes.
+
+| | Paper | Live |
+| --- | --- | --- |
+| Position size | Maintenance margin and maximum leverage are the same at every size | Exchanges usually tighten both as a position grows, so a large position can be refused or liquidated sooner, above all in an illiquid market |
+| Changing leverage | Refused while the market has a position or an open order, and reaches that market only | May be allowed with a position open, and can reach further: read `settings.leverage.setEffectScope` |
+| Margin on a position | Locked at the opening price | May follow the mark |
+| Unrealised gains | Never fund new orders | May count towards what is available |
+| Margin modes | Cross margin only | May include others, such as isolated or portfolio margin. List margin states returns `422 NotSupported` for an account margin mode the host does not support. |
+| Liquidation | Closes the largest position in full, as far as the book allows | Follows the exchange's own process, which may reduce a position in steps, or use insurance funds and auto-deleveraging |
+| Losses beyond the account | Written off to zero as an `Adjustment` | Follow the exchange's rules |
+| Reporting | `origin` is always set | `liquidationPrice`, `origin`, `totalMaintenanceMargin` and `maintenanceMarginUsage` can each be `null`, and a liquidation price is that host's own estimate |
+
+Before your first live order, read the market's leverage with
+[Get leverage](/api-reference/platform/hosts/get-leverage), since the exchange's current setting applies to your
+orders, and set it with [Set leverage](/api-reference/platform/hosts/set-leverage) where the market allows. Read
+[List margin states](/api-reference/platform/hosts/list-margin-states) before you size your first positions.
 
 ### Capabilities paper offers that the live host may not
 
@@ -69,8 +81,8 @@ capabilities before relying on:
 - [Get position mode](/api-reference/platform/hosts/get-position-mode) on perpetuals where the live host reports none;
 - the order stream (`accountOrders.subscribeToAccountOrders`); without it, poll
   [List open orders](/api-reference/platform/hosts/list-orders) and [Get an order](/api-reference/platform/hosts/get-order);
-- the scope of a position mode change (`settings.positionMode.setEffectScope`); live, a change may apply to more than
-  one market or the whole account.
+- the scope of a leverage or position mode change (`setEffectScope` in the market's `settings`); live, a change may
+  apply to more than one market or the whole account.
 
 ### Capabilities the live host may offer that paper does not
 
@@ -110,8 +122,7 @@ paper trims. Size reduce-only orders from the current position on both.
 ### Collateral
 
 Paper models the model host's collateral: the same kind of cross pool, its main collateral assets and their weights.
-A live account can have more: collateral tiers, assets you switch on or off, isolated margin, and maintenance margin
-that leads to liquidation. Read the live host's margin states before sizing your first live positions.
+A live account can have more, such as collateral tiers and assets you switch on or off.
 
 ### Insufficient funds and collateral
 
@@ -121,7 +132,7 @@ Handle both codes as "not enough funds or collateral".
 
 ### Transactions
 
-Paper posts `Deposit`, `Withdrawal`, `TradingFee`, `Settlement`, `Trade` and `FundingPayment` transactions. A live host reports
+Paper posts `Deposit`, `Withdrawal`, `TradingFee`, `Settlement`, `Trade`, `FundingPayment` and `Adjustment` transactions. A live host reports
 its own set, which may include types such as `Transfer`, `BorrowInterest` or `LiquidationFee`, and may not report
 some of paper's. Read `accountTransactions.supportedTransactionTypes`, and handle types you do not recognise.
 

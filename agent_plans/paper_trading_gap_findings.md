@@ -50,8 +50,9 @@ The original findings follow, as sent.
 **The docs assumed these fixed.** The public paper pages described the engine as it should behave once these
 findings were resolved. The last section lists the doc statements that depended on each fix.
 
-Leverage, and the margin features that come with it (maintenance margin, liquidation), are a known gap and stay out of
-scope. The docs say paper trades perpetuals at 1× with no leverage control.
+Leverage, and the margin features that come with it (maintenance margin, liquidation), were a known gap and out of
+scope for this review. They shipped in plurex `971ae7ee8`; see `paper/leverage-and-liquidation` and
+`refresh-log/2026-11-06-7d194bf-971ae7e.md`.
 
 ## Realism bugs
 

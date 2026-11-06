@@ -54,6 +54,7 @@
             "group": "Paper trading",
             "pages": [
               "paper/overview",
+              "paper/leverage-and-liquidation",
               "paper/fees-and-funding",
               "paper/going-live"
             ]

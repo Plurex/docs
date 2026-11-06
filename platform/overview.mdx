@@ -50,6 +50,7 @@ adds one: choose an exchange and whether the account is real or paper. See
 [Connect an exchange account](/platform/add-exchange) and [Paper trading](/paper/overview).
 
 Open an account to see its **Overview**, **Balances**, **Positions**, **Open Orders**, **Transactions** and **Fills**.
+Positions show each side's liquidation price where the host reports one.
 From there you can also:
 
 - **Deposit** simulated funds into a paper account, and choose its **fee tier**;
@@ -73,8 +74,10 @@ that host, and you get:
 - **manual orders**: Limit, Market, Trigger Limit and Trigger Market, sized in contracts or by notional as the market
   allows, with time in force, post-only, reduce-only and position effect where the market offers them. The form
   checks your order against the market's order rules, the same rules the API enforces;
-- **leverage** and **position mode** controls for markets that have them;
-- the market's **order history**, where you can show or hide completed orders and cancel open ones;
+- **leverage** and **position mode** controls for markets that have them, beside your funds and position, with its
+  liquidation price where the host reports one;
+- the market's **order history**, where you can show or hide completed orders and cancel open ones, and liquidation
+  orders are marked;
 - for a paper account, a **deposit** button to add simulated funds.
 
 If the selected host cannot trade the market, or paper trading is not available on it, the Terminal tells you so. The

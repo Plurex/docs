@@ -1574,9 +1574,9 @@ paths:
                               defaultOrdering: ReverseChronological
                         marketSettings:
                           getMarketLeverage:
-                            type: NotSupported
+                            type: PerMarket
                           setMarketLeverage:
-                            type: NotSupported
+                            type: PerMarket
                           getMarketPositionMode:
                             type: PerMarket
                           setMarketPositionMode:
@@ -1596,6 +1596,8 @@ paths:
                           - TradingFee
                           - Settlement
                           - Trade
+                          - Adjustment
+                          - FundingPayment
                       isPaper: true
                       supportedCredentialTypes:
                       - Paper
@@ -1918,6 +1920,7 @@ paths:
                       - asset: USDT
                         value: '0.268400'
                       clientOrderId: grid-buy-0041
+                      origin: User
                       size: '0.050'
                       price: '67100'
                 Unfilled:
@@ -1938,6 +1941,7 @@ paths:
                       realizedPnl: null
                       totalFees: []
                       clientOrderId: null
+                      origin: User
                       size: '1.5'
                       price: '2650.25'
         '400':
@@ -2072,6 +2076,7 @@ paths:
                       realizedPnl: null
                       totalFees: []
                       clientOrderId: null
+                      origin: User
                       size: '1.5'
                       price: '2650.25'
                     - type: Limit
@@ -2090,6 +2095,7 @@ paths:
                       - asset: USDT
                         value: '0.268400'
                       clientOrderId: grid-buy-0041
+                      origin: User
                       size: '0.050'
                       price: '67100'
                     nextCursor: eyJjb250aW51YXRpb24iOiIxODQzMDI5NDE2In0
@@ -2142,8 +2148,8 @@ paths:
                 Stream:
                   summary: A Reset, an Update, a keepalive line and Ended
                   serializedValue: |
-                    {"type":"Reset","timestamp":"2026-10-26T08:17:18.100Z","data":{"orders":[{"type":"Limit","id":"BTC-USDT-SPOT|5fee96c0-8063-412d-8b4d-e36e44a8ea2d","createdAt":"2026-10-26T08:17:17.709Z","side":"Buy","instrument":{"type":"Spot","base":"BTC","quote":"USDT"},"state":"Live","sizeTraded":"0","averagePrice":null,"realizedPnl":null,"totalFees":[],"clientOrderId":"my-order-1","size":"1","price":"90"}]}}
-                    {"type":"Update","timestamp":"2026-10-26T08:17:18.732Z","data":{"change":{"type":"Cancelled"},"order":{"type":"Limit","id":"BTC-USDT-SPOT|5fee96c0-8063-412d-8b4d-e36e44a8ea2d","createdAt":"2026-10-26T08:17:17.709Z","side":"Buy","instrument":{"type":"Spot","base":"BTC","quote":"USDT"},"state":"Cancelled","sizeTraded":"0","averagePrice":null,"realizedPnl":null,"totalFees":[],"clientOrderId":"my-order-1","size":"1","price":"90"}}}
+                    {"type":"Reset","timestamp":"2026-10-26T08:17:18.100Z","data":{"orders":[{"type":"Limit","id":"BTC-USDT-SPOT|5fee96c0-8063-412d-8b4d-e36e44a8ea2d","createdAt":"2026-10-26T08:17:17.709Z","side":"Buy","instrument":{"type":"Spot","base":"BTC","quote":"USDT"},"state":"Live","sizeTraded":"0","averagePrice":null,"realizedPnl":null,"totalFees":[],"clientOrderId":"my-order-1","origin":"User","size":"1","price":"90"}]}}
+                    {"type":"Update","timestamp":"2026-10-26T08:17:18.732Z","data":{"change":{"type":"Cancelled"},"order":{"type":"Limit","id":"BTC-USDT-SPOT|5fee96c0-8063-412d-8b4d-e36e44a8ea2d","createdAt":"2026-10-26T08:17:17.709Z","side":"Buy","instrument":{"type":"Spot","base":"BTC","quote":"USDT"},"state":"Cancelled","sizeTraded":"0","averagePrice":null,"realizedPnl":null,"totalFees":[],"clientOrderId":"my-order-1","origin":"User","size":"1","price":"90"}}}
 
                     {"type":"Ended","code":"UpstreamFailure","message":"Upstream stream ended"}
         '400':
@@ -2503,7 +2509,7 @@ paths:
     query:
       operationId: hostsListOpenPositions
       summary: List open positions
-      description: Lists the account's open derivative positions.
+      description: Lists the account's open derivative positions. An instrument can appear in more than one item.
       tags:
       - portfolio
       - paged
@@ -2545,11 +2551,13 @@ paths:
                         unrealizedPnl:
                           asset: USDT
                           value: '147.925'
+                        liquidationPrice: '52340.5'
                       short:
                         size: '0'
                         entryPrice: null
                         markPrice: null
                         unrealizedPnl: null
+                        liquidationPrice: null
                       mode: Netting
                     - instrument:
                         type: Perp
@@ -2560,6 +2568,7 @@ paths:
                         entryPrice: null
                         markPrice: null
                         unrealizedPnl: null
+                        liquidationPrice: null
                       short:
                         size: '3.20'
                         entryPrice: '2688.15'
@@ -2567,6 +2576,7 @@ paths:
                         unrealizedPnl:
                           asset: USDT
                           value: '119.2'
+                        liquidationPrice: '3412.6'
                       mode: Netting
                     nextCursor: null
         '400':
@@ -2595,7 +2605,8 @@ paths:
     query:
       operationId: hostsListAccountMarginStates
       summary: List margin states
-      description: Lists the account's margin state per margin group.
+      description: Lists the account's margin groups with their totals; an account has zero or more. A host can refuse an
+        account margin mode it does not support with 422 NotSupported.
       tags:
       - portfolio
       - paged
@@ -2615,6 +2626,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageResponseAccountMarginState'
+              examples:
+                Page:
+                  summary: Two margin groups valued in the same asset
+                  value:
+                    items:
+                    - marginGroupId: cross
+                      valueAsset: USDT
+                      totalCollateralValue: '12500.48'
+                      totalInitialMargin: '1688.56'
+                      totalMaintenanceMargin: '84.43'
+                      maintenanceMarginUsage: '0.0067'
+                    - marginGroupId: isolated-btcusdt
+                      valueAsset: USDT
+                      totalCollateralValue: '512.30'
+                      totalInitialMargin: '500.00'
+                      totalMaintenanceMargin: null
+                      maintenanceMarginUsage: null
+                    nextCursor: null
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -2641,7 +2670,8 @@ paths:
     query:
       operationId: hostsGetAccountMarketState
       summary: Get market account state
-      description: Gets the account's balances, position, collateral and leverage for one market.
+      description: Gets the account's balances, position, collateral and leverage for one market. Where the market has more
+        than one position, it returns their summed sides.
       tags:
       - portfolio
       security:
@@ -2706,11 +2736,13 @@ paths:
                           unrealizedPnl:
                             asset: USDT
                             value: '147.925'
+                          liquidationPrice: '52340.5'
                         short:
                           size: '0'
                           entryPrice: null
                           markPrice: null
                           unrealizedPnl: null
+                          liquidationPrice: null
                         mode: Netting
                 Spot:
                   summary: Available base and quote balances on a spot market
@@ -2976,6 +3008,7 @@ paths:
                       realizedPnl: null
                       totalFees: []
                       clientOrderId: grid-buy-0042
+                      origin: User
                       size: '0.010'
                       price: '67250.5'
                 MarketBySize:
@@ -3000,6 +3033,7 @@ paths:
                       - asset: USDT
                         value: '0.184932'
                       clientOrderId: tp-0007
+                      origin: User
                       sizing:
                         type: Size
                         size: '0.005'
@@ -3023,6 +3057,7 @@ paths:
                       - asset: BTC
                         value: '0.000003717'
                       clientOrderId: null
+                      origin: User
                       sizing:
                         type: Notional
                         notional: '250'
@@ -3044,6 +3079,7 @@ paths:
                       realizedPnl: null
                       totalFees: []
                       clientOrderId: sl-0042
+                      origin: User
                       size: '0.010'
                       price: '64900'
                       trigger:
@@ -3068,6 +3104,7 @@ paths:
                       realizedPnl: null
                       totalFees: []
                       clientOrderId: breakout-0003
+                      origin: User
                       sizing:
                         type: Size
                         size: '0.020'
@@ -3663,9 +3700,9 @@ paths:
     post:
       operationId: paperWithdraw
       summary: Withdraw from a paper account
-      description: Debits the paper account's available balance and returns the resulting wallet; above the available balance
-        it fails with 422 InsufficientFunds and changes nothing. If the outcome is unclear, check ListTransactions before
-        retrying.
+      description: Debits the paper account's available balance and returns the resulting wallet; above the available balance,
+        or above what an open position's loss or a debt leaves available, it fails with 422 InsufficientFunds and changes
+        nothing. If the outcome is unclear, check ListTransactions before retrying.
       tags:
       - paper-accounts
       - not-repeat-safe
@@ -4103,26 +4140,41 @@ components:
     AccountMarginState:
       type: object
       properties:
-        baseCollateralAsset:
+        marginGroupId:
           type: string
+          description: Identifies this group within the account while it exists; opaque.
+        valueAsset:
+          type: string
+          description: The asset every amount on this item is valued in; it need not be held.
         totalCollateralValue:
           $ref: '#/components/schemas/Decimal'
+          description: 'The value the host tests this group''s margin against: collateral at the host''s valuation plus unrealized
+            profit and loss.'
         totalInitialMargin:
           $ref: '#/components/schemas/Decimal'
+          description: Margin in use by the group's positions and open orders.
         totalMaintenanceMargin:
-          $ref: '#/components/schemas/Decimal'
-        accountMarginRatio:
           anyOf:
           - $ref: '#/components/schemas/Decimal'
           - type: 'null'
-          description: Null when the host does not report it.
+          description: The equity below which the host may start closing the group's positions; null when the host does not
+            report it.
+        maintenanceMarginUsage:
+          anyOf:
+          - $ref: '#/components/schemas/Decimal'
+          - type: 'null'
+          description: Maintenance requirement as a fraction of equity, 1 or more when the host may start closing positions;
+            null when the host does not report it.
       required:
-      - baseCollateralAsset
+      - marginGroupId
+      - valueAsset
       - totalCollateralValue
       - totalInitialMargin
       - totalMaintenanceMargin
-      - accountMarginRatio
-      description: The account's margin totals for one margin group, in its base collateral asset.
+      - maintenanceMarginUsage
+      description: One margin group's totals, valued in valueAsset. A margin group is a set of positions and debts and the
+        collateral they are measured against together. It can hold any number of them, groups can overlap, and their totals
+        do not add up.
     AccountMarketState:
       oneOf:
       - $ref: '#/components/schemas/AccountMarketStateDerivative'
@@ -4396,7 +4448,8 @@ components:
       - valueAsset
       - total
       - available
-      description: Collateral backing the account's activity in one market, valued in valueAsset.
+      description: The collateral a new order in this market draws on, valued in valueAsset. Other markets can draw on the
+        same collateral, so totals do not add up across markets.
     MarketPosition:
       type: object
       properties:
@@ -4416,8 +4469,8 @@ components:
       - long
       - short
       - mode
-      description: The account's position in one market, as a long and a short side. Netting reports at most one non-empty
-        side, Hedging can report both; an empty side has size "0".
+      description: A position in one market, as a long and a short side; a market can have more than one. Netting reports
+        at most one non-empty side, Hedging can report both; an empty side has size "0".
     Position:
       type: object
       properties:
@@ -4440,18 +4493,25 @@ components:
           - type: 'null'
           description: Profit or loss if the position closed at markPrice, in the settlement asset; null when the host does
             not report it or the side is empty.
+        liquidationPrice:
+          anyOf:
+          - $ref: '#/components/schemas/Decimal'
+          - type: 'null'
+          description: Estimated mark price at which the position is liquidated; null when the host does not report it or
+            no price would liquidate it.
       required:
       - size
       - entryPrice
       - markPrice
       - unrealizedPnl
+      - liquidationPrice
       description: One side of a market position.
     PositionMode:
       type: string
       enum:
       - Hedging
       - Netting
-      description: 'How a market holds positions: Hedging keeps separate long and short positions, Netting keeps one net position.'
+      description: 'How a position holds its sides: Hedging keeps long and short apart, Netting nets them into one side.'
     AccountMarketStateSpot:
       title: Spot
       type: object
@@ -4737,6 +4797,11 @@ components:
           - string
           - 'null'
           description: Null when none was submitted or the host does not report it.
+        origin:
+          anyOf:
+          - $ref: '#/components/schemas/OrderOrigin'
+          - type: 'null'
+          description: Null when the host does not report it.
         size:
           $ref: '#/components/schemas/Decimal'
           description: Native contract units; see ContractDetails.
@@ -4758,6 +4823,7 @@ components:
       - realizedPnl
       - totalFees
       - clientOrderId
+      - origin
       - size
       - price
       description: A limit order as the host reports it. Submitted options (tif, postOnly, reduceOnly, positionEffect) are
@@ -4776,6 +4842,12 @@ components:
       - Cancelled
       - Rejected
       description: 'Where an order is in its life: Live, or the final states Filled, Cancelled and Rejected.'
+    OrderOrigin:
+      type: string
+      enum:
+      - User
+      - Liquidation
+      description: 'Who placed an order: User for the account, or Liquidation when the host closed a position past its margin.'
     OrderMarket:
       title: Market
       type: object
@@ -4812,6 +4884,11 @@ components:
           - string
           - 'null'
           description: Null when none was submitted or the host does not report it.
+        origin:
+          anyOf:
+          - $ref: '#/components/schemas/OrderOrigin'
+          - type: 'null'
+          description: Null when the host does not report it.
         sizing:
           anyOf:
           - $ref: '#/components/schemas/MarketSizing'
@@ -4834,6 +4911,7 @@ components:
       - realizedPnl
       - totalFees
       - clientOrderId
+      - origin
       - sizing
       description: A market order as the host reports it. Submitted options (tif, postOnly, reduceOnly, positionEffect) are
         not echoed.
@@ -4873,6 +4951,11 @@ components:
           - string
           - 'null'
           description: Null when none was submitted or the host does not report it.
+        origin:
+          anyOf:
+          - $ref: '#/components/schemas/OrderOrigin'
+          - type: 'null'
+          description: Null when the host does not report it.
         size:
           $ref: '#/components/schemas/Decimal'
           description: Native contract units; see ContractDetails.
@@ -4896,6 +4979,7 @@ components:
       - realizedPnl
       - totalFees
       - clientOrderId
+      - origin
       - size
       - price
       - trigger
@@ -4970,6 +5054,11 @@ components:
           - string
           - 'null'
           description: Null when none was submitted or the host does not report it.
+        origin:
+          anyOf:
+          - $ref: '#/components/schemas/OrderOrigin'
+          - type: 'null'
+          description: Null when the host does not report it.
         sizing:
           anyOf:
           - $ref: '#/components/schemas/MarketSizing'
@@ -4994,6 +5083,7 @@ components:
       - realizedPnl
       - totalFees
       - clientOrderId
+      - origin
       - sizing
       - trigger
       description: A trigger market order as the host reports it. Submitted options (tif, postOnly, reduceOnly, positionEffect)
@@ -6433,7 +6523,7 @@ components:
           description: nextCursor from the previous page, valid only with the same query; null or omitted for the first page.
       required:
       - accountId
-      description: Lists the account's margin state per margin group.
+      description: Lists the account's margin groups with their totals; an account has zero or more.
     ListAccountsQuery:
       type: object
       properties:

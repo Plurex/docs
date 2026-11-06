@@ -27,7 +27,7 @@ Every field a response schema declares is present. Optional values are sent as a
 
 ## Paging
 
-Open-ended lists are paged, and the server chooses the page size. Omit `cursor` for the first request, then pass the returned `nextCursor` as `cursor` with the same query variant, account and filters. Stop when `nextCursor` is `null`. Follow cursors on every paged list, even one that usually fits in a single page.
+Open-ended lists are paged, and the server chooses the page size. Omit `cursor` for the first request, then pass the returned `nextCursor` as `cursor` with the same query variant, account and filters. Stop when `nextCursor` is `null`. An empty page with a `nextCursor` is not the end: a quiet stretch of history can return one, so keep going. Follow cursors on every paged list, even one that usually fits in a single page.
 
 For example, the next request to [List accounts](/api-reference/platform/accounts/list) has this body:
 

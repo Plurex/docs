@@ -78,11 +78,11 @@ Four reads describe what the account holds. See [Balances, positions and setting
 | Operation | Returns |
 | --- | --- |
 | [List wallets](/api-reference/platform/hosts/list-wallets) | One `Wallet` per balance. |
-| [List open positions](/api-reference/platform/hosts/list-positions) | One `MarketPosition` per derivative market with an open position. |
+| [List open positions](/api-reference/platform/hosts/list-positions) | One `MarketPosition` per open position. An instrument can appear more than once. |
 | [List margin states](/api-reference/platform/hosts/list-margin-states) | One `AccountMarginState` per margin group. |
 | [Get market account state](/api-reference/platform/hosts/get-market-state) | Balances, position, collateral and leverage for one market, as a `Derivative`, `Spot` or `SpotMargin` result. |
 
-A `MarketPosition` always has both a `long` and a `short` leg. `size` is in native contracts and never negative: the leg gives the direction, and an empty leg has size `"0"`. In `Netting` mode the market holds one net position, so at most one leg is non-empty. In `Hedging` mode both can be open at once.
+A `MarketPosition` always has both a `long` and a `short` leg. `size` is in native contracts and never negative: the leg gives the direction, and an empty leg has size `"0"`. In `Netting` mode long and short net into one side, so at most one leg is non-empty. In `Hedging` mode both can be open at once.
 
 ## Market settings: leverage and position mode
 

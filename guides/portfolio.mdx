@@ -35,7 +35,7 @@ Every list on this page is [paged](/api-reference/platform/conventions#paging): 
 
 ## Positions
 
-[List open positions](/api-reference/platform/hosts/list-positions) returns one entry per derivative market with an open position. Every entry has both a `long` and a `short` leg, so the same shape covers hedged and netted positions:
+[List open positions](/api-reference/platform/hosts/list-positions) returns one entry per open position. Every entry has both a `long` and a `short` leg, so the same shape covers hedged and netted positions. A market can have more than one position, so an instrument can appear in more than one entry.
 
 ```json
 {
@@ -44,9 +44,10 @@ Every list on this page is [paged](/api-reference/platform/conventions#paging): 
       "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
       "long": {
         "size": "0.250", "entryPrice": "61250.5", "markPrice": "61500.0",
-        "unrealizedPnl": { "asset": "USDT", "value": "62.375" }
+        "unrealizedPnl": { "asset": "USDT", "value": "62.375" },
+        "liquidationPrice": "52340.5"
       },
-      "short": { "size": "0", "entryPrice": null, "markPrice": null, "unrealizedPnl": null },
+      "short": { "size": "0", "entryPrice": null, "markPrice": null, "unrealizedPnl": null, "liquidationPrice": null },
       "mode": "Netting"
     }
   ],
@@ -58,27 +59,34 @@ Every list on this page is [paged](/api-reference/platform/conventions#paging): 
 - A leg with no exposure has size `"0"`. In `Netting` mode at most one leg is open; in `Hedging` mode both legs can be open at once.
 - Each leg's `markPrice` is the price it is valued at, and `unrealizedPnl` is its profit or loss if it closed at that
   price, in the settlement asset. Use `size` to tell whether a leg is open, rather than relying on these being `null`.
+- `liquidationPrice` is the host's estimate of the mark price at which the leg is liquidated. It is `null` when the
+  host does not report one or no price would liquidate the leg.
 - `entryPrice`, `markPrice`, `unrealizedPnl` and `mode` are `null` when the host does not report them. A host can
   report `unrealizedPnl` without `markPrice`, so read each field on its own.
 
 ## Margin
 
-[List margin states](/api-reference/platform/hosts/list-margin-states) returns the account's margin per margin group. `accountMarginRatio` is `null` when the host does not report it.
+A **margin group** is a set of positions and debts and the collateral they are measured against together. [List margin states](/api-reference/platform/hosts/list-margin-states) returns one entry per group. An account has zero or more, groups can overlap, and their totals do not add up. Find a group by `marginGroupId`, an opaque ID, never by its `valueAsset` or its place in the list.
 
 ```json
 {
   "items": [
     {
-      "baseCollateralAsset": "USDT",
+      "marginGroupId": "cross",
+      "valueAsset": "USDT",
       "totalCollateralValue": "10250.40",
       "totalInitialMargin": "1531.26",
       "totalMaintenanceMargin": "76.56",
-      "accountMarginRatio": "0.0075"
+      "maintenanceMarginUsage": "0.0075"
     }
   ],
   "nextCursor": null
 }
 ```
+
+- `maintenanceMarginUsage` is the maintenance requirement as a fraction of equity, on every host. At 1 or more the host may start closing positions, so this is the number to watch.
+- `totalMaintenanceMargin` and `maintenanceMarginUsage` are `null` when the host does not report them. `valueAsset` is what the entry is valued in, and need not be an asset you hold.
+- A host can refuse an account margin mode it does not support with `422 NotSupported`.
 
 ## One market at a glance
 
@@ -94,7 +102,9 @@ Every list on this page is [paged](/api-reference/platform/conventions#paging): 
 <Tabs>
   <Tab title="Derivative">
     Leverage setting, collateral and the position. `currentLeverageSetting` is `null` when the market has no
-    leverage:
+    leverage. `collateral` is what a new order in this market draws on; other markets can draw on the same collateral,
+    so totals do not add up across markets. Where the market has more than one position, `position` is their summed
+    sides:
 
     ```json
     {
@@ -107,9 +117,10 @@ Every list on this page is [paged](/api-reference/platform/conventions#paging): 
           "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
           "long": {
             "size": "0.250", "entryPrice": "61250.5", "markPrice": "61500.0",
-            "unrealizedPnl": { "asset": "USDT", "value": "62.375" }
+            "unrealizedPnl": { "asset": "USDT", "value": "62.375" },
+            "liquidationPrice": "52340.5"
           },
-          "short": { "size": "0", "entryPrice": null, "markPrice": null, "unrealizedPnl": null },
+          "short": { "size": "0", "entryPrice": null, "markPrice": null, "unrealizedPnl": null, "liquidationPrice": null },
           "mode": "Netting"
         }
       }
@@ -185,7 +196,7 @@ such a market, [Get market account state](/api-reference/platform/hosts/get-mark
 }
 ```
 
-The response is the resulting setting. Setting the same value again is safe.
+The response is the resulting setting. Setting the same value again is safe. A host can refuse a change while the market has a position or open orders; the error `message` says why.
 
 <Warning>
   Check `setEffectScope` before you set. `Market` changes only this market; `MarketGroup` changes a host-defined group of markets; `Account` changes every market on the account. After a wider change, read the setting again on every market you trade instead of assuming the old values still hold.
@@ -238,7 +249,7 @@ How to read a posting:
 
 - **`amount` is signed** from your side: positive increases the balance, negative decreases it. A fee you pay is negative; a deposit is positive.
 - **`type`** classifies the posting (see the table below). `nativeType` keeps the host's own label. The host's `supportedTransactionTypes` lists the types it reports. Treat a type you do not recognise as `Other`.
-- **Links** to an `instrument`, `orderId`, `fillId` or `positionId` (the host's own ID for the position) are `null` when the host does not report them.
+- **Links** to an `instrument`, `orderId`, `fillId` or `positionId` (the host's own ID for the position) are `null` when the host does not report them. A market that is no longer listed can leave `instrument` `null` on older postings.
 - **`groupId`** links postings that come from one host record, such as a fill's settlement and its fee, when the host reports it.
 - **`id`** is stable: it never changes and is the same ID the [transaction stream](/guides/streams#transaction-events) sends.
 

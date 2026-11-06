@@ -67,9 +67,9 @@ The order stream starts with a snapshot of the open orders, so it is all you nee
 The order stream sends one `Reset` with the account's open orders, then an `Update` for each change to any of the account's orders. Unlike a market data stream, it sends the `Reset` only once, as its first line. Every host that supports the stream sends every change type.
 
 ```json
-{"type":"Reset","timestamp":"2026-10-26T08:17:18.100Z","data":{"orders":[{"type":"Limit","id":"BTC-USDT-SPOT|5fee96c0-8063-412d-8b4d-e36e44a8ea2d","createdAt":"2026-10-26T08:17:17.709Z","side":"Buy","instrument":{"type":"Spot","base":"BTC","quote":"USDT"},"state":"Live","sizeTraded":"0","averagePrice":null,"realizedPnl":null,"totalFees":[],"clientOrderId":"my-order-1","size":"1","price":"90"}]}}
+{"type":"Reset","timestamp":"2026-10-26T08:17:18.100Z","data":{"orders":[{"type":"Limit","id":"BTC-USDT-SPOT|5fee96c0-8063-412d-8b4d-e36e44a8ea2d","createdAt":"2026-10-26T08:17:17.709Z","side":"Buy","instrument":{"type":"Spot","base":"BTC","quote":"USDT"},"state":"Live","sizeTraded":"0","averagePrice":null,"realizedPnl":null,"totalFees":[],"clientOrderId":"my-order-1","origin":"User","size":"1","price":"90"}]}}
 
-{"type":"Update","timestamp":"2026-10-26T08:17:18.732Z","data":{"change":{"type":"Cancelled"},"order":{"type":"Limit","id":"BTC-USDT-SPOT|5fee96c0-8063-412d-8b4d-e36e44a8ea2d","createdAt":"2026-10-26T08:17:17.709Z","side":"Buy","instrument":{"type":"Spot","base":"BTC","quote":"USDT"},"state":"Cancelled","sizeTraded":"0","averagePrice":null,"realizedPnl":null,"totalFees":[],"clientOrderId":"my-order-1","size":"1","price":"90"}}}
+{"type":"Update","timestamp":"2026-10-26T08:17:18.732Z","data":{"change":{"type":"Cancelled"},"order":{"type":"Limit","id":"BTC-USDT-SPOT|5fee96c0-8063-412d-8b4d-e36e44a8ea2d","createdAt":"2026-10-26T08:17:17.709Z","side":"Buy","instrument":{"type":"Spot","base":"BTC","quote":"USDT"},"state":"Cancelled","sizeTraded":"0","averagePrice":null,"realizedPnl":null,"totalFees":[],"clientOrderId":"my-order-1","origin":"User","size":"1","price":"90"}}}
 ```
 
 Each `Update` carries the `change` and the complete `order` after it, exactly as [Get an order](/api-reference/platform/hosts/get-order) returns it:
@@ -85,6 +85,8 @@ Each `Update` carries the `change` and the complete `order` after it, exactly as
 There is one `Update` per change, so a single host report that fills an order and cancels the rest sends `Filled`, then `Cancelled`, each with the same order. Intermediate states can be merged, for example several fills arriving as one `Filled`, but a final state is final: an order that reached `Filled`, `Cancelled` or `Rejected` gets no further updates.
 
 Store the latest order you receive for each order ID, and use `change` to decide what to react to. Handle an unrecognised `change.type` as `Other`.
+
+The stream covers every order on the account, including any the host places itself: a liquidation order opens here with `origin` set to `Liquidation`.
 
 ### Transaction events
 

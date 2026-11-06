@@ -1,6 +1,6 @@
 ---
 title: "Withdraw from a paper account"
-description: "Debits the paper account's available balance and returns the resulting wallet; above the available balance it fails with 422 InsufficientFunds and changes nothing. If the outcome is unclear, check ListTransactions before retrying."
+description: "Debits the paper account's available balance and returns the resulting wallet; above the available balance, or above what an open position's loss or a debt leaves available, it fails with 422 InsufficientFunds and changes nothing. If the outcome is unclear, check ListTransactions before retrying."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/paper/command/Withdraw"
 ---
 

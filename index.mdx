@@ -33,7 +33,7 @@ Your strategy branches on what the host says it can do, not on which exchange it
 A forward test only moves as fast as the market: a month of evidence takes a month. To choose between strategies, parameters or sizing before going live, forward test them side by side.
 
 - **Fills that behave like the market.** Orders match against the venue's live order book. Marketable orders walk the visible depth and use up what they take; resting orders join the queue behind the size already at their price and fill as public trades work through it. See [How orders fill](/paper/overview#how-orders-fill).
-- **The real host's account model.** Fee tiers follow the exchange's published schedule, VIP tiers included, perpetual collateral is a weighted, multi-asset pool like the host's, and funding is paid at the venue's real funding times from its finalised rates. An account's transactions reconcile to its wallets.
+- **The real host's account model.** Fee tiers follow the exchange's published schedule, VIP tiers included, perpetual collateral is a weighted, multi-asset pool like the host's, positions carry the leverage you set and are liquidated through the live book, and funding is paid at the venue's real funding times from its finalised rates. An account's transactions reconcile to its wallets.
 - **The real host's order rules.** A paper market has the same instruments, increments, minimums and value floors as the real host it simulates.
 - **As many accounts as you need.** Run each variant on its own paper account, with no capital at risk.
 - **The same code, live.** A paper account is an ordinary account. When a variant earns it, switch to a real account on the host it simulates and re-read that host's capabilities. See [From paper to live](/paper/going-live).
