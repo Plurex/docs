@@ -85,8 +85,7 @@ the newest order with it.
     `feeTier`; see [Fees and funding](/paper/fees-and-funding#choose-a-tier).
 
     A repeat creates a second account, so if the outcome is unclear, check
-    [List accounts](/api-reference/platform/accounts/list) before retrying. When your tenant can create no more paper
-    accounts, the call returns `422 AccountLimit`.
+    [List accounts](/api-reference/platform/accounts/list) before retrying.
   </Step>
   <Step title="Deposit simulated funds">
     Call [Deposit](/api-reference/platform/paper/deposit) with the account ID, a positive amount and the asset. The
@@ -115,7 +114,7 @@ Deposit the asset your orders will spend or post as collateral:
 | Trade a linear perpetual | An asset the model host counts as [collateral](/paper/leverage-and-liquidation#collateral), for example USDT |
 | Trade an inverse perpetual | The base asset, for example BTC for an inverse BTC/USD perpetual, which settles and charges fees in base |
 
-You can also create paper accounts and deposit in the [web app](/platform/overview).
+You can also create paper accounts and deposit in the [web app](/platform/accounts).
 
 ### Withdraw to set up a scenario
 

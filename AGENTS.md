@@ -25,6 +25,12 @@ point of view of someone using it.
 - **Authored pages own the meaning.** Welcome, concepts, capabilities, guides, paper trading, the web app and the API
   reference's overview, conventions and errors pages explain how the platform is meant to be used. Link to endpoint
   pages for exact shapes instead of restating schemas field by field.
+- **Screenshots are copied.** plurex keeps a screenshot of every page of the web app in `docs/screenshots`, listed in
+  its README and captured by a tour of the real app with seeded test data. `scripts/sync-app-screenshots.py` copies the
+  ones listed in its `SHOTS` table into `images/app/` at the locked commit, cropping any that show one dialog, and
+  fails when one is missing or no longer listed upstream. Never edit or add images there by hand: add the shot to
+  `SHOTS`, or ask plurex for a new one in its README. Use them on the Web app pages, in `<Frame>` with alt text that
+  says what the image shows.
 - **Upstream checkout.** `.upstream/plurex` is a gitignored clone pinned to the commit the docs describe
   (`upstream.lock.json`). Read source and internal design docs there, never from another working copy. It is excluded
   from Mintlify by `.mintignore`.
@@ -34,7 +40,10 @@ record the disagreement as spec feedback for plurex instead of papering over it.
 
 ## Accuracy rules
 
-- Document only what exists at the locked commit. No roadmap items, no "coming soon", nothing planned.
+- Document only what exists at the locked commit and has appeared in the public API or the web app. Document the app
+  as it is. Nothing that is only in the backend, on the roadmap or "coming soon".
+- Leave out limits that are not product decisions yet, such as how many paper accounts a tenant can have. Plurex has no
+  monetisation plan, and today's limits are temporary.
 - Never describe how Plurex is built: no internal architecture, storage, event sourcing, policies, thresholds, internal
   module names or class names. That includes how data is sourced or served (feeds, caches, "fetched from the venue"):
   say what a value means, not how Plurex got it.
@@ -45,9 +54,11 @@ record the disagreement as spec feedback for plurex instead of papering over it.
   discover hosts and venues with the List operations.
 - Never claim per-host behaviour that the reader can read from capabilities; teach them to read the capability.
 - Do not document: the Bearer/OTP authentication path, internal `/api/internal` routes, the reference Kotlin client
-  (unpublished), idempotency keys, request IDs, per-key scopes, organisations or teams, invite
-  codes, the app dashboard or subscription screens, paper "fidelity" grades or per-market fidelity, internal paper
-  matching policy names.
+  (unpublished), idempotency keys, request IDs, organisations, teams or members, invite codes, roles, the back office,
+  paper "fidelity" grades or per-market fidelity, internal paper matching policy names.
+- API key access, per-key permissions included, is documented as the web app presents it: its sections, presets and
+  permission labels, and the operations each permission allows. Not the stored tree or its field names, which only the
+  internal API carries. `platform/api-keys` owns it.
 
 ## Vocabulary
 
@@ -94,7 +105,9 @@ per-market fidelity and substitution tables.
 
 - Every page starts with frontmatter: `title` and `description` (one sentence). Do not repeat the title as an H1.
 - H2 and H3 only. Internal links are absolute without extension: `[Submit an order](/api-reference/platform/hosts/submit-order)`.
-- New pages must be added to `docs.json` navigation (the "Documentation" tab). Removed or moved pages need a redirect.
+- New pages must be added to `docs.json` navigation: the "Guides" tab, or the "Web app" tab for pages about the
+  app. The site is not in production: move, rename and remove pages as straight cutovers, with no redirects, and fix
+  every link to them.
 - Validate before finishing:
 
   ```bash
@@ -105,7 +118,7 @@ per-market fidelity and substitution tables.
 
 ## Site map
 
-Documentation tab:
+Guides tab:
 
 - Get started: `index`, `how-plurex-works`, `quickstart`, `authentication`
 - Concepts: `concepts/venues-and-hosts`, `concepts/venues`, `concepts/hosts`, `concepts/accounts`,
@@ -114,15 +127,20 @@ Documentation tab:
   `capabilities/venue-capabilities`
 - Trading guides: `guides/orders`, `guides/streams`, `guides/portfolio`, `guides/market-data`
 - Paper trading: `paper/overview`, `paper/leverage-and-liquidation`, `paper/fees-and-funding`, `paper/going-live`
-- Web app: `platform/overview`, `platform/add-exchange`
 
 API reference tab: `api-reference/platform/{overview,conventions,errors}` then the generated pages.
+
+Web app tab:
+
+- Web app: `platform/overview`, `platform/terminal`, `platform/accounts`, `platform/add-exchange`
+- Access and security: `platform/api-keys`, `platform/settings`
 
 ## Refreshing from plurex
 
 The plan is in `agent_plans/automated_docs_bootstrap.md`. Until the refresh tooling exists: update `.upstream/plurex`,
-copy the spec from `platform-public-api/` at the target commit, run `scripts/sync-platform-api.py` (see
-README), review authored pages against the changes, and update `upstream.lock.json`.
+copy the spec from `platform-public-api/` at the target commit, run `scripts/sync-platform-api.py` and
+`scripts/sync-app-screenshots.py` (see README), look at every screenshot that changed, review authored pages against the
+changes, and update `upstream.lock.json`.
 
 ## Git
 

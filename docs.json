@@ -11,7 +11,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Documentation",
+        "tab": "Guides",
         "groups": [
           {
             "group": "Get started",
@@ -57,13 +57,6 @@
               "paper/leverage-and-liquidation",
               "paper/fees-and-funding",
               "paper/going-live"
-            ]
-          },
-          {
-            "group": "Web app",
-            "pages": [
-              "platform/overview",
-              "platform/add-exchange"
             ]
           }
         ]
@@ -224,6 +217,27 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "Web app",
+        "groups": [
+          {
+            "group": "Web app",
+            "pages": [
+              "platform/overview",
+              "platform/terminal",
+              "platform/accounts",
+              "platform/add-exchange"
+            ]
+          },
+          {
+            "group": "Access and security",
+            "pages": [
+              "platform/api-keys",
+              "platform/settings"
+            ]
+          }
+        ]
       }
     ]
   },
@@ -260,75 +274,5 @@
       "cursor",
       "vscode"
     ]
-  },
-  "redirects": [
-    {
-      "source": "/api-reference/platform/accounts/create",
-      "destination": "/api-reference/platform/accounts/connect"
-    },
-    {
-      "source": "/api-reference/platform/accounts/refresh",
-      "destination": "/api-reference/platform/accounts/update-connection"
-    },
-    {
-      "source": "/api-reference/platform/hosts/list-all-orders",
-      "destination": "/api-reference/platform/hosts/list-orders"
-    },
-    {
-      "source": "/api-reference/platform/hosts/list-all-positions",
-      "destination": "/api-reference/platform/hosts/list-positions"
-    },
-    {
-      "source": "/api-reference/platform/hosts/list-all-wallets",
-      "destination": "/api-reference/platform/hosts/list-wallets"
-    },
-    {
-      "source": "/api-reference/platform/hosts/list-recent-orders",
-      "destination": "/api-reference/platform/hosts/list-closed-orders"
-    },
-    {
-      "source": "/api-reference/platform/hosts/submit-limit-order",
-      "destination": "/api-reference/platform/hosts/submit-order"
-    },
-    {
-      "source": "/api-reference/platform/hosts/submit-market-order",
-      "destination": "/api-reference/platform/hosts/submit-order"
-    },
-    {
-      "source": "/api-reference/platform/hosts/submit-limit-trigger-order",
-      "destination": "/api-reference/platform/hosts/submit-order"
-    },
-    {
-      "source": "/api-reference/platform/quickstart",
-      "destination": "/quickstart"
-    },
-    {
-      "source": "/api-reference/platform/venues/get-best-quotes",
-      "destination": "/api-reference/platform/venues/get-order-book-l1"
-    },
-    {
-      "source": "/api-reference/platform/venues/get-indicative-fundings",
-      "destination": "/api-reference/platform/venues/get-indicative-funding"
-    },
-    {
-      "source": "/api-reference/platform/venues/get-open-interests",
-      "destination": "/api-reference/platform/venues/get-open-interest"
-    },
-    {
-      "source": "/api-reference/platform/venues/get-order-book",
-      "destination": "/api-reference/platform/venues/get-order-book-l2"
-    },
-    {
-      "source": "/api-reference/platform/venues/get-prices",
-      "destination": "/api-reference/platform/venues/get-price"
-    },
-    {
-      "source": "/api-reference/platform/venues/subscribe-to-best-quotes",
-      "destination": "/api-reference/platform/venues/subscribe-to-order-book-l1s"
-    },
-    {
-      "source": "/api-reference/platform/venues/subscribe-to-order-books",
-      "destination": "/api-reference/platform/venues/subscribe-to-order-book-l2s"
-    }
-  ]
+  }
 }

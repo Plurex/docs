@@ -27,7 +27,20 @@ python3 -m venv /tmp/plurex-docs-venv
 /tmp/plurex-docs-venv/bin/python scripts/sync-platform-api.py
 ```
 
-The script uses the spec's navigation tags, summaries and descriptions, while retaining established URLs for existing operations. It writes endpoint pages, stream pages and the whole API reference tab, placing each stream beside its query operations, adds a capability check (`snippets/capability-check.mdx`) to every host and venue page, and shows each operation's badges (`snippets/operation-badges.mdx`): its kind (Query, Command or Stream, from the path) and then the spec's badge tags; keep explanatory prose in authored pages. When operations are removed, remove their obsolete pages and add appropriate redirects in `docs.json`.
+The script uses the spec's navigation tags, summaries and descriptions, while retaining established URLs for existing operations. It writes endpoint pages, stream pages and the whole API reference tab, placing each stream beside its query operations, adds a capability check (`snippets/capability-check.mdx`) to every host and venue page, and shows each operation's badges (`snippets/operation-badges.mdx`): its kind (Query, Command or Stream, from the path) and then the spec's badge tags; keep explanatory prose in authored pages. When operations are removed, remove their obsolete pages; there are no redirects before production.
+
+## Updating the web app screenshots
+
+plurex keeps screenshots of every page of the web app in `docs/screenshots` at the pinned commit. Copy the ones the docs
+use into `images/app/`, cropped and scaled to 2x:
+
+```bash
+/tmp/plurex-docs-venv/bin/python scripts/sync-app-screenshots.py
+```
+
+The `SHOTS` table in the script lists each screenshot and its crop. The script fails when a screenshot is missing or no
+longer listed upstream, and removes images the table no longer lists. Look at every image that changed: a dialog that
+grows or moves needs a new crop box.
 
 Validate changes with an up-to-date Mintlify CLI:
 

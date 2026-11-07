@@ -27,8 +27,8 @@ Unknown paths (`404 NotFound`), wrong methods (`405 MethodNotAllowed`) and strea
 | --- | --- | --- | --- |
 | `InvalidRequest` | 400 | Malformed JSON, wrong types, unknown fields or enum values, or invalid values. This includes a cursor sent with a different query. | Fix the request. Do not retry unchanged. |
 | `Unauthenticated` | 401 | Missing or invalid API key headers. | Send both `X-API-KEY` and `X-API-SECRET` with valid values. |
-| `Forbidden` | 403 | Authenticated, but without access to the account or operation. | Check that the `tenantId` is yours. |
-| `AccountNotFound` | 404 | The `accountId` does not exist, or your key cannot read it. A 403 never reveals that an account ID exists. | Check the ID with [List accounts](/api-reference/platform/accounts/list). |
+| `Forbidden` | 403 | Authenticated, but the key lacks the permission for this operation on an account it can see, or for connecting or creating accounts, or the `tenantId` is not its tenant's. | Check the key's [access](/platform/api-keys) and that the `tenantId` is yours. |
+| `AccountNotFound` | 404 | The `accountId` does not exist, or your key has no access to it. A 403 never reveals that an account ID exists. | Check the ID with [List accounts](/api-reference/platform/accounts/list). |
 | `OrderNotFound` | 404 | The account exists, but the order identifier does not. | Not proof the order never existed; see [Reconciliation rules](#reconciliation-rules). |
 | `NotFound` | 404 | Unknown path, host or venue. | Check the path and the `hostId` or `venueId`. |
 | `MethodNotAllowed` | 405 | The operation uses a different HTTP method. | Use `QUERY` for queries and streams, `POST` for commands. |
@@ -38,7 +38,7 @@ Unknown paths (`404 NotFound`), wrong methods (`405 MethodNotAllowed`) and strea
 | `InsufficientFunds` | 422 | The account cannot fund the order or withdrawal. | Reduce the order or add funds. |
 | `InvalidProviderCredentials` | 422 | The exchange rejected the account's credentials: they are invalid, expired or revoked. | Check the API key and secret, then [update the connection](/api-reference/platform/accounts/update-connection). |
 | `ProviderAccessDenied` | 422 | The exchange accepted the credentials, but they lack the access the account needs. | Grant the key the permissions Plurex needs at the exchange (see [Create an API key at the exchange](/platform/add-exchange#create-an-api-key-at-the-exchange)), then [update the connection](/api-reference/platform/accounts/update-connection). |
-| `AccountLimit` | 422 | An account or subscription limit was reached. | Retrying will not help until you are below the limit again. |
+| `AccountLimit` | 422 | An account limit was reached. | Retrying will not help until you are below the limit again. |
 | `NotSupported` | 422 | The host or venue does not support this operation, variant, order type or instrument, including a market it does not list. | Check [capabilities](/capabilities/overview) and choose a supported operation. |
 | `Rejected` | 422 | The host, or Plurex's validation, rejected the command, for example a price off the market's increment. | Change the request; read `message` for the reason. |
 | `RateLimited` | 429 | The exchange rate limited the request. | Back off, then retry. For commands, follow the operation's retry rule. |

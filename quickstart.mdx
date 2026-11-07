@@ -11,7 +11,10 @@ later use to trade for real. You need a terminal with `curl`.
 1. Sign up in the [Plurex web app](https://platform.plurex.io) with your email, confirm the 6-digit code sent to you,
    and choose a handle and password.
 2. Open **DevTools**. Copy your **Tenant ID**.
-3. Under **API Keys**, create a key with a label. Copy the **Key** and **Secret** now: the secret is shown only once.
+3. Under **API keys**, choose **New key** and give it a label. This guide creates and funds a paper account, so under
+   **General** tick **Create paper accounts**, and set **Paper accounts** to **Full**. Leave **Real accounts** at
+   **No access**. Copy the **Key** and **Secret** now: the secret is shown only once. See
+   [API keys and access](/platform/api-keys).
 
 Export them in your shell:
 
@@ -22,8 +25,8 @@ export PLUREX_API_SECRET="your-api-secret"
 ```
 
 <Warning>
-  An API key acts as your tenant, with full access to its accounts. Keep it out of source control and browser code. See
-  [Authentication](/authentication).
+  Anyone holding the key and secret can do whatever its access allows. Keep them out of source control and browser
+  code. See [Authentication](/authentication).
 </Warning>
 
 ## Place your first paper order
@@ -127,8 +130,7 @@ export PLUREX_API_SECRET="your-api-secret"
     <Warning>
       Creating an account is not safe to repeat: a repeat creates a second account. If the call times out, check
       [List accounts](/api-reference/platform/accounts/list) for a new account on `$PLUREX_HOST_ID` before trying
-      again; identify it by host, not by name. A `422 AccountLimit` error means your tenant can create no more paper
-      accounts.
+      again; identify it by host, not by name.
     </Warning>
   </Step>
 

@@ -9,8 +9,8 @@ Every trading action in Plurex happens on an **account**, and every account belo
 
 The tenant is the owner of your trading resources. Every account belongs to exactly one tenant, and your API keys are created under it.
 
-- **Find your tenant ID** next to your API keys on the DevTools page of the Plurex app.
-- **API keys act as the tenant.** A request signed with your `X-API-KEY` and `X-API-SECRET` has full access to the tenant's accounts.
+- **Find your tenant ID** next to your API keys on the [DevTools](/platform/api-keys) page of the Plurex app.
+- **API keys reach only what you grant.** Each key belongs to the tenant and has its own access: which accounts it can reach, and whether it can read, trade, manage paper funds or administer them. See [API keys and access](/platform/api-keys).
 - **Tenant-wide operations take a `tenantId`:** [Connect](/api-reference/platform/accounts/connect), [List accounts](/api-reference/platform/accounts/list) and [Create a paper account](/api-reference/platform/paper/create).
 
 See [Authentication](/authentication) for creating keys and sending them.
@@ -70,7 +70,7 @@ Plurex checks the key with the exchange before connecting:
 - **Bybit keys must belong to a Unified Trading Account.**
 - **A refused key creates no account.** `422 InvalidProviderCredentials` means the exchange rejected the key: it is invalid, expired or revoked. `422 ProviderAccessDenied` means the key works but lacks the access the account needs, such as trading. Retrying with the same key will not help: fix its permissions at the exchange, or create a new key, then connect again. [Update credentials](/api-reference/platform/accounts/update-connection) checks a new key the same way.
 
-To connect through the web app instead, see [Add an exchange](/platform/add-exchange).
+To connect through the web app instead, see [Connect an exchange account](/platform/add-exchange).
 
 ## Creating a paper account
 
@@ -84,7 +84,7 @@ To connect through the web app instead, see [Add an exchange](/platform/add-exch
 }
 ```
 
-A new paper account starts with no balances; fund it with [Deposit](/api-reference/platform/paper/deposit). The number of paper accounts may be limited by your plan; at the limit, the call returns `422 AccountLimit`. See [Paper trading](/paper/overview).
+A new paper account starts with no balances; fund it with [Deposit](/api-reference/platform/paper/deposit). See [Paper trading](/paper/overview).
 
 ## Account lifecycle
 
@@ -122,5 +122,5 @@ After an unclear Delete, check List accounts: if the account is gone, the delete
 
 - [Venues and hosts](/concepts/venues-and-hosts) for where accounts fit.
 - [Authentication](/authentication) for API keys.
-- [Add an exchange](/platform/add-exchange) to connect an account in the web app.
+- [Connect an exchange account](/platform/add-exchange) to connect an account in the web app.
 - [Paper trading](/paper/overview) to create, fund and trade paper accounts.

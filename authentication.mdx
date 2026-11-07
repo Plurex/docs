@@ -1,6 +1,6 @@
 ---
 title: "Authentication"
-description: "Create API keys and authenticate every request and stream with two headers."
+description: "Create API keys with the access each program needs, and authenticate every request and stream with two headers."
 ---
 
 Every operation needs an API key and its secret, market data and discovery included.
@@ -12,29 +12,33 @@ page of the [Plurex web app](https://platform.plurex.io), next to your API keys.
 
 ## Create an API key
 
-<Steps>
-  <Step title="Open DevTools">
-    Log in to the [web app](https://platform.plurex.io) and open **DevTools**.
-  </Step>
-  <Step title="Create the key">
-    Under **API Keys**, choose **+ API Key** and give the key a label that says where you will use it, such as
-    `research-server`. If you have two-factor authentication turned on, enter your one-time code when asked.
-  </Step>
-  <Step title="Save the key and secret">
-    Store the **Key** and **Secret** somewhere safe, such as a secrets manager. This is the only time the secret is
-    shown; if you lose it, delete the key and create a new one.
-  </Step>
-</Steps>
-
-To revoke a key, delete it on the same page; anything still using it stops working. This also needs your one-time code
-when two-factor authentication is on.
+Create keys on the **DevTools** page of the [web app](https://platform.plurex.io): choose **New key**, give it a label
+named after the program that will use it, choose its access, and copy the **Key** and **Secret**. The secret is shown
+only once. See [API keys and access](/platform/api-keys) for the steps and every permission.
 
 <Warning>
-  A key acts as your tenant, with full access to all its accounts: it can place and cancel orders, and connect,
-  update and delete accounts. Keys do not expire. Use them only from your own servers, never in browser or mobile code,
-  and keep them out of source control. Create a separate key for each application so you can revoke one without
+  Keys do not expire. Use them only from your own servers, never in browser or mobile code, and keep them out of source
+  control. Create a separate key for each program, with only the access it needs, so you can revoke one without
   affecting the others.
 </Warning>
+
+## Access
+
+Each key has its own access, set in the web app. A new key can trade your paper accounts and cannot reach real accounts,
+connect accounts or create paper accounts until you allow it.
+
+| Operations | Need |
+| --- | --- |
+| Market data, [List hosts](/api-reference/platform/hosts/list), [List host markets](/api-reference/platform/hosts/list-markets) and [paper host fee tiers](/api-reference/platform/paper/get-host-fee-tiers) | Any key |
+| Reading an account's orders, fills, transactions, balances, positions, margin and settings, and its streams | **Read orders, portfolio and settings** on that account |
+| Submitting and cancelling orders, setting leverage and position mode | **Trade, and set leverage and position mode** |
+| Paper deposits, withdrawals and fee tier | **Deposit, withdraw and set fee tier**, plus read access to get the result |
+| Getting, renaming, updating and deleting an account | **Read**, **Rename**, **Update connection** or **Delete** under account administration |
+| [Connect](/api-reference/platform/accounts/connect) and [Create a paper account](/api-reference/platform/paper/create) | **Connect accounts** or **Create paper accounts**. Neither gives access to the new account. |
+
+A key reaches only its own tenant's accounts. [List accounts](/api-reference/platform/accounts/list) returns only the
+accounts the key can see, so it can return fewer accounts than the tenant has, and a short or empty page with a
+`nextCursor` is not the end. Access changes apply from the key's next request.
 
 ## Authenticate a request
 
@@ -60,16 +64,15 @@ curl --request QUERY \
 [Connect an account](/api-reference/platform/accounts/connect), [List accounts](/api-reference/platform/accounts/list)
 and [Create a paper account](/api-reference/platform/paper/create) work across your tenant, so they take a `tenantId`.
 
-Account operations take an `accountId`. An account your key cannot read returns `404 AccountNotFound`, exactly as if it
-did not exist. Venue and host discovery operations take neither.
+Account operations take an `accountId`. Venue and host discovery operations take neither.
 
 ## Authentication errors
 
 | Status | Code | Meaning | What to do |
 | --- | --- | --- | --- |
 | 401 | `Unauthenticated` | A header is missing, or the key or secret is wrong | Check both headers and that the key has not been deleted |
-| 403 | `Forbidden` | The key is valid but has no access to that tenant or operation | Check the `tenantId` is your tenant's |
-| 404 | `AccountNotFound` | The account does not exist, or your key cannot read it | Check the `accountId` with [List accounts](/api-reference/platform/accounts/list) |
+| 403 | `Forbidden` | The key can see the account but lacks the permission for this operation, lacks Connect accounts or Create paper accounts, or sent another tenant's `tenantId` | Check the key's [access](/platform/api-keys) and the `tenantId` |
+| 404 | `AccountNotFound` | The account does not exist, or your key has no access to it at all | Check the `accountId` with [List accounts](/api-reference/platform/accounts/list) and the key's access |
 
 A request with bad credentials returns 401 even if its body is also invalid. See
 [Errors](/api-reference/platform/errors) for every error code.

@@ -1,84 +1,69 @@
 ---
 title: "Web app"
-description: "Use the Plurex web app to sign up, manage API keys and accounts, trade by hand and review each account."
+description: "Use the Plurex web app to sign up, trade by hand, review your accounts and create the API keys your programs use."
 ---
 
-The [Plurex web app](https://platform.plurex.io) is where you set up everything the API needs and where you can trade
-and check your accounts by hand. It works on the same accounts, orders and balances as the [API](/quickstart), so
-anything you do in one shows up in the other. To automate a strategy, use the API.
+The [Plurex web app](https://platform.plurex.io) is where you set up everything the API needs, and where you trade and
+check your accounts by hand. It works on the same accounts, orders and balances as the [API](/quickstart), so anything
+you do in one shows up in the other. To automate a strategy, use the API.
+
+## Find your way around
+
+The sidebar has the app's three pages, and the menu at the top right has **User Settings** and **Logout**.
+
+| Page | What it is for |
+| --- | --- |
+| [Terminal](/platform/terminal) | Trade one market at a time, with its chart, order book and trades. The app opens here. |
+| [Accounts](/platform/accounts) | Your real and paper accounts: add them, fund paper accounts, and review balances, positions, orders and history. |
+| [DevTools](/platform/api-keys) | Your tenant ID and the API keys your programs sign in with, with the access each key has. |
+| [User Settings](/platform/settings) | Your email, password and two-factor authentication. |
+
+The button at the bottom of the sidebar switches between dark and light mode. Without signing in, the Terminal shows
+markets, charts and order books; signing in adds trading and your accounts.
 
 ## Sign up
 
+<Frame>
+  <img src="/images/app/auth/register.png" alt="The Create your Plurex account dialog, asking for an email address" />
+</Frame>
+
 <Steps>
-  <Step title="Register">
-    Open the [web app](https://platform.plurex.io), choose **Register**, enter your email and choose **Get Started**.
+  <Step title="Enter your email">
+    Open the [web app](https://platform.plurex.io), choose **Sign in**, then **Create account**. Enter your email and
+    choose **Continue**.
   </Step>
-  <Step title="Verify your email">
-    Enter the 6-digit code from the verification email. You can ask for it to be sent again.
+  <Step title="Confirm it">
+    Enter the 6-digit code from the email. You can ask for a new one.
   </Step>
-  <Step title="Set your login details">
-    Choose a handle (one alphanumeric word), a password of at least 8 characters, and accept the terms. Your account
-    is created and you are logged in.
+  <Step title="Choose a handle and password">
+    Choose a handle, one word of letters and numbers that others see, and a password of at least 8 characters. Accept
+    the Terms and Conditions and the Privacy Policy, then choose **Create account**. You are signed in.
   </Step>
 </Steps>
 
 Signing up also creates your **tenant**, which owns your API keys and trading accounts.
 
-## Secure your login
+## Sign in
 
-Turn on two-factor authentication in **User Settings → Security**: choose **Set up**, scan the QR code with an
-authenticator app, and enter the 6-digit code it shows. Once it is on, the app asks for a one-time code before
-sensitive actions, such as creating or deleting an API key.
+Sign in with your email and password, and with a code from your authenticator app if
+[two-factor authentication](/platform/settings#two-factor-authentication) is on.
 
-The same page lets you change your password. **User Settings → General** shows your handle and tenant ID and lets you
-change your email address, confirmed with a 6-digit code.
+If you forget your password, choose **Forgot password?** to get a reset link by email, and set a new one from it. See
+[Settings and security](/platform/settings#reset-a-forgotten-password).
 
-## DevTools
+## Next steps
 
-**DevTools** has what you need to use the API:
-
-- your **Tenant ID**, with a copy button;
-- **API Keys**: create a key with a label, see your keys by label, and delete them. A new key's secret is shown once,
-  when you create it.
-
-See [Authentication](/authentication) for how to use them.
-
-## Accounts
-
-**Accounts** lists your trading accounts, which you can search and filter by host or by real and paper. **New Account**
-adds one: choose an exchange and whether the account is real or paper. See
-[Connect an exchange account](/platform/add-exchange) and [Paper trading](/paper/overview).
-
-Open an account to see its **Overview**, **Balances**, **Positions**, **Open Orders**, **Transactions** and **Fills**.
-Positions show each side's liquidation price where the host reports one.
-From there you can also:
-
-- **Deposit** simulated funds into a paper account, and choose its **fee tier**;
-- **Update connection**, when you rotate an exchange account's API key at the exchange;
-- **Rename** or **Delete** the account;
-- **Open in Terminal**.
-
-<Warning>
-  Deleting an account removes it from Plurex and breaks the history records of trading activity that used it. You
-  cannot undo a delete.
-</Warning>
-
-## Terminal
-
-**Terminal** is the app's home: a trading screen for one market at a time. Choose a host, a market and an account on
-that host, and you get:
-
-- the live **order book**, with price grouping and a choice of sides, and the **trade feed**;
-- a live candlestick **chart** of the traded price, with volume: pick an interval, pan and zoom through history, and
-  label times in UTC or your local time zone;
-- **manual orders**: Limit, Market, Trigger Limit and Trigger Market, sized in contracts or by notional as the market
-  allows, with time in force, post-only, reduce-only and position effect where the market offers them. The form
-  checks your order against the market's order rules, the same rules the API enforces;
-- **leverage** and **position mode** controls for markets that have them, beside your funds and position, with its
-  liquidation price where the host reports one;
-- the market's **order history**, where you can show or hide completed orders and cancel open ones, and liquidation
-  orders are marked;
-- for a paper account, a **deposit** button to add simulated funds.
-
-If the selected host cannot trade the market, or paper trading is not available on it, the Terminal tells you so. The
-toolbar shows the health of the Terminal's live connections.
+<CardGroup cols={2}>
+  <Card title="API keys and access" icon="key" href="/platform/api-keys">
+    Create a key for each program, with only the access it needs.
+  </Card>
+  <Card title="Accounts" icon="building-columns" href="/platform/accounts">
+    Add a paper account or connect an exchange account.
+  </Card>
+  <Card title="Terminal" icon="chart-candlestick" href="/platform/terminal">
+    Trade a market by hand.
+  </Card>
+  <Card title="Settings and security" icon="shield-halved" href="/platform/settings">
+    Turn on two-factor authentication.
+  </Card>
+</CardGroup>

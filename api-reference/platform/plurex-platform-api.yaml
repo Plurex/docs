@@ -3897,6 +3897,7 @@ components:
       type: apiKey
       in: header
       name: X-API-KEY
+      description: Belongs to one tenant and reaches only that tenant's resources.
     ApiSecret:
       type: apiKey
       in: header
@@ -4001,10 +4002,10 @@ components:
                 code: ProviderAccessDenied
                 message: The credentials do not grant the access this account needs
             AccountLimit:
-              summary: An account or subscription limit was reached
+              summary: An account limit was reached
               value:
                 code: AccountLimit
-                message: Subscription limit reached
+                message: System limit reached
             NotSupported:
               summary: The host does not support this operation, variant or instrument
               value:
@@ -9659,7 +9660,7 @@ components:
         OrderAlreadyClosed (409): the order is filled, cancelled or rejected. UnsupportedMediaType (415): the request is not
         Content-Type application/json. InsufficientFunds (422): the account cannot fund the order or withdrawal. InvalidProviderCredentials
         (422): the provider rejected the credentials (invalid, expired or revoked). ProviderAccessDenied (422): the credentials
-        lack the access needed. AccountLimit (422): an account or subscription limit was reached. NotSupported (422): the
+        lack the access needed. AccountLimit (422): an account limit was reached. NotSupported (422): the
         host does not support this operation, variant or instrument. Rejected (422): the host or validation rejected the command.
         RateLimited (429): the provider rate limited the request. UnexpectedError (500): unexpected server failure. CancelAllFailed
         (502): at least one cancel failed; reconcile with ListOpenOrders. UpstreamFailure (502): the provider failed or returned

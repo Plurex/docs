@@ -49,7 +49,7 @@ it to a pointer). Content:
   guides and conventions pages, never in endpoint frontmatter. The spec's descriptions are the reference; guides link
   to them rather than restate schemas.
 - Never document beyond the spec at the locked commit: no roadmap items, nothing marked as planned.
-- Removed operations get redirects in `docs.json`.
+- Removed operations lose their pages as a straight cutover, with no redirects, until production.
 - Validation: `mint openapi-check`, `mint validate`, `mint broken-links`.
 - Git: no commits without explicit instruction; no AI attribution.
 
@@ -83,12 +83,14 @@ All deterministic, with no agent involvement. They take `--ref` (default `origin
   subject, body, author date, touched paths with tiers, diffstat and commit tier. With no lock (bootstrap) it emits only
   the target commit and `"mode": "bootstrap"`.
 - `scripts/sync_from_plurex.py --commit <sha>`: copies the OAS with `git show <sha>:<path>`, so the copy
-  depends only on the commit, not on where the checkout sits, then runs `sync-platform-api.py`, and then the three `mint` checks. It does not write the lock.
+  depends only on the commit, not on where the checkout sits, then runs `sync-platform-api.py` and
+  `sync-app-screenshots.py`, and then the three `mint` checks. It does not write the lock.
 - `scripts/write_lock.py --commit <sha> --log <file>`: the final step of a successful refresh.
 - `scripts/check_drift.py`: prints the lock commit, the target commit, commits behind, and counts per tier. This is the
   "should I refresh?" check.
 
-`sync-platform-api.py` stays as it is. Removed operations are reported, never deleted silently.
+`sync-platform-api.py` and `sync-app-screenshots.py` stay as they are. Removed operations are reported, never deleted
+silently. A screenshot that changed upstream is checked by eye, crops included, before the refresh is accepted.
 
 ### 1.4 Streams in the docs
 
