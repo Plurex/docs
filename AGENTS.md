@@ -54,11 +54,15 @@ record the disagreement as spec feedback for plurex instead of papering over it.
   discover hosts and venues with the List operations.
 - Never claim per-host behaviour that the reader can read from capabilities; teach them to read the capability.
 - Do not document: the Bearer/OTP authentication path, internal `/api/internal` routes, the reference Kotlin client
-  (unpublished), idempotency keys, request IDs, organisations, teams or members, invite codes, roles, the back office,
-  paper "fidelity" grades or per-market fidelity, internal paper matching policy names.
+  (unpublished), idempotency keys, request IDs, invite codes, roles other than the owner and member the app shows,
+  the back office, paper "fidelity" grades or per-market fidelity, internal paper matching policy names.
 - API key access, per-key permissions included, is documented as the web app presents it: its sections, presets and
   permission labels, and the operations each permission allows. Not the stored tree or its field names, which only the
   internal API carries. `platform/api-keys` owns it.
+- Organisations, members and invites are documented as the web app presents them, and `platform/organisations` owns
+  them. A member's access uses the same editor as a key's: link to `platform/api-keys` instead of repeating it. The
+  app's labels are American (**Organization**, **New organization**); bold them as the app spells them, and write
+  "organisation" in prose.
 
 ## Vocabulary
 
@@ -74,7 +78,7 @@ Use the public words:
 | A request type such as GetOrder | an **operation**; its alternatives (ById, ByClientOrderId) are **variants** |
 | Always-available operations | **always supported** |
 | Plurex's continuous data for a market | Plurex's **live feed** for the market |
-| The owner of accounts and API keys | the **tenant** |
+| The owner of accounts and API keys | the **tenant**, which is an **organisation** in the app (Personal or a team) |
 | The real host a paper host simulates | the **model host** (`modelHostId`) |
 | A host market's limits | the market's **order rules** |
 | Paper funding events | **funding times** |
@@ -133,7 +137,7 @@ API reference tab: `api-reference/platform/{overview,conventions,errors}` then t
 Web app tab:
 
 - Web app: `platform/overview`, `platform/terminal`, `platform/accounts`, `platform/add-exchange`
-- Access and security: `platform/api-keys`, `platform/settings`
+- Access and security: `platform/organisations`, `platform/api-keys`, `platform/settings`
 
 ## Refreshing from plurex
 

@@ -7,9 +7,9 @@ Every trading action in Plurex happens on an **account**, and every account belo
 
 ## Tenants
 
-The tenant is the owner of your trading resources. Every account belongs to exactly one tenant, and your API keys are created under it.
+The tenant is the owner of your trading resources: an [organisation](/platform/organisations) in the Plurex app. It is either your personal one, which holds only you, or a team you own or belong to. Every account belongs to exactly one tenant, and its API keys are created under it.
 
-- **Find your tenant ID** next to your API keys on the [DevTools](/platform/api-keys) page of the Plurex app.
+- **Find your tenant ID** on the [DevTools](/platform/api-keys) page of the Plurex app, with the organisation selected. Each organisation has its own.
 - **API keys reach only what you grant.** Each key belongs to the tenant and has its own access: which accounts it can reach, and whether it can read, trade, manage paper funds or administer them. See [API keys and access](/platform/api-keys).
 - **Tenant-wide operations take a `tenantId`:** [Connect](/api-reference/platform/accounts/connect), [List accounts](/api-reference/platform/accounts/list) and [Create a paper account](/api-reference/platform/paper/create).
 

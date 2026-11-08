@@ -233,6 +233,7 @@
           {
             "group": "Access and security",
             "pages": [
+              "platform/organisations",
               "platform/api-keys",
               "platform/settings"
             ]

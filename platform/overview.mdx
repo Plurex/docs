@@ -9,14 +9,17 @@ you do in one shows up in the other. To automate a strategy, use the API.
 
 ## Find your way around
 
-The sidebar has the app's three pages, and the menu at the top right has **User Settings** and **Logout**.
+The sidebar has the app's pages, and the menu at the top right has **User Settings** and **Logout**. Once you belong to
+a team, a switcher beside the menu picks the [organisation](/platform/organisations) you work in, and every page shows
+that organisation's accounts and keys.
 
 | Page | What it is for |
 | --- | --- |
 | [Terminal](/platform/terminal) | Trade one market at a time, with its chart, order book and trades. The app opens here. |
 | [Accounts](/platform/accounts) | Your real and paper accounts: add them, fund paper accounts, and review balances, positions, orders and history. |
 | [DevTools](/platform/api-keys) | Your tenant ID and the API keys your programs sign in with, with the access each key has. |
-| [User Settings](/platform/settings) | Your email, password and two-factor authentication. |
+| [Organization](/platform/organisations) | Shown while a team is selected, under the team's name: its members, their access and its invites. |
+| [User Settings](/platform/settings) | Your email, password and two-factor authentication, and your organisations. |
 
 The button at the bottom of the sidebar switches between dark and light mode. Without signing in, the Terminal shows
 markets, charts and order books; signing in adds trading and your accounts.
@@ -41,7 +44,8 @@ markets, charts and order books; signing in adds trading and your accounts.
   </Step>
 </Steps>
 
-Signing up also creates your **tenant**, which owns your API keys and trading accounts.
+Signing up also creates **Personal**, your own [organisation](/platform/organisations): the tenant that owns your API
+keys and trading accounts. To share them with a team, create another organisation and invite its members.
 
 ## Sign in
 
@@ -62,6 +66,9 @@ If you forget your password, choose **Forgot password?** to get a reset link by 
   </Card>
   <Card title="Terminal" icon="chart-candlestick" href="/platform/terminal">
     Trade a market by hand.
+  </Card>
+  <Card title="Organisations and members" icon="users" href="/platform/organisations">
+    Share accounts and API keys with a team.
   </Card>
   <Card title="Settings and security" icon="shield-halved" href="/platform/settings">
     Turn on two-factor authentication.

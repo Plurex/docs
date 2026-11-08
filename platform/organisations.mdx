@@ -1,0 +1,119 @@
+---
+title: "Organisations and members"
+description: "Share trading accounts and API keys with a team in an organisation, and choose exactly what each member can do."
+---
+
+An **organisation** lets a team share its trading setup: the same accounts, the same API keys, one tenant ID. The owner
+invites the members and decides what each one can do, with the same controls as an [API key](/platform/api-keys). A
+researcher can watch every account, a trader can trade the paper accounts and reach nothing real, and only the owner
+manages the API keys.
+
+Each organisation is its own **tenant**, with its own tenant ID, accounts and API keys. Nothing is shared between
+organisations.
+
+## Personal and team organisations
+
+- **Personal** is created when you sign up and holds only you. It cannot take members.
+- A **team** is an organisation you create or are invited to, and can have members.
+
+Once you belong to more than Personal, a switcher at the top right picks the organisation you work in. The Terminal,
+Accounts and DevTools all show the selected organisation's accounts, keys and tenant ID. While a team is selected, the
+sidebar also has a page named after it, the **Organization** page.
+
+<Frame>
+  <img src="/images/app/organization/overview.png" alt="The Organization page for the team Morgan Capital, selected in the switcher at the top right: its name with Rename, its owner, and the Overview, Members and Invites tabs" />
+</Frame>
+
+## Create an organisation
+
+<Frame>
+  <img src="/images/app/settings/organizations.png" alt="User Settings, Organizations tab: Personal, selected, and the team Morgan Capital, both owned by the user, with a New organization button" />
+</Frame>
+
+<Steps>
+  <Step title="Start">
+    Open **User Settings** from the menu at the top right, then **Organizations**, and choose **New organization**.
+  </Step>
+  <Step title="Name it">
+    Enter a name of 3 to 50 letters, digits, spaces, dashes or underscores, and choose **Create**. You own the new
+    organisation, and the app selects it and opens its page.
+  </Step>
+</Steps>
+
+**Organizations** lists every organisation you belong to, with your role and which one is selected. Each one's menu has
+**Open**, which selects it, and **Leave** for those you do not own.
+
+## Owner and members
+
+| Role | Can |
+| --- | --- |
+| **Owner** | Everything: every account, the API keys, renaming the organisation, its members and its invites. Whoever creates the organisation owns it, and cannot leave it or be removed. |
+| **Member** | Read every account in the organisation, and anything more the owner gives them. |
+
+Every member sees the **Overview** tab, with the organisation's name and owner. Only the owner sees **Members** and
+**Invites**, and only the owner can **Rename** the organisation.
+
+## Invite a member
+
+<Frame>
+  <img src="/images/app/organization/invites.png" alt="The Invites tab with an Invite button and one invite waiting, to sam@plurex.example, with its expiry time" />
+</Frame>
+
+<Steps>
+  <Step title="Send the invite">
+    On the **Invites** tab, choose **Invite**, enter the person's email address and choose **Send invite**.
+  </Step>
+  <Step title="They join">
+    They get an email with a link. They open it, sign in or create an account with that same address, and choose
+    **Join**. They can also **Decline**.
+  </Step>
+  <Step title="Give them access">
+    They join with read access only. Give them more from the **Members** tab, as below.
+  </Step>
+</Steps>
+
+An invite is for one email address, so someone without a Plurex account can sign up with that address to accept it.
+Someone who already has an account there also finds the invite under **User Settings**, **Organizations**, in
+**Invites to you**, with **Join** and **Decline**.
+
+Each invite lapses after 7 days. To send a new link, invite the same address again: the old link stops working.
+**Cancel invite**, in the invite's menu, stops its link at once. You cannot invite someone who is already a member.
+
+## Give a member access
+
+<Frame>
+  <img src="/images/app/organization/members.png" alt="The Members tab: the owner, alexmorgan, with Everything, and the member jordanlee with Paper: Trade and Creates accounts" />
+</Frame>
+
+**Members** lists each member with their role and a summary of their access. To change a member's access, choose
+**Edit access** in their menu. The **Member access** editor works exactly like an API key's: the same
+[sections, presets and permissions](/platform/api-keys#choose-what-a-key-can-do), applied to what the member can do in
+the app. Choose **Save**, and enter your 6-digit code if two-factor authentication is on.
+
+<Frame>
+  <img src="/images/app/organization/member-access.png" alt="The Member access editor for jordanlee: Create paper accounts on, Trade on paper accounts, No access to real accounts, no specific accounts" />
+</Frame>
+
+Every member can always read every account in the organisation, paper and real: see it in **Accounts**, and its
+balances, positions, orders and history. The editor does not show this, and cannot take it away. What you give in the
+editor adds to it: trading, creating or connecting accounts, managing paper funds, and renaming, updating or deleting
+accounts. The member above can read every account, and can also create paper accounts and trade them.
+
+**New Account** shows only to a member who can connect or create accounts. Anything else their access does not allow,
+the app refuses.
+
+## API keys in a team
+
+The organisation's API keys belong to the organisation, and only its owner can create, edit or delete them on
+**DevTools**. Members see the tenant ID there but not the keys. A member whose program needs the API asks the owner for
+a key with the access it needs, so the owner decides what every program can reach.
+
+Because keys belong to the organisation, removing a member does not stop any key.
+
+## Remove or leave
+
+- **Remove a member:** on **Members**, choose **Remove** in their menu. They lose access to the organisation's accounts.
+- **Leave:** choose **Leave** on the **Overview** tab, or in the organisation's menu under **User Settings**,
+  **Organizations**. Only a new invite from the owner brings you back.
+
+The owner cannot leave or be removed.
