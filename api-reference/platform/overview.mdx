@@ -30,7 +30,7 @@ Every operation and stream is under `https://api.plurex.io`.
 The OpenAPI 3.2 specification (`plurex-platform-api.yaml`) is the contract. It covers every operation, stream, schema and error, and this reference is generated from it. Use it to generate clients or validate payloads.
 
 <Note>
-  Queries and streams use the OpenAPI 3.2 `query` method, and stream responses use `itemSchema` to describe each line; generators that predate 3.2 may not handle them. Check that yours decodes explicit `null` values (`type: [string, 'null']`), and treat `ErrorCode` and other enums as [open](/api-reference/platform/conventions#compatibility): new values can appear without a new API version.
+  Queries and streams use the OpenAPI 3.2 `query` method, and stream responses use `itemSchema` to describe each line; generators that predate 3.2 may not handle them. If yours drops `query` operations, call them with [`POST`](/api-reference/platform/conventions#when-you-cannot-send-query) instead. Check that yours decodes explicit `null` values (`type: [string, 'null']`), and treat `ErrorCode` and other enums as [open](/api-reference/platform/conventions#compatibility): new values can appear without a new API version.
 </Note>
 
 ## Domains

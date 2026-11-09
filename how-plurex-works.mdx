@@ -44,11 +44,11 @@ Every operation is one of three kinds:
 - A **command** changes state, such as submitting or cancelling an order. Each command says whether it is safe to repeat, because in trading a retry can mean a second order.
 - A **stream** follows one topic and sends you its changes as they happen, such as a market's order book or an account's orders. Most streams start with the current state.
 
-Commands are `POST`. Queries and streams are `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)), a safe method that carries a body. Every operation takes a JSON body at a path that names it, such as `/api/v1/hosts/command/SubmitOrder`. There are no `GET`, `PUT` or `DELETE` resources, and IDs never go in the path, because:
+Commands are `POST`. Queries and streams are `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)), a safe method that carries a body, and also accept `POST` [where you cannot send `QUERY`](/api-reference/platform/conventions#when-you-cannot-send-query). Every operation takes a JSON body at a path that names it, such as `/api/v1/hosts/command/SubmitOrder`. There are no `GET`, `PUT` or `DELETE` resources, and IDs never go in the path, because:
 
 - **Operations are trading actions, not resources.** `CancelAllOrders` on one instrument, or `GetOrder` by `clientOrderId`, don't map cleanly onto HTTP verbs and URLs.
 - **Requests are typed.** Instruments, order types and lookup variants are structured JSON with a `type` field, which query strings can't express unambiguously.
-- **Retry safety is in the method and path.** `QUERY` tells your retry logic it may repeat; `POST` means check the command.
+- **Retry safety is in the path.** A `query` or `stream` path tells your retry logic it may repeat; a `command` path means check the command.
 
 Unlike GraphQL, you don't choose fields: each operation returns every field every time, with `null` where the host doesn't report a value.
 

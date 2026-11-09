@@ -7,7 +7,13 @@ description: "Understand request and response formats, paging, unions, batches, 
 
 Commands are `POST`; queries and streams are `QUERY`. Every operation has a JSON body, `Content-Type: application/json` and both [API key headers](/authentication), and goes to a path of the form `/api/v1/{domain}/{query|command|stream}/{Action}`. IDs such as `accountId`, `hostId` and `venueId` go in the body, never in the path. See [Commands, queries and streams](/api-reference/platform/overview#commands-queries-and-streams) for the three kinds of operation.
 
-`QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)) has no `POST` fallback: the wrong method returns `405 MethodNotAllowed`. Most HTTP clients send it as a custom method, in uppercase, for example `curl --request QUERY` or `requests.request("QUERY", url, json=body)` in Python. Java's `HttpURLConnection` refuses it; use `HttpClient`.
+`QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)) is a safe method that carries a body. Most HTTP clients send it as a custom method, in uppercase, for example `curl --request QUERY` or `requests.request("QUERY", url, json=body)` in Python.
+
+### When you cannot send QUERY
+
+Every query and stream also accepts `POST`. Use it when something between you and Plurex refuses `QUERY`: an HTTP client such as Java's `HttpURLConnection`, a proxy, firewall or gateway, a scripting platform with a fixed list of methods, or a client generator that drops OpenAPI 3.2 `query` operations. A `POST` to a query or stream path is the same operation, with the same body, response, permissions and errors, and it is still safe to repeat. Only the path decides what kind of operation it is.
+
+The specification lists queries and streams under `QUERY` only, so their reference pages show `QUERY`; send the same request with `POST` instead. Commands accept only `POST`. Any other method returns `405 MethodNotAllowed`.
 
 Every operation needs a body, even a list with no filters: send `{}` for the first page. Request bodies are strict: unknown fields, unknown enum values and wrong types return `400 InvalidRequest`. Send only the fields the specification defines.
 

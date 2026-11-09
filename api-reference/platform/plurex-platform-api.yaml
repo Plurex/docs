@@ -9659,7 +9659,7 @@ components:
         unknown fields or enum values, or invalid values. Unauthenticated (401): missing or invalid API key headers. Forbidden
         (403): no access to the account or operation. AccountNotFound (404): the accountId does not exist. OrderNotFound (404):
         the order identifier does not exist on the account. NotFound (404): unknown path, host or venue. MethodNotAllowed
-        (405): the operation uses a different HTTP method. DuplicateClientOrderId (409): the host holds another order with this clientOrderId.
+        (405): a command sent other than as POST, or a query or stream sent as neither QUERY nor POST. DuplicateClientOrderId (409): the host holds another order with this clientOrderId.
         OrderAlreadyClosed (409): the order is filled, cancelled or rejected. UnsupportedMediaType (415): the request is not
         Content-Type application/json. InsufficientFunds (422): the account cannot fund the order or withdrawal. InvalidProviderCredentials
         (422): the provider rejected the credentials (invalid, expired or revoked). ProviderAccessDenied (422): the credentials
