@@ -38,9 +38,16 @@ The account's ID is under its name, with a copy button: use it as the `accountId
 | **Fee tier** | A paper account's overview | Chooses the paper fee tier. New orders use it; orders already placed keep their rates. See [Fees and funding](/paper/fees-and-funding). |
 | **Update connection** | A real account's page, or **Update credentials** in its menu in the list | Replaces the exchange credentials when you rotate the key at the exchange. See [Rotate credentials](/platform/add-exchange#rotate-credentials). |
 | **Rename** | The account's menu | Changes its name. |
-| **Delete** | The account's menu | Removes the account from Plurex. |
+| **Delete** | The account's menu | Removes the account from Plurex. See below. |
+
+Each action shows only if your access allows it. See [API keys and access](/platform/api-keys#permissions) for the
+permissions, which a [team member's](/platform/organisations#give-a-member-access) access uses too.
 
 <Warning>
-  Deleting an account removes it from Plurex and breaks the history records of trading activity that used it. You
-  cannot undo a delete.
+  You cannot undo a delete.
+
+  - **A paper account** is deleted at once. Its open orders are cancelled, its open positions are closed at market,
+    and its balances go with it.
+  - **A real account**: Plurex forgets it and its connection. Its orders, positions and balances on the exchange stay
+    as they are.
 </Warning>

@@ -145,8 +145,9 @@ the account's orders, balances and history will come from a different exchange a
 
 ## Remove an account
 
-Delete the account in **Accounts** or with [Delete an account](/api-reference/platform/accounts/delete). Deleting
-breaks the history records of trading activity that used the account, and it cannot be undone. A repeat after a
+Delete the account in **Accounts** or with [Delete an account](/api-reference/platform/accounts/delete). Plurex forgets
+the account and its connection, and it cannot be undone. Its orders, positions and balances on the exchange stay as
+they are: close them at the exchange if you need to. A repeat after a
 successful delete returns `404 AccountNotFound`, because the account no longer exists; confirm with
 [List accounts](/api-reference/platform/accounts/list) that it is gone.
 

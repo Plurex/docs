@@ -3508,7 +3508,9 @@ paths:
     post:
       operationId: accountsDelete
       summary: Delete an account
-      description: Deletes an account. Repeating after success returns 404 AccountNotFound.
+      description: 'Deletes an account. A paper account takes nothing more: its open orders are cancelled and its
+        positions closed at market. A real account keeps its orders and positions on the venue. Repeating after success
+        returns 404 AccountNotFound.'
       tags:
       - accounts
       security:

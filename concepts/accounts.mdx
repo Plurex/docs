@@ -94,7 +94,7 @@ A new paper account starts with no balances; fund it with [Deposit](/api-referen
 | [Create a paper account](/api-reference/platform/paper/create) | Creates a paper account on a paper host, optionally on a `feeTier` from [Get paper host fee tiers](/api-reference/platform/paper/get-host-fee-tiers). |
 | [Update credentials](/api-reference/platform/accounts/update-connection) | Replaces a connected account's exchange credentials, for example when you rotate keys. The new key is checked like a new connection, but Plurex does not check that it belongs to the same exchange account, so use a key for that account. |
 | [Rename](/api-reference/platform/accounts/rename) | Changes the account's name. |
-| [Delete](/api-reference/platform/accounts/delete) | Removes the account from Plurex. |
+| [Delete](/api-reference/platform/accounts/delete) | Removes the account from Plurex. A paper account's open orders are cancelled and its positions closed at market; a real account's orders and positions stay on the exchange. |
 | [List accounts](/api-reference/platform/accounts/list) | Lists the tenant's accounts, optionally only on some hosts (`hostIds`), only paper or real (`isPaper`), or by name (`search`, where every word must match). |
 | [Get an account](/api-reference/platform/accounts/get) | Returns one account. |
 

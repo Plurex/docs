@@ -48,7 +48,7 @@ sidebar also has a page named after it, the **Organization** page.
 | Role | Can |
 | --- | --- |
 | **Owner** | Everything: every account, the API keys, renaming the organisation, its members and its invites. Whoever creates the organisation owns it, and cannot leave it or be removed. |
-| **Member** | Read every account in the organisation, and anything more the owner gives them. |
+| **Member** | Only what the owner gives them. A new member has no access. |
 
 Every member sees the **Overview** tab, with the organisation's name and owner. Only the owner sees **Members** and
 **Invites**, and only the owner can **Rename** the organisation.
@@ -68,7 +68,7 @@ Every member sees the **Overview** tab, with the organisation's name and owner. 
     **Join**. They can also **Decline**.
   </Step>
   <Step title="Give them access">
-    They join with read access only. Give them more from the **Members** tab, as below.
+    They join with no access. Give them some from the **Members** tab, as below.
   </Step>
 </Steps>
 
@@ -94,13 +94,12 @@ the app. Choose **Save**, and enter your 6-digit code if two-factor authenticati
   <img src="/images/app/organization/member-access.png" alt="The Member access editor for jordanlee: Create paper accounts on, Trade on paper accounts, No access to real accounts, no specific accounts" />
 </Frame>
 
-Every member can always read every account in the organisation, paper and real: see it in **Accounts**, and its
-balances, positions, orders and history. The editor does not show this, and cannot take it away. What you give in the
-editor adds to it: trading, creating or connecting accounts, managing paper funds, and renaming, updating or deleting
-accounts. The member above can read every account, and can also create paper accounts and trade them.
+A member has only the access you give them, exactly as a key does. The member above can create paper accounts and
+trade every paper account, and reaches nothing real.
 
-**New Account** shows only to a member who can connect or create accounts. Anything else their access does not allow,
-the app refuses.
+The app shows a member only what their access allows. **Accounts** lists only the accounts they can see, **New Account**
+shows only if they can connect or create accounts, and an account's **Rename**, **Delete**, **Deposit** and **Update
+connection** show only if they are allowed. In the Terminal, an account they can see but not trade is view-only.
 
 ## API keys in a team
 
