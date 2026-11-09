@@ -12,8 +12,8 @@ say so.
 
 Open **DevTools** from the sidebar. It shows:
 
-- your **Tenant ID**, with a copy button. The selected [organisation's](/platform/organisations) accounts and API keys
-  belong to this tenant, and tenant-wide operations
+- the **Tenant ID** you are working as, with a copy button: yours, or a selected
+  [organisation's](/platform/organisations). Its accounts and API keys belong to this tenant, and tenant-wide operations
   such as [List accounts](/api-reference/platform/accounts/list) take it;
 - **API keys**: each key's label, its public key, and a summary of its access, such as `Paper: Trade` or
   `Paper: Read only · Real: Trade · 2 accounts`.
@@ -138,8 +138,8 @@ Every key can read market data and discover hosts and markets, with no access gr
 can keep the same key and secret. **Delete** removes the key: programs using it stop working at once, and it cannot be
 undone. Both need your 6-digit code when two-factor authentication is on, as creating a key does.
 
-Only the organisation's owner, signed in to the web app, can create, edit or delete its keys; in a team, members see
-the tenant ID but not the keys. A key cannot change its own access or create another key.
+Only the tenant's owner, signed in to the web app, can create, edit or delete its keys: you for your own, and the
+owner for an organisation's. An organisation's members see its tenant ID but not its keys. A key cannot change its own access or create another key.
 
 ## Keep keys safe
 

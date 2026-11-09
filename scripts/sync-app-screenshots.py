@@ -32,7 +32,7 @@ SHOTS = {
     "accounts/account/overview": None,
     "settings/general": (0, 0, 880, 310),
     "settings/security": (0, 0, 880, 660),
-    "settings/organizations": (0, 0, 880, 370),
+    "settings/organizations": (0, 0, 880, 300),
     "organization/overview": (0, 0, 1440, 320),
     "organization/members": (0, 0, 880, 330),
     "organization/member-access": (440, 153, 1000, 747),

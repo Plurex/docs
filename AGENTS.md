@@ -63,6 +63,8 @@ record the disagreement as spec feedback for plurex instead of papering over it.
   them. A member's access uses the same editor as a key's: link to `platform/api-keys` instead of repeating it. The
   app's labels are American (**Organization**, **New organization**); bold them as the app spells them, and write
   "organisation" in prose.
+- There are two kinds of tenant: a user and an organisation. Never describe a user as having a personal or shadow
+  organisation. The switcher's **Personal** is you, working as yourself.
 
 ## Vocabulary
 
@@ -78,7 +80,7 @@ Use the public words:
 | A request type such as GetOrder | an **operation**; its alternatives (ById, ByClientOrderId) are **variants** |
 | Always-available operations | **always supported** |
 | Plurex's continuous data for a market | Plurex's **live feed** for the market |
-| The owner of accounts and API keys | the **tenant**, which is an **organisation** in the app (Personal or a team) |
+| The owner of accounts and API keys | the **tenant**: a user (you) or an **organisation** |
 | The real host a paper host simulates | the **model host** (`modelHostId`) |
 | A host market's limits | the market's **order rules** |
 | Paper funding events | **funding times** |

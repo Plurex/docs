@@ -8,26 +8,24 @@ invites the members and decides what each one can do, with the same controls as 
 researcher can watch every account, a trader can trade the paper accounts and reach nothing real, and only the owner
 manages the API keys.
 
-Each organisation is its own **tenant**, with its own tenant ID, accounts and API keys. Nothing is shared between
-organisations.
+There are two kinds of **tenant**: you, and organisations. Each has its own tenant ID, accounts and API keys, and
+nothing is shared between them. Your own accounts and keys stay yours when you join or create an organisation.
 
-## Personal and team organisations
+## Work as yourself or in an organisation
 
-- **Personal** is created when you sign up and holds only you. It cannot take members.
-- A **team** is an organisation you create or are invited to, and can have members.
-
-Once you belong to more than Personal, a switcher at the top right picks the organisation you work in. The Terminal,
-Accounts and DevTools all show the selected organisation's accounts, keys and tenant ID. While a team is selected, the
-sidebar also has a page named after it, the **Organization** page.
+Once you belong to an organisation, a switcher at the top right picks the tenant you work as: **Personal** for
+yourself, or an organisation by name. The Terminal, Accounts and DevTools all show the selected tenant's accounts,
+keys and tenant ID. While an organisation is selected, the sidebar also has a page named after it, the **Organization**
+page.
 
 <Frame>
-  <img src="/images/app/organization/overview.png" alt="The Organization page for the team Morgan Capital, selected in the switcher at the top right: its name with Rename, its owner, and the Overview, Members and Invites tabs" />
+  <img src="/images/app/organization/overview.png" alt="The Organization page for the organisation Morgan Capital, selected in the switcher at the top right: its name with Rename, its owner, and the Overview, Members and Invites tabs" />
 </Frame>
 
 ## Create an organisation
 
 <Frame>
-  <img src="/images/app/settings/organizations.png" alt="User Settings, Organizations tab: Personal, selected, and the team Morgan Capital, both owned by the user, with a New organization button" />
+  <img src="/images/app/settings/organizations.png" alt="User Settings, Organizations tab: the teams the user belongs to, here Morgan Capital, which they own, with a New organization button" />
 </Frame>
 
 <Steps>
@@ -40,8 +38,8 @@ sidebar also has a page named after it, the **Organization** page.
   </Step>
 </Steps>
 
-**Organizations** lists every organisation you belong to, with your role and which one is selected. Each one's menu has
-**Open**, which selects it, and **Leave** for those you do not own.
+**Organizations** lists the organisations you belong to, with your role in each. Each one's menu has **Open**, which
+selects it, and **Leave** for organisations you do not own.
 
 ## Owner and members
 
@@ -101,7 +99,7 @@ The app shows a member only what their access allows. **Accounts** lists only th
 shows only if they can connect or create accounts, and an account's **Rename**, **Delete**, **Deposit** and **Update
 connection** show only if they are allowed. In the Terminal, an account they can see but not trade is view-only.
 
-## API keys in a team
+## API keys in an organisation
 
 The organisation's API keys belong to the organisation, and only its owner can create, edit or delete them on
 **DevTools**. Members see the tenant ID there but not the keys. A member whose program needs the API asks the owner for
