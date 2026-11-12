@@ -5,7 +5,7 @@ description: "Read a host market's order types, per-input rules, options, trigge
 
 Every market a host lists has a **host market summary**: the order types it accepts, the rules for every order input, the options each order type supports, and the market's settings.
 
-Plurex validates orders against exactly these published rules and never rounds your inputs. An order that follows them is passed to the host; one that breaks them returns `422 Rejected` without reaching the host.
+Plurex validates orders against exactly these published rules and never rounds your inputs. An order that follows them is passed to the host; one that breaks them returns `422 ValidationFailed` without reaching the host, with a `message` that names each broken rule.
 
 Read summaries with [List host markets](/api-reference/platform/hosts/list-markets). It is paged and takes optional filters:
 
@@ -99,7 +99,7 @@ A market order states its quantity in `sizing`, either `{"type": "Size", "size":
 "sizingSupport": { "buy": ["Size", "Notional"], "sell": ["Size"] }
 ```
 
-`size` rules are present exactly when `Size` appears on either side, and `notional` rules exactly when `Notional` does. Using a sizing type the side does not list returns `422 Rejected`.
+`size` rules are present exactly when `Size` appears on either side, and `notional` rules exactly when `Notional` does. Using a sizing type the side does not list returns `422 ValidationFailed`.
 
 A notional is not a size promise. The size you receive is the notional divided by the fill price, and it can fall below the market's `size.min`.
 
@@ -137,7 +137,7 @@ With `HostSelected`, `price` tells you which reference the host uses; `null` mea
 | [`get`](/api-reference/platform/hosts/get-leverage) | GetMarketLeverage works on this market. |
 | [`setEffectScope`](/api-reference/platform/hosts/set-leverage) | SetMarketLeverage works on this market; `null` means it cannot be set. |
 
-The grid starts at `min`, not at zero. Off-grid values return `422 Rejected`.
+The grid starts at `min`, not at zero. Off-grid values return `422 ValidationFailed`.
 
 Leverage is a market setting, not an order field. `settings.leverage: null` means the market has no leverage control at all. That is different from GetMarketLeverage returning `Disabled`, which means the control exists and leverage is off for the account. On a market with no leverage control, the `currentLeverageSetting` in [Get market account state](/api-reference/platform/hosts/get-market-state) is `null`.
 
@@ -151,7 +151,7 @@ Leverage is a market setting, not an order field. `settings.leverage: null` mean
 | [`get`](/api-reference/platform/hosts/get-position-mode) | GetMarketPositionMode works on this market. |
 | [`setEffectScope`](/api-reference/platform/hosts/set-position-mode) | SetMarketPositionMode works on this market; `null` means it cannot be set. |
 
-Setting a mode not in `values` returns `422 Rejected`.
+Setting a mode not in `values` returns `422 ValidationFailed`.
 
 ### How far a change reaches
 
@@ -230,7 +230,7 @@ The rules in these examples are illustrative; read the live values from List hos
 
 Rules: `price.increment` `"0.1"`, `size.increment` `"0.001"`, `size.min` `"0.001"`, `value.min` `"5"`, one contract is 1 BTC. You want to buy about 1,000 USDT of BTC at 64,123.47.
 
-1. Price: 64,123.47 is not a multiple of 0.1. Round down for a buy: **64123.4**. Sending `"64123.47"` returns `422 Rejected`.
+1. Price: 64,123.47 is not a multiple of 0.1. Round down for a buy: **64123.4**. Sending `"64123.47"` returns `422 ValidationFailed`.
 2. Size: 1,000 / 64,123.4 = 0.015594…; round down to 0.001: **0.015**, which is at least 0.001.
 3. Value: 64,123.4 × 0.015 × 1 = 961.851 USDT, at least 5.
 
@@ -255,7 +255,7 @@ Rules: `price.increment` `"0.1"`, `size.increment` `"0.001"`, `size.min` `"0.001
 
 ### The value floor
 
-Rules: `price.increment` `"0.00001"`, `size.increment` `"1"`, `size.min` `"1"`, `value.min` `"5"`, one contract is 1 DOGE. A buy of 20 at 0.15 passes the size rules, but its value is 0.15 × 20 = 3 USDT, below 5: `422 Rejected`. The smallest valid size at this price is 5 / 0.15 = 33.3…, rounded **up** to 34, worth 5.10 USDT.
+Rules: `price.increment` `"0.00001"`, `size.increment` `"1"`, `size.min` `"1"`, `value.min` `"5"`, one contract is 1 DOGE. A buy of 20 at 0.15 passes the size rules, but its value is 0.15 × 20 = 3 USDT, below 5: `422 ValidationFailed`. The smallest valid size at this price is 5 / 0.15 = 33.3…, rounded **up** to 34, worth 5.10 USDT.
 
 ### Sizing an inverse perpetual
 

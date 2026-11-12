@@ -59,7 +59,7 @@ Submit one of four order types with [Submit an order](/api-reference/platform/ho
 
 The host returns an `Order`, the same shape that [Get an order](/api-reference/platform/hosts/get-order), the list operations and the order stream return. It is host-reported state.
 
-An order's `state` is `Live`, `Filled`, `Cancelled` or `Rejected`. There is no `PartiallyFilled` state: check `sizeTraded`. There is no `updatedAt`: an order has `createdAt`, and each fill has its own `executedAt`. See [Order states](/guides/orders#order-states).
+An order's `state` is `Pending` (accepted, not yet reported working), `Live`, `Filled`, `Cancelled` or `Rejected`. There is no `PartiallyFilled` state: check `sizeTraded`. There is no `updatedAt`: an order has `createdAt`, and each fill has its own `executedAt`. See [Order states](/guides/orders#order-states).
 
 ### What an order does not echo
 

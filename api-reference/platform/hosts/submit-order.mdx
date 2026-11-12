@@ -1,6 +1,6 @@
 ---
 title: "Submit an order"
-description: "Submits one order and returns it as the host accepted it. If the outcome is unclear (a timeout, 429 or 5xx), look the order up with the GetOrder clientOrderId variant the host supports before resubmitting; 409 DuplicateClientOrderId does not guard against every repeat."
+description: "Submits one order and returns it as the host accepted it, Pending until the host has reported it working; what happens next arrives on the order stream and GetOrder. If the outcome is unclear (a timeout, 429 or 5xx), look the order up with the GetOrder clientOrderId variant the host supports before resubmitting; 409 DuplicateClientOrderId does not guard against every repeat."
 openapi: "/api-reference/platform/plurex-platform-api.yaml POST /api/v1/hosts/command/SubmitOrder"
 ---
 

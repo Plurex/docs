@@ -62,7 +62,7 @@ operations specific to paper are [Create a paper account](/api-reference/platfor
 [fee tier operations](/paper/fees-and-funding).
 
 A paper `clientOrderId` must be 1 to 64 characters of letters, digits, `-`, `_`, `.` or `:`; any other value returns
-`422 Rejected`. A live host applies its own rules. Paper returns `409 DuplicateClientOrderId` only while an open order
+`422 ValidationFailed`. A live host applies its own rules. Paper returns `409 DuplicateClientOrderId` only while an open order
 on the account holds the ID; once that order closes, the ID can be used again, and a lookup by client order ID returns
 the newest order with it.
 
@@ -197,7 +197,7 @@ fee with [List fills](/api-reference/platform/hosts/list-fills).
 | Reduce-only order with nothing left to close, no position, or on the wrong side | Rejected with `422 Rejected` |
 | Reduce-only market order to close a remainder below the market's minimum size | Request at least the minimum, and the order is trimmed to what is left. A request for exactly the remainder breaks the order rules. |
 | Market order with no opposite liquidity | Rejected with `422 Rejected` |
-| Order that partly fills and keeps resting | `LIVE`, with `sizeTraded` above zero |
+| Order that partly fills and keeps resting | `Live`, with `sizeTraded` above zero |
 
 Which options each market accepts is in its [order rules](/capabilities/order-rules), from
 [List host markets](/api-reference/platform/hosts/list-markets).
@@ -208,8 +208,8 @@ Paper never decides on stale data. If Plurex's live feed for a market drops, res
 on from the first fresh data. A crossed book then fills a resting order at its own price. Anything that came and went
 in between is lost: paper does not invent missed fills or trigger crossings.
 
-New orders still see the venue's current book. If it cannot be read, the order is rejected with `502 UpstreamFailure`
-and its funds are released.
+New orders still see the venue's current book. If it cannot be read, the submit returns `502 UpstreamFailure`; if it is
+lost just after paper accepted the order, the order ends `Rejected` instead. Either way its funds are released.
 
 ## Trigger orders
 

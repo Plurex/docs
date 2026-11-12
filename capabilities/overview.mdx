@@ -118,7 +118,7 @@ canDo(header, market, area, operation, variant, inputs):
     descriptor = the market's descriptor for this operation, if it has one
     if descriptor exists:
         if descriptor is null or its flag for this operation is false:  return NO
-        if inputs break the descriptor's terms:  return NO          # the call returns 422 Rejected
+        if inputs break the descriptor's terms:  return NO          # the call returns 422 ValidationFailed
         return YES
 
     return support.type == "Supported"                             # no market-level descriptor
@@ -160,7 +160,7 @@ def can_set_leverage(host, market, leverage: Decimal):
     lo, hi, step = Decimal(spec["min"]), Decimal(spec["max"]), Decimal(spec["step"])
     if lo == hi:
         return leverage == lo             # a single fixed leverage
-    return lo <= leverage <= hi and (leverage - lo) % step == 0   # off the grid is 422 Rejected
+    return lo <= leverage <= hi and (leverage - lo) % step == 0   # off the grid is 422 ValidationFailed
 
 def can_get_order_by_client_id(host):
     return support_type(host, "orders", "getOrder", "byClientOrderId") == "Supported"
@@ -168,14 +168,15 @@ def can_get_order_by_client_id(host):
 
 Use `Decimal` (or your language's exact decimal type) for every comparison. Values arrive as JSON strings such as `"0.01"`; binary floating point will misjudge whole multiples.
 
-## NotSupported and Rejected
+## NotSupported, ValidationFailed and Rejected
 
-Both are HTTP `422`, and they mean different things.
+All three are HTTP `422`, and they mean different things.
 
 | Code | Means | Typical causes | What to do |
 | --- | --- | --- | --- |
 | `NotSupported` | The host or venue does not offer this operation, variant or order type, or does not list the market. | A header entry is `NotSupported`; a market descriptor is `null` or its flag is `false`; a candle interval or price kind the market does not list. | Do not retry unchanged. Choose another variant or skip the market, and refresh capabilities. |
-| `Rejected` | The operation is offered, but the inputs break the market's rules, or the host rejected the command. | A price off the increment, a size below `min`, `postOnly` where `supportsPostOnly` is `false`, a leverage off the grid. | Fix the inputs. The error `message` describes the problem. |
+| `ValidationFailed` | The operation is offered, but the inputs break the market's rules. | A price off the increment, a size below `min`, `postOnly` where `supportsPostOnly` is `false`, a leverage off the grid. | Fix the inputs. The error `message` names each broken rule. |
+| `Rejected` | The inputs are valid, but the host or the account's current state refuses the command. | A host's own rule that no capability describes, a leverage change while the market has an open position. | Read the error `message`, then change the request or the account's state. |
 
 The full list of codes is in [Errors](/api-reference/platform/errors).
 
@@ -186,7 +187,7 @@ Capabilities and market summaries are safe to cache, but they change: markets ar
 - Load headers and the market summaries you trade at startup.
 - Refresh them periodically. How often depends on your tolerance for stale rules; for most systems, minutes to hours is enough.
 - After a `422 NotSupported` on a call your cache said was supported, reload the relevant header and market summary before deciding again.
-- After a `422 Rejected` on order inputs you built from cached rules, reload the market summary: an increment or minimum may have changed.
+- After a `422 ValidationFailed` on order inputs you built from cached rules, reload the market summary: an increment or minimum may have changed.
 - Never hard-code rules from an example or from an earlier response.
 
 ## Unknown values

@@ -129,9 +129,8 @@ order history and fills, with `origin` set to `Liquidation` and `clientOrderId` 
 treating an unknown order as a fault. You cannot cancel it: Cancel all skips it and a cancel has no effect. Re-placing
 your own closing orders does not hold it off.
 
-Paper does not liquidate on doubtful data. If a price the account depends on is out of date, or a fill is still
-settling, it leaves the account alone and looks again, so a position can stay open past its liquidation price for a
-while. A market with nothing on the side of the book it would close against is skipped until it has.
+Paper does not liquidate on doubtful data. If a price the account depends on is out of date or cannot be read, it
+leaves the account alone and looks again, so a position can stay open past its liquidation price for a while. A market with nothing on the side of the book it would close against is skipped until it has.
 
 ## Losses beyond the account
 

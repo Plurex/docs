@@ -185,7 +185,7 @@ export PLUREX_API_SECRET="your-api-secret"
     at least `size.min`, and small enough for your deposit at the current price. Then send
     `"sizing": { "type": "Size", "size": "0.0005" }` with your own value.
 
-    The response shows the order, already filled:
+    The response is the order as paper accepted it. It can still be `Pending`, with nothing traded yet:
 
     ```json
     {
@@ -195,11 +195,11 @@ export PLUREX_API_SECRET="your-api-secret"
         "createdAt": "2026-10-25T09:30:00.120Z",
         "side": "Buy",
         "instrument": { "type": "Spot", "base": "BTC", "quote": "USDT" },
-        "state": "Filled",
-        "sizeTraded": "0.000441",
-        "averagePrice": "113378.25",
+        "state": "Pending",
+        "sizeTraded": "0",
+        "averagePrice": null,
         "realizedPnl": null,
-        "totalFees": [{ "asset": "USDT", "value": "0.05" }],
+        "totalFees": [],
         "clientOrderId": null,
         "origin": "User",
         "sizing": { "type": "Notional", "notional": "50" }
@@ -234,7 +234,30 @@ export PLUREX_API_SECRET="your-api-secret"
     EOF
     ```
 
-    You get the same order record. [List fills](/api-reference/platform/hosts/list-fills) returns its fills.
+    Once the order has traded, it reads `Filled`, with what it traded, its average price and its fees:
+
+    ```json
+    {
+      "data": {
+        "type": "Market",
+        "id": "ord_789",
+        "createdAt": "2026-10-25T09:30:00.120Z",
+        "side": "Buy",
+        "instrument": { "type": "Spot", "base": "BTC", "quote": "USDT" },
+        "state": "Filled",
+        "sizeTraded": "0.000441",
+        "averagePrice": "113378.25",
+        "realizedPnl": null,
+        "totalFees": [{ "asset": "USDT", "value": "0.05" }],
+        "clientOrderId": null,
+        "origin": "User",
+        "sizing": { "type": "Notional", "notional": "50" }
+      }
+    }
+    ```
+
+    [List fills](/api-reference/platform/hosts/list-fills) returns its fills, and the
+    [order stream](/guides/streams#account-orders) reports each change without polling.
   </Step>
 
   <Step title="Check your balances">

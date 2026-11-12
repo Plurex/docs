@@ -17,7 +17,7 @@ Plurex checks your order against exactly the order rules the host market publish
     `orderTypes.limit` is always present. `market`, `triggerLimit` and `triggerMarket` are `null` when the market does not support that type; submitting one anyway returns `422 NotSupported`.
   </Step>
   <Step title="Fit price and size to the rules">
-    Prices are whole multiples of `price.increment`, sizes are whole multiples of `size.increment` and at least `size.min`, and a priced order's value must reach `value.min`. Sizes are in native contracts, so read `contractDetails` before converting an amount of money into a size. An order that breaks a rule returns `422 Rejected`.
+    Prices are whole multiples of `price.increment`, sizes are whole multiples of `size.increment` and at least `size.min`, and a priced order's value must reach `value.min`. Sizes are in native contracts, so read `contractDetails` before converting an amount of money into a size. An order that breaks a rule returns `422 ValidationFailed`, and its `message` names each rule it breaks.
   </Step>
   <Step title="Check the options you send">
     `tif` must be in `options.supportedTimeInForce`. Send `postOnly: true`, `reduceOnly: true` or a non-null `positionEffect` only when the matching `supportsPostOnly`, `supportsReduceOnly` or `supportsPositionEffect` flag is `true`.
@@ -140,7 +140,7 @@ A stop-loss for a long position is a trigger market sell with `reduceOnly: true`
 
 ### What the response means
 
-A successful response is the order as the host accepted it:
+A successful response is the order as the host accepted it. It is `Pending`, with nothing traded, until the host has reported it working; a host that already knows more returns that instead, such as `Live` or `Filled`. A host that refuses the order returns an error.
 
 ```json
 {
@@ -150,7 +150,7 @@ A successful response is the order as the host accepted it:
     "createdAt": "2026-10-25T09:30:00Z",
     "side": "Buy",
     "instrument": { "type": "Perp", "base": "BTC", "quote": "USDT" },
-    "state": "Live",
+    "state": "Pending",
     "sizeTraded": "0",
     "averagePrice": null,
     "realizedPnl": null,
@@ -163,21 +163,28 @@ A successful response is the order as the host accepted it:
 }
 ```
 
+What happens after the host accepts the order is reported on the order, not by the submit: a post-only order the host then cancels, or an IOC order that has already finished, shows its outcome on the [order stream](/guides/streams#account-orders) and from [Get an order](/api-reference/platform/hosts/get-order).
+
 Keep `id`: every later lookup and cancel can use it. Submitted options (`tif`, `postOnly`, `reduceOnly`, `positionEffect`) are not echoed, and `averagePrice` and `realizedPnl` are `null` when the host does not report them. Plurex does not calculate an average price from fills.
 
 `origin` says who placed the order: `User` for the account, or `Liquidation` when the host closed a position past its margin. It is `null` when the host does not report it. A strategy can meet a liquidation order it never placed, so check `origin` before treating an unknown order as a fault.
 
 ## Order states
 
-An order is in one of four states. `Live` is the only one that can change.
+An order is in one of five states. `Pending` and `Live` are open: the order can still change, and you can cancel it. `Filled`, `Cancelled` and `Rejected` are final.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Live: accepted
-  [*] --> Rejected: refused by the host
-  Live --> Live: partly filled (sizeTraded grows)
-  Live --> Filled: fully filled
-  Live --> Cancelled: cancelled
+  state Open {
+    [*] --> Pending
+    [*] --> Live
+    Pending --> Live: reported working
+    Live --> Live: partly filled (sizeTraded grows)
+  }
+  [*] --> Open: accepted
+  Open --> Filled: fully filled
+  Open --> Cancelled: cancelled
+  Open --> Rejected: refused by the host
   Filled --> [*]
   Cancelled --> [*]
   Rejected --> [*]
@@ -185,10 +192,11 @@ stateDiagram-v2
 
 | State | Meaning |
 | --- | --- |
+| `Pending` | Accepted, but the host has not yet reported it working, so nothing traded is reported. It comes only before `Live`, and an order need not pass through it. |
 | `Live` | Working on the host. An untriggered trigger order is `Live`. A partly filled order stays `Live` with `sizeTraded` greater than zero. |
 | `Filled` | Completely filled. |
 | `Cancelled` | No longer working. Check `sizeTraded`: a cancelled order may have partly filled first. |
-| `Rejected` | Refused by the host. |
+| `Rejected` | Refused by the host after it accepted the order, for example a trigger order that cannot be placed when it fires. |
 
 Orders have no `updatedAt`. Compare `sizeTraded` with the order's size to see progress.
 
@@ -198,7 +206,7 @@ Orders have no `updatedAt`. Compare `sizeTraded` with the order's size to see pr
 | --- | --- | --- |
 | One order | [Get an order](/api-reference/platform/hosts/get-order) | `ById` works on every host. `ByClientOrderId` and `ByClientOrderIdForInstrument` depend on `getOrder` capabilities. |
 | Several named orders | [Get orders](/api-reference/platform/hosts/get-orders) | Unknown identifiers are left out of the result, not reported as errors, so compare the result with what you asked for. |
-| Everything still working | [List open orders](/api-reference/platform/hosts/list-orders) | `Global` or `ByInstrument`. |
+| Everything still open | [List open orders](/api-reference/platform/hosts/list-orders) | `Pending` and `Live` orders: `Global` or `ByInstrument`. |
 | Finished orders | [List closed orders](/api-reference/platform/hosts/list-closed-orders) | Filled, cancelled and rejected orders: `Global` or `ByInstrument`, optionally from a `Before` or `After` time. |
 | Individual executions | [List fills](/api-reference/platform/hosts/list-fills) | `ByOrderId`, `ByInstrument` or `Global`. |
 | Changes as they happen | [Stream account orders](/api-reference/platform/hosts/subscribe-to-account-orders) | Starts with the open orders, then sends each change. See [Streams](/guides/streams#account-orders). |
@@ -390,7 +398,7 @@ This flow places a limit order on a paper or real account, confirms it, cancels 
     ```
   </Step>
   <Step title="Confirm the final state">
-    Repeat the `GetOrder` call until `state` is no longer `Live`. Expect `Cancelled`, or `Filled` if the order filled before the cancel took effect.
+    Repeat the `GetOrder` call until `state` is final. Expect `Cancelled`, or `Filled` if the order filled before the cancel took effect.
   </Step>
 </Steps>
 

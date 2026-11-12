@@ -76,7 +76,7 @@ Each `Update` carries the `change` and the complete `order` after it, exactly as
 
 | `change.type` | Meaning |
 | --- | --- |
-| `Opened` | The order appeared on the stream. Each order opens once; orders in the `Reset` do not. An order first seen already traded is followed by `Filled`. |
+| `Opened` | The order was first seen past `Pending`: working, or already finished. Each order opens at most once. A `Pending` order, in the `Reset` or not, opens when it moves on; `Live` orders in the `Reset` never open. An order first seen already traded is followed by `Filled`, and one first seen rejected gets only `Rejected`. |
 | `Filled` | The order traded more, or reached `Filled`. The order's `state` and `sizeTraded` say whether it is partly or fully filled. The execution itself is not included: read it with [List fills](/api-reference/platform/hosts/list-fills). |
 | `Cancelled` | The order was cancelled. |
 | `Rejected` | The host rejected the order. `reason` and `code` are the host's own text and code, or `null`. The `code` is the host's native code, not a Plurex error code. |
@@ -134,7 +134,7 @@ Transaction events are not ordered relative to order updates, so a fee can arriv
 
 <Steps>
   <Step title="Open the stream first">
-    Wait for the `200`. From then on every new posting arrives as an event; keep reading and queue the events while you do the next step.
+    Wait for the `200`. From then on new postings arrive as events; keep reading and queue the events while you do the next step.
   </Step>
   <Step title="Read recent history">
     Page through [List account transactions](/api-reference/platform/hosts/list-transactions) as far back as you need, or, after a reconnect, a little past the newest posting you already hold. This is your starting copy.

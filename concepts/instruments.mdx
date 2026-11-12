@@ -34,7 +34,7 @@ An `Instrument` is a JSON object with a `type` discriminator. Every operation th
 
 - **Asset IDs** (`base`, `quote`) are uppercase and contain only `A`–`Z`, `0`–`9` and dots, 1 to 32 characters, with no `-` or `_`. Digits are allowed anywhere, as in `1000PEPE`. Different assets are different instruments: `BTC`/`USDT` and `BTC`/`USDC` are separate markets.
 - **`expiry`** is a date, `YYYY-MM-DD`.
-- **`strike`** is a positive decimal string in the quote asset, in canonical form: no exponent and no trailing fractional zeros. Send `"50000"` or `"50000.5"`, never `"50000.0"` or `"5E4"`; non-canonical strikes are rejected with `400 InvalidRequest`.
+- **`strike`** is a positive decimal string in the quote asset, in canonical form: no exponent and no trailing fractional zeros. Send `"50000"` or `"50000.5"`, never `"50000.0"` or `"5E4"`; non-canonical strikes are rejected with `422 ValidationFailed`.
 - **`right`** is `Call` or `Put`.
 - An unknown `type` is rejected with `400 InvalidRequest`. In responses, new instrument types may appear over time: treat an unknown `type` as unrecognised rather than failing.
 
